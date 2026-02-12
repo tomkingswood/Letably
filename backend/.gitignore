@@ -1,0 +1,30 @@
+node_modules
+.env
+.env.local
+
+# SQLite (legacy)
+database.db
+*.sqlite
+*.sqlite3
+
+# PostgreSQL
+*.sql.backup
+pgdata/
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

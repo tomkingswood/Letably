@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary brand colors (configurable per agency) */
+  --primary: #3B82F6;
+  --primary-dark: #2563EB;
+  --primary-light: #60A5FA;
+
+  /* Agency branding colors (set dynamically via JavaScript) */
+  --agency-primary: #1E3A5F;
+  --agency-primary-light: #2E4A6F;
+  --agency-primary-dark: #0E2A4F;
+  --agency-secondary: #F97316;
+}
+
+body {
+  @apply text-gray-900 antialiased;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dark text-white font-semibold py-2 px-6 rounded transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded transition-colors duration-200;
+  }
+
+  .input-field {
+    @apply border border-gray-300 rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-md overflow-hidden;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Toast animations */
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+}

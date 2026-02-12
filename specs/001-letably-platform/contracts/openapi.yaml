@@ -1,0 +1,789 @@
+openapi: 3.1.0
+info:
+  title: Letably Platform API
+  description: Multi-tenant property management SaaS API for UK letting agencies
+  version: 1.0.0
+  contact:
+    name: Letably Support
+    email: support@letably.com
+
+servers:
+  - url: https://portal.letably.com/api
+    description: Production
+  - url: http://localhost:3001/api
+    description: Development
+
+tags:
+  - name: Authentication
+    description: Login, logout, password management
+  - name: Agencies
+    description: Agency management (admin only)
+  - name: Users
+    description: User account management
+  - name: Properties
+    description: Property and room management
+  - name: Landlords
+    description: Landlord management
+  - name: Applications
+    description: Tenant application workflow
+  - name: Tenancies
+    description: Tenancy and agreement management
+  - name: Payments
+    description: Payment schedules and recording
+  - name: Maintenance
+    description: Maintenance request management
+  - name: Public API
+    description: Read-only API for agency websites
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token with agency_id claim
+
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Agency public API key (read-only access)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+      required:
+        - error
+        - message
+
+    Agency:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        logo_url:
+          type: string
+          format: uri
+        primary_color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+        show_powered_by:
+          type: boolean
+        subscription_tier:
+          type: string
+          enum: [standard, premium]
+        is_active:
+          type: boolean
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [admin, tenant, landlord]
+        agency_id:
+          type: integer
+        is_active:
+          type: boolean
+
+    Property:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        address_line1:
+          type: string
+        address_line2:
+          type: string
+        city:
+          type: string
+        postcode:
+          type: string
+        description:
+          type: string
+        property_type:
+          type: string
+        status:
+          type: string
+          enum: [draft, live, archived]
+        rent_pppw:
+          type: number
+          format: decimal
+        bedrooms:
+          type: integer
+        bathrooms:
+          type: integer
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Room'
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+        landlord:
+          $ref: '#/components/schemas/Landlord'
+
+    Room:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        rent_pppw:
+          type: number
+          format: decimal
+        deposit_amount:
+          type: number
+          format: decimal
+        is_available:
+          type: boolean
+        available_from:
+          type: string
+          format: date
+
+    Image:
+      type: object
+      properties:
+        id:
+          type: integer
+        file_path:
+          type: string
+        alt_text:
+          type: string
+        is_primary:
+          type: boolean
+
+    Landlord:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+
+    Application:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        property_id:
+          type: integer
+        room_id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, awaiting_guarantor, submitted, approved, rejected, converted_to_tenancy]
+        guarantor_required:
+          type: boolean
+        desired_move_in:
+          type: string
+          format: date
+
+    Tenancy:
+      type: object
+      properties:
+        id:
+          type: integer
+        property_id:
+          type: integer
+        room_id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, awaiting_signatures, signed, approval, active, expired, taken_over, awaiting_new_tenancy]
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        rent_amount:
+          type: number
+          format: decimal
+        payment_option:
+          type: string
+          enum: [monthly, quarterly, monthly_to_quarterly, upfront]
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenancyMember'
+
+    TenancyMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        is_signed:
+          type: boolean
+        signed_at:
+          type: string
+          format: date-time
+        guarantor_required:
+          type: boolean
+
+    PaymentSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenancy_id:
+          type: integer
+        amount_due:
+          type: number
+          format: decimal
+        due_date:
+          type: string
+          format: date
+        payment_type:
+          type: string
+          enum: [rent, deposit, utilities, fees, other]
+        status:
+          type: string
+          enum: [pending, paid, partial, overdue]
+        total_paid:
+          type: number
+          format: decimal
+        balance:
+          type: number
+          format: decimal
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        payment_schedule_id:
+          type: integer
+        amount:
+          type: number
+          format: decimal
+        payment_date:
+          type: string
+          format: date
+        payment_reference:
+          type: string
+
+    MaintenanceRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        tenancy_id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [plumbing, electrical, heating, appliances, structural, pest_control, general, other]
+        priority:
+          type: string
+          enum: [low, medium, high]
+        status:
+          type: string
+          enum: [submitted, in_progress, completed]
+        created_at:
+          type: string
+          format: date-time
+
+    ViewingRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        property_id:
+          type: integer
+        visitor_name:
+          type: string
+        visitor_email:
+          type: string
+          format: email
+        visitor_phone:
+          type: string
+        preferred_date:
+          type: string
+          format: date
+        message:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed, completed, cancelled]
+
+paths:
+  # Authentication
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login to agency portal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, agency_slug]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                agency_slug:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  agency:
+                    $ref: '#/components/schemas/Agency'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout (client-side token discard)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, agency_slug]
+              properties:
+                email:
+                  type: string
+                  format: email
+                agency_slug:
+                  type: string
+      responses:
+        '200':
+          description: Reset email sent if user exists
+
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset password with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Password reset successful
+
+  # Properties (Admin)
+  /admin/properties:
+    get:
+      tags: [Properties]
+      summary: List all properties
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, live, archived]
+        - name: landlord_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of properties
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  properties:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+
+    post:
+      tags: [Properties]
+      summary: Create property
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, address_line1, city, postcode]
+              properties:
+                title:
+                  type: string
+                address_line1:
+                  type: string
+                address_line2:
+                  type: string
+                city:
+                  type: string
+                postcode:
+                  type: string
+                description:
+                  type: string
+                landlord_id:
+                  type: integer
+      responses:
+        '201':
+          description: Property created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+
+  /admin/properties/{id}:
+    get:
+      tags: [Properties]
+      summary: Get property details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Property details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+
+    put:
+      tags: [Properties]
+      summary: Update property
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Property'
+      responses:
+        '200':
+          description: Property updated
+
+    delete:
+      tags: [Properties]
+      summary: Delete property
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Property deleted
+
+  # Tenancies
+  /admin/tenancies:
+    get:
+      tags: [Tenancies]
+      summary: List tenancies
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: property_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of tenancies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenancies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tenancy'
+
+    post:
+      tags: [Tenancies]
+      summary: Create tenancy
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [property_id, start_date, rent_amount, member_ids]
+              properties:
+                property_id:
+                  type: integer
+                room_id:
+                  type: integer
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type: string
+                  format: date
+                rent_amount:
+                  type: number
+                payment_option:
+                  type: string
+                member_ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '201':
+          description: Tenancy created
+
+  # Payments
+  /admin/payments/{scheduleId}:
+    post:
+      tags: [Payments]
+      summary: Record payment against schedule
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, payment_date]
+              properties:
+                amount:
+                  type: number
+                payment_date:
+                  type: string
+                  format: date
+                payment_reference:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Payment recorded
+
+  # Maintenance
+  /maintenance/requests:
+    get:
+      tags: [Maintenance]
+      summary: List maintenance requests
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: tenancy_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of maintenance requests
+
+    post:
+      tags: [Maintenance]
+      summary: Submit maintenance request (tenant)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenancy_id, title, description, category]
+              properties:
+                tenancy_id:
+                  type: integer
+                title:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                priority:
+                  type: string
+                  default: medium
+      responses:
+        '201':
+          description: Request submitted
+
+  # Public API (API Key Auth)
+  /public/properties:
+    get:
+      tags: [Public API]
+      summary: List public properties for agency website
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            default: live
+      responses:
+        '200':
+          description: Public property listings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agency:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      logo_url:
+                        type: string
+                  properties:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+
+  /public/viewing-requests:
+    post:
+      tags: [Public API]
+      summary: Submit viewing request from agency website
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [property_id, visitor_name, visitor_email]
+              properties:
+                property_id:
+                  type: integer
+                room_id:
+                  type: integer
+                visitor_name:
+                  type: string
+                visitor_email:
+                  type: string
+                  format: email
+                visitor_phone:
+                  type: string
+                preferred_date:
+                  type: string
+                  format: date
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Viewing request submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  message:
+                    type: string
