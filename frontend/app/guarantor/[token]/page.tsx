@@ -23,6 +23,7 @@ export default function GuarantorFormPage({ params }: PageProps) {
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [signatureError, setSignatureError] = useState<string>('');
+  const [agencySlug, setAgencySlug] = useState<string | null>(null);
 
   // ID document upload (via shared hook)
   const {
@@ -60,6 +61,7 @@ export default function GuarantorFormPage({ params }: PageProps) {
       const data = response.data;
 
       setApplication(data);
+      if (data.agency_slug) setAgencySlug(data.agency_slug);
 
       // Pre-fill form with existing guarantor data
       // Format date to YYYY-MM-DD for input field
@@ -235,7 +237,7 @@ export default function GuarantorFormPage({ params }: PageProps) {
             <h2 className="text-xl font-bold text-red-800 mb-2">Unable to Access Form</h2>
             <p className="text-red-700 mb-4">{error}</p>
             <Link
-              href="/"
+              href={agencySlug ? `/${agencySlug}/tenancy` : '/'}
               className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
             >
               Return to Homepage
@@ -257,7 +259,7 @@ export default function GuarantorFormPage({ params }: PageProps) {
               Thank you for completing the guarantor form. The letting agent will be in touch soon.
             </p>
             <Link
-              href="/"
+              href={agencySlug ? `/${agencySlug}/tenancy` : '/'}
               className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
             >
               Return to Homepage

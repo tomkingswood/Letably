@@ -243,7 +243,7 @@ export default function MaintenanceDetailPage({ params }: { params: Promise<{ id
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{request.title}</h1>
                 <p className="text-gray-600">
-                  <Link href={`/${agencySlug}/admin/properties/${request.property_id}/edit`} className="hover:underline">
+                  <Link href={`/${agencySlug}/admin?section=properties&action=edit&id=${request.property_id}`} className="hover:underline">
                     {request.property_address}
                   </Link>
                 </p>

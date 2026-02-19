@@ -378,6 +378,8 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
   let setupEmailsSent = 0;
   if (send_portal_email) {
     const siteUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const slug = req.agency?.slug || '';
+    const portalUrl = `${siteUrl}/${slug}/tenancy`;
     const propertyAddress = tenancy.property_address
       ? `${tenancy.property_address}${tenancy.location ? ', ' + tenancy.location : ''}`
       : 'your property';
@@ -446,7 +448,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
                 <li>Submit and track maintenance requests</li>
                 <li>Access important documents</li>
               </ul>
-              ${createButton(`${siteUrl}/tenancy`, 'Go to Tenant Portal')}
+              ${createButton(`${portalUrl}`, 'Go to Tenant Portal')}
               <p>If you have any questions, please don't hesitate to contact us.</p>
             `
           );
@@ -456,7 +458,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
             to_name: `${member.first_name} ${member.surname}`,
             subject: `Your Tenancy - ${propertyAddress}`,
             html_body: emailContent,
-            text_body: `Dear ${member.first_name},\n\nGreat news! Your tenancy at ${propertyAddress} has been set up in our tenant management system.\n\nYou now have access to your personal tenant portal where you can:\n- View your tenancy details and payment schedule\n- See your rent payments and balances\n- Submit and track maintenance requests\n- Access important documents\n\nVisit your portal: ${siteUrl}/tenancy\n\nIf you have any questions, please don't hesitate to contact us.`,
+            text_body: `Dear ${member.first_name},\n\nGreat news! Your tenancy at ${propertyAddress} has been set up in our tenant management system.\n\nYou now have access to your personal tenant portal where you can:\n- View your tenancy details and payment schedule\n- See your rent payments and balances\n- Submit and track maintenance requests\n- Access important documents\n\nVisit your portal: ${portalUrl}\n\nIf you have any questions, please don't hesitate to contact us.`,
             priority: 2
           }, agencyId);
           emailsSent++;

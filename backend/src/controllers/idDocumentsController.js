@@ -15,6 +15,17 @@ const { validateFile } = require('../utils/fileValidation');
 const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 
+/**
+ * Derive agency_id from a guarantor token (globally unique, no auth needed)
+ */
+async function getAgencyIdFromGuarantorToken(token) {
+  const result = await db.systemQuery(
+    'SELECT agency_id FROM applications WHERE guarantor_token = $1',
+    [token]
+  );
+  return result.rows[0]?.agency_id || null;
+}
+
 // Secure documents directory (outside web root)
 const SECURE_DOCS_DIR = path.join(__dirname, '../../../secure-documents');
 const APPLICANT_DOCS_DIR = path.join(SECURE_DOCS_DIR, 'applicants');
@@ -91,8 +102,8 @@ exports.uploadApplicantId = asyncHandler(async (req, res) => {
   await db.query(
     `INSERT INTO id_documents (
       agency_id, application_id, document_type, file_path, original_filename,
-      stored_filename, file_size, mime_type
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      file_size, mime_type
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *`,
     [
       agencyId,
@@ -100,7 +111,6 @@ exports.uploadApplicantId = asyncHandler(async (req, res) => {
       'applicant_id',
       `uploads/id-documents/${storedFilename}`,
       req.file.originalname,
-      storedFilename,
       req.file.size,
       req.file.mimetype
     ],
@@ -120,7 +130,7 @@ exports.uploadApplicantId = asyncHandler(async (req, res) => {
  */
 exports.uploadGuarantorId = asyncHandler(async (req, res) => {
   const { token } = req.params;
-  const agencyId = req.agencyId;
+  const agencyId = req.agencyId || await getAgencyIdFromGuarantorToken(token);
 
   // Check if file was uploaded
   if (!req.file) {
@@ -175,8 +185,8 @@ exports.uploadGuarantorId = asyncHandler(async (req, res) => {
   await db.query(
     `INSERT INTO id_documents (
       agency_id, application_id, document_type, file_path, original_filename,
-      stored_filename, file_size, mime_type
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      file_size, mime_type
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *`,
     [
       agencyId,
@@ -184,7 +194,6 @@ exports.uploadGuarantorId = asyncHandler(async (req, res) => {
       'guarantor_id',
       `uploads/guarantor-documents/${storedFilename}`,
       req.file.originalname,
-      storedFilename,
       req.file.size,
       req.file.mimetype
     ],
@@ -241,7 +250,7 @@ exports.downloadApplicantId = async (req, res) => {
 
     // Determine directory based on document type
     const directory = documentType === 'applicant_id' ? APPLICANT_DOCS_DIR : GUARANTOR_DOCS_DIR;
-    const filePath = path.join(directory, document.stored_filename);
+    const filePath = path.join(directory, path.basename(document.file_path));
 
     // Read and decrypt file
     const encryptedData = await fs.readFile(filePath);
@@ -276,7 +285,7 @@ exports.downloadApplicantId = async (req, res) => {
 exports.downloadGuarantorId = async (req, res) => {
   try {
     const { token } = req.params;
-    const agencyId = req.agencyId;
+    const agencyId = req.agencyId || await getAgencyIdFromGuarantorToken(token);
 
     // Find application by guarantor token
     const applicationResult = await db.query(
@@ -309,7 +318,7 @@ exports.downloadGuarantorId = async (req, res) => {
     }
 
     // Read and decrypt file
-    const filePath = path.join(GUARANTOR_DOCS_DIR, document.stored_filename);
+    const filePath = path.join(GUARANTOR_DOCS_DIR, path.basename(document.file_path));
     const encryptedData = await fs.readFile(filePath);
     const decryptedData = decryptFile(encryptedData);
 
@@ -335,7 +344,7 @@ exports.downloadGuarantorId = async (req, res) => {
  */
 exports.checkGuarantorIdDocumentStatus = asyncHandler(async (req, res) => {
   const { token } = req.params;
-  const agencyId = req.agencyId;
+  const agencyId = req.agencyId || await getAgencyIdFromGuarantorToken(token);
 
   // Find application by guarantor token
   const applicationResult = await db.query(
@@ -471,7 +480,7 @@ exports.deleteApplicantId = asyncHandler(async (req, res) => {
 
   // Determine directory based on document type
   const directory = documentType === 'applicant_id' ? APPLICANT_DOCS_DIR : GUARANTOR_DOCS_DIR;
-  const filePath = path.join(directory, document.stored_filename);
+  const filePath = path.join(directory, path.basename(document.file_path));
 
   // Delete file from disk
   try {
@@ -502,7 +511,7 @@ exports.deleteApplicantId = asyncHandler(async (req, res) => {
  */
 exports.deleteGuarantorId = asyncHandler(async (req, res) => {
   const { token } = req.params;
-  const agencyId = req.agencyId;
+  const agencyId = req.agencyId || await getAgencyIdFromGuarantorToken(token);
 
   // Find application by guarantor token
   const applicationResult = await db.query(
@@ -540,7 +549,7 @@ exports.deleteGuarantorId = asyncHandler(async (req, res) => {
   }
 
   // Delete file from disk
-  const filePath = path.join(GUARANTOR_DOCS_DIR, document.stored_filename);
+  const filePath = path.join(GUARANTOR_DOCS_DIR, path.basename(document.file_path));
   try {
     await fs.unlink(filePath);
   } catch (fileError) {

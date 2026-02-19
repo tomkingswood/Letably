@@ -137,16 +137,17 @@ async function sendCommunicationNotifications(tenancyId, actingUser, messageCont
 
     // Send emails
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const slug = req.agency?.slug || '';
 
     for (const recipient of recipients) {
       // Generate role-specific URL
       let viewUrl;
       if (recipient.isAdmin) {
-        viewUrl = `${frontendUrl}/admin/tenancies/${tenancyId}/communication`;
+        viewUrl = `${frontendUrl}/${slug}/admin/tenancies/${tenancyId}/communication`;
       } else if (recipient.isLandlord) {
-        viewUrl = `${frontendUrl}/landlord/communication/${tenancyId}`;
+        viewUrl = `${frontendUrl}/${slug}/landlord/communication/${tenancyId}`;
       } else {
-        viewUrl = `${frontendUrl}/tenancy/communication`;
+        viewUrl = `${frontendUrl}/${slug}/tenancy/communication`;
       }
 
       const buttonHtml = createButton(viewUrl, 'View Messages');

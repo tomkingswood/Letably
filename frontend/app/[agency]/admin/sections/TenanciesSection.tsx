@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAgency } from '@/lib/agency-context';
 import { tenancies as tenanciesApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/types';
@@ -12,6 +12,7 @@ import {
   CreateTenancyView,
   CreateMigrationTenancyView,
 } from '../tenancies/components';
+import TenancyDetailView from '../tenancies/TenancyDetailView';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import { SectionProps } from './index';
 
@@ -37,6 +38,8 @@ export default function TenanciesSection({ onNavigate, action, itemId, onBack }:
     refreshData,
   } = useTenancyFilters();
 
+  const isViewMode = action === 'view' && !!itemId;
+
   const handleDeleteTenancy = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('Are you sure you want to delete this tenancy? The applications will be reverted to approved status.')) {
@@ -57,6 +60,16 @@ export default function TenanciesSection({ onNavigate, action, itemId, onBack }:
     setCurrentView('list');
     refreshData();
   };
+
+  // View mode - render tenancy detail inline
+  if (isViewMode) {
+    return (
+      <TenancyDetailView
+        id={itemId}
+        onBack={() => onNavigate?.('tenancies')}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -183,6 +196,7 @@ export default function TenanciesSection({ onNavigate, action, itemId, onBack }:
                   key={tenancy.id}
                   tenancy={tenancy}
                   onDelete={handleDeleteTenancy}
+                  onView={(id) => onNavigate?.('tenancies', { action: 'view', id: id.toString() })}
                 />
               ))}
             </div>

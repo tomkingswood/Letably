@@ -85,10 +85,10 @@ async function getUserActiveTenancy(userId, agencyId) {
     FROM tenancy_members tm
     JOIN tenancies t ON tm.tenancy_id = t.id
     JOIN properties p ON t.property_id = p.id
-    WHERE tm.user_id = $1 AND t.status = 'active'
+    WHERE tm.user_id = $1 AND t.status = 'active' AND t.agency_id = $2
     ORDER BY t.start_date DESC
     LIMIT 1
-  `, [userId], agencyId);
+  `, [userId, agencyId], agencyId);
   return result.rows[0] || null;
 }
 
@@ -107,9 +107,9 @@ async function getRequestsForTenancy(tenancyId, agencyId) {
       (SELECT COUNT(*) FROM maintenance_comments WHERE request_id = mr.id AND comment_type = 'comment' AND (is_private = false OR is_private IS NULL)) as comment_count
     FROM maintenance_requests mr
     JOIN users u ON mr.created_by_user_id = u.id
-    WHERE mr.tenancy_id = $1
+    WHERE mr.tenancy_id = $1 AND mr.agency_id = $2
     ORDER BY mr.created_at DESC
-  `, [tenancyId], agencyId);
+  `, [tenancyId, agencyId], agencyId);
   return result.rows;
 }
 
@@ -133,8 +133,8 @@ async function getRequestByIdForTenant(requestId, userId, agencyId) {
     JOIN tenancies t ON mr.tenancy_id = t.id
     JOIN properties p ON t.property_id = p.id
     JOIN tenancy_members tm ON t.id = tm.tenancy_id
-    WHERE mr.id = $1 AND tm.user_id = $2
-  `, [requestId, userId], agencyId);
+    WHERE mr.id = $1 AND tm.user_id = $2 AND mr.agency_id = $3
+  `, [requestId, userId, agencyId], agencyId);
   return result.rows[0] || null;
 }
 
@@ -149,8 +149,8 @@ async function userHasAccessToRequest(requestId, userId, agencyId) {
   const result = await db.query(`
     SELECT 1 FROM maintenance_requests mr
     JOIN tenancy_members tm ON mr.tenancy_id = tm.tenancy_id
-    WHERE mr.id = $1 AND tm.user_id = $2
-  `, [requestId, userId], agencyId);
+    WHERE mr.id = $1 AND tm.user_id = $2 AND mr.agency_id = $3
+  `, [requestId, userId, agencyId], agencyId);
   return result.rows.length > 0;
 }
 
@@ -210,8 +210,8 @@ async function getCommentById(commentId, agencyId) {
     SELECT mc.*, u.first_name, u.last_name, u.role
     FROM maintenance_comments mc
     JOIN users u ON mc.user_id = u.id
-    WHERE mc.id = $1
-  `, [commentId], agencyId);
+    WHERE mc.id = $1 AND mc.agency_id = $2
+  `, [commentId, agencyId], agencyId);
   return result.rows[0] || null;
 }
 
@@ -223,8 +223,8 @@ async function getCommentById(commentId, agencyId) {
  */
 async function getUserById(userId, agencyId) {
   const result = await db.query(
-    'SELECT id, first_name, last_name FROM users WHERE id = $1',
-    [userId],
+    'SELECT id, first_name, last_name FROM users WHERE id = $1 AND agency_id = $2',
+    [userId, agencyId],
     agencyId
   );
   return result.rows[0] || null;
@@ -275,10 +275,10 @@ async function getAllRequestsWithFilters(filters, agencyId) {
     JOIN users u ON mr.created_by_user_id = u.id
     JOIN tenancies t ON mr.tenancy_id = t.id
     JOIN properties p ON t.property_id = p.id
-    WHERE 1=1
+    WHERE mr.agency_id = $1
   `;
-  const params = [];
-  let paramIndex = 1;
+  const params = [agencyId];
+  let paramIndex = 2;
 
   if (status) {
     query += ` AND mr.status = $${paramIndex}`;
@@ -390,8 +390,8 @@ async function getRequestByIdAdmin(requestId, agencyId) {
     JOIN tenancies t ON mr.tenancy_id = t.id
     JOIN properties p ON t.property_id = p.id
     LEFT JOIN landlords l ON p.landlord_id = l.id
-    WHERE mr.id = $1
-  `, [requestId], agencyId);
+    WHERE mr.id = $1 AND mr.agency_id = $2
+  `, [requestId, agencyId], agencyId);
   return result.rows[0] || null;
 }
 
@@ -406,8 +406,8 @@ async function getTenantsByTenancy(tenancyId, agencyId) {
     SELECT tm.first_name, tm.surname, u.email
     FROM tenancy_members tm
     JOIN users u ON tm.user_id = u.id
-    WHERE tm.tenancy_id = $1
-  `, [tenancyId], agencyId);
+    WHERE tm.tenancy_id = $1 AND tm.agency_id = $2
+  `, [tenancyId, agencyId], agencyId);
   return result.rows;
 }
 
@@ -613,9 +613,9 @@ async function getRequestsByTenancyId(tenancyId, agencyId) {
       (SELECT COUNT(*) FROM maintenance_comments WHERE request_id = mr.id AND comment_type = 'comment') as comment_count
     FROM maintenance_requests mr
     JOIN users u ON mr.created_by_user_id = u.id
-    WHERE mr.tenancy_id = $1
+    WHERE mr.tenancy_id = $1 AND mr.agency_id = $2
     ORDER BY mr.created_at DESC
-  `, [tenancyId], agencyId);
+  `, [tenancyId, agencyId], agencyId);
   return result.rows;
 }
 
@@ -675,8 +675,8 @@ async function getRequestForNotification(requestId, agencyId) {
     JOIN tenancies t ON mr.tenancy_id = t.id
     JOIN properties p ON t.property_id = p.id
     LEFT JOIN landlords l ON p.landlord_id = l.id
-    WHERE mr.id = $1
-  `, [requestId], agencyId);
+    WHERE mr.id = $1 AND mr.agency_id = $2
+  `, [requestId, agencyId], agencyId);
   return result.rows[0] || null;
 }
 
@@ -705,8 +705,8 @@ async function getTenantsByTenancyForNotification(tenancyId, agencyId) {
     SELECT u.id, u.email, u.first_name, u.last_name
     FROM tenancy_members tm
     JOIN users u ON tm.user_id = u.id
-    WHERE tm.tenancy_id = $1
-  `, [tenancyId], agencyId);
+    WHERE tm.tenancy_id = $1 AND tm.agency_id = $2
+  `, [tenancyId, agencyId], agencyId);
   return result.rows;
 }
 

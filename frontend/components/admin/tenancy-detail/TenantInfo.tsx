@@ -122,11 +122,11 @@ export function TenantInfo({
             </div>
             <div>
               <p className="text-sm text-gray-600">Rent (PPPW)</p>
-              <p className="font-medium">£{selectedMember.rent_pppw.toFixed(2)}</p>
+              <p className="font-medium">£{Number(selectedMember.rent_pppw || 0).toFixed(2)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Deposit Amount</p>
-              <p className="font-medium">£{selectedMember.deposit_amount.toFixed(2)}</p>
+              <p className="font-medium">£{Number(selectedMember.deposit_amount || 0).toFixed(2)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Payment Option</p>

@@ -49,9 +49,9 @@ async function getTenancyMembersWithDetails(tenancyId, agencyId) {
     LEFT JOIN applications a ON tm.application_id = a.id
     LEFT JOIN users u ON COALESCE(tm.user_id, a.user_id) = u.id
     LEFT JOIN bedrooms b ON tm.bedroom_id = b.id
-    WHERE tm.tenancy_id = $1
+    WHERE tm.tenancy_id = $1 AND tm.agency_id = $2
     ORDER BY tm.id
-  `, [tenancyId], agencyId);
+  `, [tenancyId, agencyId], agencyId);
   return result.rows;
 }
 
@@ -68,9 +68,9 @@ async function getLandlordProperties(landlordId, agencyId) {
     SELECT id, address_line1, location, is_live,
       (SELECT COUNT(*) FROM bedrooms WHERE property_id = p.id) as bedroom_count
     FROM properties p
-    WHERE landlord_id = $1
+    WHERE landlord_id = $1 AND agency_id = $2
     ORDER BY address_line1 ASC
-  `, [landlordId], agencyId);
+  `, [landlordId, agencyId], agencyId);
   return result.rows;
 }
 
@@ -87,8 +87,8 @@ async function getTenancyWithProperty(tenancyId, agencyId) {
     SELECT t.*, p.address_line1, p.city
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
-    WHERE t.id = $1
-  `, [tenancyId], agencyId);
+    WHERE t.id = $1 AND t.agency_id = $2
+  `, [tenancyId, agencyId], agencyId);
   return result.rows[0] || null;
 }
 

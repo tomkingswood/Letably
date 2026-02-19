@@ -165,7 +165,7 @@ const recordRemindersEmailed = async (reminders, recipientEmail, agencyId) => {
 /**
  * Generate consolidated email content for all reminders
  */
-const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letably') => {
+const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letably', agencySlug = '') => {
   const severityColors = {
     critical: '#DC2626',
     medium: '#F97316',
@@ -196,7 +196,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
   const renderReminder = (reminder) => {
     let propertyLink = '';
     if (reminder.reference_type === 'property' && reminder.reference_id) {
-      propertyLink = `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/properties/${reminder.reference_id}/edit" style="color: #CF722F; text-decoration: none; font-weight: 600;">View Property →</a>`;
+      propertyLink = `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/${agencySlug}/admin?section=properties&action=edit&id=${reminder.reference_id}" style="color: #CF722F; text-decoration: none; font-weight: 600;">View Property →</a>`;
     }
 
     let viewingRequestDetails = '';
@@ -256,7 +256,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
         View and manage all reminders in the admin panel:
       </p>
       ${createButton(
-        `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/reminders`,
+        `${process.env.FRONTEND_URL || 'http://localhost:3000'}/${agencySlug}/admin?section=reminders`,
         'Open Admin Panel'
       )}
     </div>
@@ -302,7 +302,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
   }
 
   textParts.push('---');
-  textParts.push(`View all reminders: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/reminders`);
+  textParts.push(`View all reminders: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/${agencySlug}/admin?section=reminders`);
 
   return {
     to: recipientEmail,
@@ -667,7 +667,7 @@ const processReminderEmails = async (isManualTrigger = false, agencyId) => {
     const brandName = branding.companyName || 'Letably';
 
     // Generate consolidated email with only new/upgraded reminders
-    const emailContent = generateConsolidatedEmail(remindersToEmail, recipientEmail, brandName);
+    const emailContent = generateConsolidatedEmail(remindersToEmail, recipientEmail, brandName, branding.agencySlug);
 
     // Determine priority based on highest severity
     const hasCritical = remindersToEmail.some(r => r.severity === 'critical');

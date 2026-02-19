@@ -390,9 +390,15 @@ exports.createTenancy = asyncHandler(async (req, res) => {
       // Fetch tenant info and guarantor data from application
       const appDataResult = await client.query(`
         SELECT first_name, surname, user_id, title, current_address, application_type,
-               payment_plan,
-               guarantor_required, guarantor_name, guarantor_dob, guarantor_email,
-               guarantor_phone, guarantor_address, guarantor_relationship, guarantor_id_type
+               COALESCE(form_data->>'payment_plan', payment_plan) as payment_plan,
+               guarantor_required,
+               COALESCE(form_data->>'guarantor_name', guarantor_name) as guarantor_name,
+               COALESCE(form_data->>'guarantor_dob', guarantor_dob::text) as guarantor_dob,
+               COALESCE(form_data->>'guarantor_email', guarantor_email) as guarantor_email,
+               COALESCE(form_data->>'guarantor_phone', guarantor_phone) as guarantor_phone,
+               COALESCE(form_data->>'guarantor_address', guarantor_address) as guarantor_address,
+               COALESCE(form_data->>'guarantor_relationship', guarantor_relationship) as guarantor_relationship,
+               COALESCE(form_data->>'guarantor_id_type', guarantor_id_type) as guarantor_id_type
         FROM applications
         WHERE id = $1
       `, [member.application_id]);
@@ -633,7 +639,8 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
 
       // Send email to each tenant using email builder
       for (const member of members) {
-        const signingUrl = `${baseUrl}/agreements/sign/${id}/${member.id}`;
+        const agencySlug = req.agency?.slug || '';
+        const signingUrl = `${baseUrl}/${agencySlug}/agreements/sign/${id}/${member.id}`;
 
         const { html, text, subject } = buildSigningNotificationEmail({
           tenantFirstName: member.first_name,

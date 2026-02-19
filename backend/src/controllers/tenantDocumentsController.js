@@ -94,15 +94,16 @@ exports.uploadDocument = [
     // Insert document record
     const insertResult = await db.query(`
       INSERT INTO tenant_documents (
-        tenancy_member_id, document_type, original_filename,
-        stored_filename, file_size, mime_type, uploaded_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        agency_id, tenancy_member_id, document_type, original_filename,
+        file_path, file_size, mime_type, uploaded_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [
+      agencyId,
       tenancy_member_id,
       document_type,
       req.file.originalname,
-      storedFilename,
+      `uploads/tenant-documents/${storedFilename}`,
       req.file.size,
       req.file.mimetype,
       adminId
@@ -225,7 +226,7 @@ exports.downloadDocument = async (req, res) => {
     }
 
     // Read and decrypt file
-    const filePath = path.join(TENANT_DOCS_DIR, document.stored_filename);
+    const filePath = path.join(TENANT_DOCS_DIR, path.basename(document.file_path));
     const encryptedData = await fs.readFile(filePath);
     const decryptedData = decryptFile(encryptedData);
 

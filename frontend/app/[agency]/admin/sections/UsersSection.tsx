@@ -36,6 +36,7 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [linkedRecords, setLinkedRecords] = useState<{ tenancies: number; applications: number; maintenance_requests: number } | null>(null);
 
   // Landlord delete info modal state
   const [landlordDeleteUser, setLandlordDeleteUser] = useState<User | null>(null);
@@ -125,12 +126,19 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
     if (!deletingUser) return;
     setDeleteConfirming(true);
     setDeleteError(null);
+    setLinkedRecords(null);
 
     try {
       await auth.adminDeleteUser(deletingUser.id);
       setDeletingUser(null);
       fetchUsers();
     } catch (err: unknown) {
+      // Extract linked_records from the API response if present
+      const axiosErr = err as { response?: { data?: { linked_records?: { tenancies: number; applications: number; maintenance_requests: number } } } };
+      const records = axiosErr?.response?.data?.linked_records;
+      if (records) {
+        setLinkedRecords(records);
+      }
       setDeleteError(getErrorMessage(err, 'Failed to delete user'));
     } finally {
       setDeleteConfirming(false);
@@ -232,9 +240,28 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
               This will permanently remove <strong>{deletingUser.first_name} {deletingUser.last_name}</strong> ({deletingUser.email}) from the system.
             </p>
             <MessageAlert type="error" message={deleteError} className="mb-4 text-sm" />
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-800">
-              <strong>This action cannot be undone.</strong> This will only succeed if the user has no linked tenancies, applications, or maintenance requests.
-            </div>
+            {linkedRecords && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-900">
+                <p className="font-semibold mb-2">This user has the following linked records:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  {linkedRecords.tenancies > 0 && (
+                    <li>{linkedRecords.tenancies} {linkedRecords.tenancies === 1 ? 'tenancy' : 'tenancies'}</li>
+                  )}
+                  {linkedRecords.applications > 0 && (
+                    <li>{linkedRecords.applications} {linkedRecords.applications === 1 ? 'application' : 'applications'}</li>
+                  )}
+                  {linkedRecords.maintenance_requests > 0 && (
+                    <li>{linkedRecords.maintenance_requests} {linkedRecords.maintenance_requests === 1 ? 'maintenance request' : 'maintenance requests'}</li>
+                  )}
+                </ul>
+                <p className="mt-2 text-amber-700">Remove these records first before deleting the user.</p>
+              </div>
+            )}
+            {!linkedRecords && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-800">
+                <strong>This action cannot be undone.</strong> This will only succeed if the user has no linked tenancies, applications, or maintenance requests.
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={handleDelete}
@@ -244,7 +271,7 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
                 {deleteConfirming ? 'Deleting...' : 'Delete User'}
               </button>
               <button
-                onClick={() => { setDeletingUser(null); setDeleteError(null); }}
+                onClick={() => { setDeletingUser(null); setDeleteError(null); setLinkedRecords(null); }}
                 disabled={deleteConfirming}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2.5 rounded-lg font-semibold transition-colors"
               >

@@ -66,6 +66,9 @@ export function useRequireAuth(options: UseAuthOptions = {}): UseAuthReturn {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Serialize requiredRoles to avoid new array reference on every render
+  const requiredRolesKey = requiredRoles.join(',');
+
   useEffect(() => {
     const checkAuth = () => {
       const token = getAuthToken();
@@ -95,7 +98,8 @@ export function useRequireAuth(options: UseAuthOptions = {}): UseAuthReturn {
     };
 
     checkAuth();
-  }, [router, redirectTo, requiredRoles, unauthorizedRedirect]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, redirectTo, requiredRolesKey, unauthorizedRedirect]);
 
   return {
     user,

@@ -208,16 +208,17 @@ async function sendMaintenanceNotifications(requestId, eventType, actingUser, ex
 
     // Send emails
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const slug = req.agency?.slug || '';
 
     for (const recipient of recipients) {
       // Generate role-specific URL
       let viewUrl;
       if (recipient.isAdmin) {
-        viewUrl = `${frontendUrl}/admin/maintenance/${requestId}`;
+        viewUrl = `${frontendUrl}/${slug}/admin/maintenance/${requestId}`;
       } else if (recipient.isLandlord) {
-        viewUrl = `${frontendUrl}/landlord/maintenance/${requestId}`;
+        viewUrl = `${frontendUrl}/${slug}/landlord/maintenance/${requestId}`;
       } else {
-        viewUrl = `${frontendUrl}/tenancy/maintenance/${requestId}`;
+        viewUrl = `${frontendUrl}/${slug}/tenancy/maintenance/${requestId}`;
       }
 
       const buttonHtml = createButton(viewUrl, 'View Maintenance Request');

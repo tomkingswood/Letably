@@ -58,7 +58,8 @@ exports.getMyActiveTenancy = asyncHandler(async (req, res) => {
       t.is_rolling_monthly,
       p.address_line1 as property_address,
       p.location,
-      tm.id as member_id
+      tm.id as member_id,
+      CASE t.status WHEN 'active' THEN 0 ELSE 1 END as status_order
     FROM tenancy_members tm
     LEFT JOIN applications a ON tm.application_id = a.id
     INNER JOIN tenancies t ON tm.tenancy_id = t.id
@@ -66,7 +67,7 @@ exports.getMyActiveTenancy = asyncHandler(async (req, res) => {
     WHERE (tm.user_id = $1 OR a.user_id = $1) AND t.status IN ('active', 'expired')
       AND tm.agency_id = $2
     ORDER BY
-      CASE t.status WHEN 'active' THEN 0 ELSE 1 END,
+      status_order,
       t.start_date DESC
   `, [userId, agencyId], agencyId);
   const allMyTenancies = allMyTenanciesResult.rows;
@@ -307,7 +308,8 @@ exports.getMyStatus = asyncHandler(async (req, res) => {
       t.end_date,
       t.is_rolling_monthly,
       p.address_line1 as property_address,
-      p.location
+      p.location,
+      CASE t.status WHEN 'active' THEN 0 ELSE 1 END as status_order
     FROM tenancy_members tm
     LEFT JOIN applications a ON tm.application_id = a.id
     INNER JOIN tenancies t ON tm.tenancy_id = t.id
@@ -316,7 +318,7 @@ exports.getMyStatus = asyncHandler(async (req, res) => {
       AND t.status IN ('active', 'expired')
       AND tm.agency_id = $2
     ORDER BY
-      CASE t.status WHEN 'active' THEN 0 ELSE 1 END,
+      status_order,
       t.start_date DESC
   `, [userId, agencyId], agencyId);
   const activeTenancies = activeTenanciesResult.rows;
@@ -329,7 +331,7 @@ exports.getMyStatus = asyncHandler(async (req, res) => {
     redirectTo = `/applications/${pendingApplication.id}`;
     priority = 'pending_application';
   } else if (pendingAgreement) {
-    redirectTo = `/agreements/sign/${pendingAgreement.tenancy_id}/${pendingAgreement.member_id}`;
+    redirectTo = `/${req.agency?.slug || ''}/agreements/sign/${pendingAgreement.tenancy_id}/${pendingAgreement.member_id}`;
     priority = 'pending_agreement';
   }
   // If none of the above, user stays on /tenancy page

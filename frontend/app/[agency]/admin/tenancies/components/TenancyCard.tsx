@@ -1,7 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useAgency } from '@/lib/agency-context';
 import type { Tenancy } from '@/lib/types';
 import { getStatusLabel } from '@/lib/statusBadges';
 
@@ -39,16 +37,16 @@ const STATUS_GROUP_STYLES = {
 interface TenancyCardProps {
   tenancy: Tenancy;
   onDelete: (id: number, e: React.MouseEvent) => void;
+  onView: (id: number) => void;
 }
 
-export default function TenancyCard({ tenancy, onDelete }: TenancyCardProps) {
-  const router = useRouter();
+export default function TenancyCard({ tenancy, onDelete, onView }: TenancyCardProps) {
   const statusGroup = getStatusGroup(tenancy.status, tenancy.end_date);
   const styles = STATUS_GROUP_STYLES[statusGroup];
 
   return (
     <div
-      onClick={() => router.push(`/admin/tenancies/${tenancy.id}`)}
+      onClick={() => onView(tenancy.id)}
       className={`bg-white rounded-xl shadow hover:shadow-md transition-all cursor-pointer border-l-4 ${styles.border}`}
     >
       <div className="p-5">
@@ -129,7 +127,7 @@ export default function TenancyCard({ tenancy, onDelete }: TenancyCardProps) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                router.push(`/admin/tenancies/${tenancy.id}`);
+                onView(tenancy.id);
               }}
               className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
             >

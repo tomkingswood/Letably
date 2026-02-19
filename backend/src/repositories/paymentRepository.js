@@ -13,8 +13,8 @@ const db = require('../db');
  */
 async function getTenancyById(tenancyId, agencyId) {
   const result = await db.query(
-    'SELECT id FROM tenancies WHERE id = $1',
-    [tenancyId],
+    'SELECT id FROM tenancies WHERE id = $1 AND agency_id = $2',
+    [tenancyId, agencyId],
     agencyId
   );
   return result.rows[0] || null;
@@ -28,8 +28,8 @@ async function getTenancyById(tenancyId, agencyId) {
  */
 async function getTenancyWithStatus(tenancyId, agencyId) {
   const result = await db.query(
-    'SELECT id, status FROM tenancies WHERE id = $1',
-    [tenancyId],
+    'SELECT id, status FROM tenancies WHERE id = $1 AND agency_id = $2',
+    [tenancyId, agencyId],
     agencyId
   );
   return result.rows[0] || null;
@@ -161,8 +161,8 @@ async function deletePaymentSchedule(scheduleId, agencyId) {
  */
 async function getMemberByTenancy(memberId, tenancyId, agencyId) {
   const result = await db.query(
-    'SELECT id FROM tenancy_members WHERE id = $1 AND tenancy_id = $2',
-    [memberId, tenancyId],
+    'SELECT id FROM tenancy_members WHERE id = $1 AND tenancy_id = $2 AND agency_id = $3',
+    [memberId, tenancyId, agencyId],
     agencyId
   );
   return result.rows[0] || null;
@@ -271,8 +271,8 @@ async function getPaymentStats(tenancyId, agencyId) {
       SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial_count,
       SUM(amount_due) as total_due
     FROM payment_schedules
-    WHERE tenancy_id = $1
-  `, [tenancyId], agencyId);
+    WHERE tenancy_id = $1 AND agency_id = $2
+  `, [tenancyId, agencyId], agencyId);
   return result.rows[0];
 }
 
@@ -284,8 +284,8 @@ async function getPaymentStats(tenancyId, agencyId) {
  */
 async function getPaymentScheduleIds(tenancyId, agencyId) {
   const result = await db.query(
-    'SELECT id FROM payment_schedules WHERE tenancy_id = $1',
-    [tenancyId],
+    'SELECT id FROM payment_schedules WHERE tenancy_id = $1 AND agency_id = $2',
+    [tenancyId, agencyId],
     agencyId
   );
   return result.rows;
@@ -311,9 +311,9 @@ async function getPaymentSchedulesWithFilters({ year, month, propertyId, landlor
     INNER JOIN properties p ON t.property_id = p.id
   `;
 
-  const params = [];
-  const whereClauses = [];
-  let paramIndex = 1;
+  const params = [agencyId];
+  const whereClauses = ['ps.agency_id = $1'];
+  let paramIndex = 2;
 
   if (year && month) {
     whereClauses.push(`EXTRACT(YEAR FROM ps.due_date) = $${paramIndex} AND EXTRACT(MONTH FROM ps.due_date) = $${paramIndex + 1}`);
@@ -333,10 +333,7 @@ async function getPaymentSchedulesWithFilters({ year, month, propertyId, landlor
     paramIndex++;
   }
 
-  let whereClause = '';
-  if (whereClauses.length > 0) {
-    whereClause = ` WHERE ${whereClauses.join(' AND ')}`;
-  }
+  const whereClause = ` WHERE ${whereClauses.join(' AND ')}`;
 
   // Get total count
   const countQuery = `SELECT COUNT(*) as total ${baseQuery}${whereClause}`;
@@ -381,9 +378,9 @@ async function getOverduePaymentSchedules(agencyId) {
     INNER JOIN tenancy_members tm ON ps.tenancy_member_id = tm.id
     INNER JOIN tenancies t ON ps.tenancy_id = t.id
     INNER JOIN properties p ON t.property_id = p.id
-    WHERE ps.due_date < CURRENT_DATE
+    WHERE ps.due_date < CURRENT_DATE AND ps.agency_id = $1
     ORDER BY ps.due_date ASC
-  `, [], agencyId);
+  `, [agencyId], agencyId);
   return result.rows;
 }
 
@@ -398,8 +395,8 @@ async function getUserActiveMembership(userId, agencyId) {
     SELECT tm.id as member_id, tm.tenancy_id, t.status as tenancy_status
     FROM tenancy_members tm
     INNER JOIN tenancies t ON tm.tenancy_id = t.id
-    WHERE tm.user_id = $1 AND t.status = 'active'
-  `, [userId], agencyId);
+    WHERE tm.user_id = $1 AND t.status = 'active' AND t.agency_id = $2
+  `, [userId, agencyId], agencyId);
   return result.rows[0] || null;
 }
 

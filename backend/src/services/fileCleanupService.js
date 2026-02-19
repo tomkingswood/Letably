@@ -29,13 +29,13 @@ async function cleanupOrphanedFiles(agencyId) {
   try {
     console.log('\n[File Cleanup] Starting orphaned file cleanup...');
 
-    // Get all stored filenames from database
+    // Get all stored filenames from database (extract filename from file_path)
     const dbFilesResult = await db.query(
-      'SELECT stored_filename FROM id_documents WHERE agency_id = $1',
+      'SELECT file_path FROM id_documents WHERE agency_id = $1',
       [agencyId],
       agencyId
     );
-    const dbFilenames = new Set(dbFilesResult.rows.map(f => f.stored_filename));
+    const dbFilenames = new Set(dbFilesResult.rows.map(f => path.basename(f.file_path)));
 
     console.log(`[File Cleanup] Database contains ${dbFilenames.size} registered ID documents`);
 

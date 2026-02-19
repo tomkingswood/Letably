@@ -26,8 +26,8 @@ async function getTenancyWithProperty(tenancyId, agencyId) {
         p.id as property_id
       FROM tenancies t
       LEFT JOIN properties p ON t.property_id = p.id
-      WHERE t.id = $1
-    `, [tenancyId], agencyId);
+      WHERE t.id = $1 AND t.agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -50,8 +50,8 @@ async function getTenancyWithPropertyAndLandlord(tenancyId, agencyId) {
       FROM tenancies t
       LEFT JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.id = $1
-    `, [tenancyId], agencyId);
+      WHERE t.id = $1 AND t.agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -77,9 +77,9 @@ async function getTenancyMembersWithDetails(tenancyId, agencyId) {
       LEFT JOIN applications a ON tm.application_id = a.id
       LEFT JOIN users u ON COALESCE(tm.user_id, a.user_id) = u.id
       LEFT JOIN bedrooms b ON tm.bedroom_id = b.id
-      WHERE tm.tenancy_id = $1
+      WHERE tm.tenancy_id = $1 AND tm.agency_id = $2
       ORDER BY tm.id
-    `, [tenancyId], agencyId);
+    `, [tenancyId, agencyId], agencyId);
     return result.rows;
   } catch (error) {
     throw error;
@@ -95,8 +95,8 @@ async function getTenancyMembersForEmail(tenancyId, agencyId) {
       SELECT tm.id, tm.first_name, tm.surname, u.email
       FROM tenancy_members tm
       JOIN users u ON tm.user_id = u.id
-      WHERE tm.tenancy_id = $1
-    `, [tenancyId], agencyId);
+      WHERE tm.tenancy_id = $1 AND tm.agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
     return result.rows;
   } catch (error) {
     throw error;
@@ -117,8 +117,8 @@ async function getMemberWithTenancyStatus(memberId, tenancyId, agencyId) {
       FROM tenancy_members tm
       INNER JOIN tenancies t ON tm.tenancy_id = t.id
       LEFT JOIN applications a ON tm.application_id = a.id
-      WHERE tm.id = $1 AND tm.tenancy_id = $2
-    `, [memberId, tenancyId], agencyId);
+      WHERE tm.id = $1 AND tm.tenancy_id = $2 AND tm.agency_id = $3
+    `, [memberId, tenancyId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -138,8 +138,8 @@ async function getMemberForUser(memberId, tenancyId, userId, agencyId) {
       FROM tenancy_members tm
       INNER JOIN tenancies t ON tm.tenancy_id = t.id
       LEFT JOIN applications a ON tm.application_id = a.id
-      WHERE tm.id = $1 AND tm.tenancy_id = $2 AND tm.user_id = $3
-    `, [memberId, tenancyId, userId], agencyId);
+      WHERE tm.id = $1 AND tm.tenancy_id = $2 AND tm.user_id = $3 AND tm.agency_id = $4
+    `, [memberId, tenancyId, userId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -160,17 +160,19 @@ async function getUserTenancies(userId, agencyId) {
         t.is_rolling_monthly,
         p.address_line1 as property_address,
         p.location,
-        tm.id as member_id
+        tm.id as member_id,
+        CASE t.status WHEN 'active' THEN 0 ELSE 1 END as status_order
       FROM tenancy_members tm
       LEFT JOIN applications a ON tm.application_id = a.id
       INNER JOIN tenancies t ON tm.tenancy_id = t.id
       LEFT JOIN properties p ON t.property_id = p.id
       WHERE (tm.user_id = $1 OR a.user_id = $2)
         AND t.status IN ('active', 'expired')
+        AND t.agency_id = $3
       ORDER BY
-        CASE t.status WHEN 'active' THEN 0 ELSE 1 END,
+        status_order,
         t.start_date DESC
-    `, [userId, userId], agencyId);
+    `, [userId, userId, agencyId], agencyId);
     return result.rows;
   } catch (error) {
     throw error;
@@ -197,7 +199,8 @@ async function getPendingAgreementsForUser(userId, agencyId) {
       WHERE a.user_id = $1
         AND t.status = 'awaiting_signatures'
         AND (tm.is_signed = false OR tm.is_signed IS NULL)
-    `, [userId], agencyId);
+        AND t.agency_id = $2
+    `, [userId, agencyId], agencyId);
     return result.rows;
   } catch (error) {
     throw error;
@@ -215,10 +218,10 @@ async function getPendingApplicationForUser(userId, agencyId) {
         a.status,
         a.application_type
       FROM applications a
-      WHERE a.user_id = $1 AND a.status IN ('pending', 'awaiting_guarantor')
+      WHERE a.user_id = $1 AND a.status IN ('pending', 'awaiting_guarantor') AND a.agency_id = $2
       ORDER BY a.created_at DESC
       LIMIT 1
-    `, [userId], agencyId);
+    `, [userId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -247,9 +250,10 @@ async function getPendingAgreementForUser(userId, agencyId) {
         AND t.status IN ('pending', 'awaiting_signatures')
         AND (tm.is_signed = false OR tm.is_signed IS NULL)
         AND (tm.application_id IS NULL OR a.status IN ('approved', 'converted_to_tenancy'))
+        AND t.agency_id = $2
       ORDER BY t.start_date ASC
       LIMIT 1
-    `, [userId], agencyId);
+    `, [userId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -273,8 +277,8 @@ async function getUnpaidPaymentsForUser(userId, agencyId) {
         FROM payments
         GROUP BY payment_schedule_id
       ) paid ON paid.payment_schedule_id = ps.id
-      WHERE (tm.user_id = $1 OR a.user_id = $2) AND ps.status != 'paid'
-    `, [userId, userId], agencyId);
+      WHERE (tm.user_id = $1 OR a.user_id = $2) AND ps.status != 'paid' AND ps.agency_id = $3
+    `, [userId, userId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -294,9 +298,9 @@ async function getPropertyCertificates(propertyId, agencyId) {
         ct.icon as type_icon
       FROM certificates c
       JOIN certificate_types ct ON c.certificate_type_id = ct.id
-      WHERE c.entity_type = 'property' AND c.entity_id = $1
+      WHERE c.entity_type = 'property' AND c.entity_id = $1 AND c.agency_id = $2
       ORDER BY ct.display_order ASC, ct.display_name ASC
-    `, [propertyId], agencyId);
+    `, [propertyId, agencyId], agencyId);
     return result.rows;
   } catch (error) {
     throw error;
@@ -311,8 +315,8 @@ async function getUnsignedMembersCount(tenancyId, agencyId) {
     const result = await db.query(`
       SELECT COUNT(*) as count
       FROM tenancy_members
-      WHERE tenancy_id = $1 AND (is_signed = false OR is_signed IS NULL)
-    `, [tenancyId], agencyId);
+      WHERE tenancy_id = $1 AND (is_signed = false OR is_signed IS NULL) AND agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -325,8 +329,8 @@ async function getUnsignedMembersCount(tenancyId, agencyId) {
 async function getMemberCount(tenancyId, agencyId) {
   try {
     const result = await db.query(`
-      SELECT COUNT(*) as count FROM tenancy_members WHERE tenancy_id = $1
-    `, [tenancyId], agencyId);
+      SELECT COUNT(*) as count FROM tenancy_members WHERE tenancy_id = $1 AND agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -369,9 +373,9 @@ async function updateTenancyStatus(tenancyId, status, agencyId) {
     const result = await db.query(`
       UPDATE tenancies
       SET status = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
+      WHERE id = $2 AND agency_id = $3
       RETURNING *
-    `, [status, tenancyId], agencyId);
+    `, [status, tenancyId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -406,9 +410,10 @@ async function updateTenancy(tenancyId, fields, agencyId) {
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(tenancyId);
+    values.push(agencyId);
 
     const result = await db.query(`
-      UPDATE tenancies SET ${updates.join(', ')} WHERE id = $${paramIndex}
+      UPDATE tenancies SET ${updates.join(', ')} WHERE id = $${paramIndex} AND agency_id = $${paramIndex + 1}
       RETURNING *
     `, values, agencyId);
     return result.rows[0];
@@ -429,9 +434,9 @@ async function signMemberAgreement(memberId, signatureData, agreementHtml, payme
           is_signed = true,
           signed_agreement_html = $2,
           payment_option = $3
-      WHERE id = $4
+      WHERE id = $4 AND agency_id = $5
       RETURNING *
-    `, [signatureData, agreementHtml, paymentOption, memberId], agencyId);
+    `, [signatureData, agreementHtml, paymentOption, memberId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;
@@ -450,9 +455,9 @@ async function revertMemberSignature(memberId, agencyId) {
           signed_at = NULL,
           signed_agreement_html = NULL,
           payment_option = NULL
-      WHERE id = $1
+      WHERE id = $1 AND agency_id = $2
       RETURNING *
-    `, [memberId], agencyId);
+    `, [memberId, agencyId], agencyId);
     return result.rows[0];
   } catch (error) {
     throw error;

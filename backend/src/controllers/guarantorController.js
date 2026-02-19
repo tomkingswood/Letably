@@ -52,7 +52,8 @@ exports.getAgreementByToken = asyncHandler((req, res) => {
       company_address: companyAddress,
       monthly_rent: monthlyRent,
       is_signed: Boolean(agreement.is_signed),
-      signed_at: agreement.signed_at
+      signed_at: agreement.signed_at,
+      agency_slug: agreement.agency_slug || null
     }
   });
 }, 'fetch guarantor agreement');

@@ -40,7 +40,7 @@ export default function AdminViewApplicationPage({ params }: PageProps) {
       setApplicantIdUploaded(applicantResponse.data.uploaded || false);
 
       // Check guarantor ID if guarantor is required
-      if (appData?.guarantor_required === 1) {
+      if (appData?.guarantor_required) {
         const guarantorResponse = await applications.getIdDocumentStatus(id, 'guarantor_id');
         setGuarantorIdUploaded(guarantorResponse.data.uploaded || false);
       }
@@ -93,7 +93,7 @@ export default function AdminViewApplicationPage({ params }: PageProps) {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Are you sure you want to approve this application? The applicant will be able to sign their tenancy agreement.')) {
+    if (!confirm('Are you sure you want to approve this application?')) {
       return;
     }
 
@@ -103,7 +103,7 @@ export default function AdminViewApplicationPage({ params }: PageProps) {
       await applications.approve(id);
       setMessage({
         type: 'success',
-        text: 'Application approved successfully! The applicant can now sign their tenancy agreement.'
+        text: 'Application approved successfully! This application can now be used to create a tenancy.'
       });
       // Refresh application data to get new status
       await fetchApplication();
@@ -485,7 +485,7 @@ export default function AdminViewApplicationPage({ params }: PageProps) {
           )}
 
           {/* Guarantor Workflow */}
-          {application.guarantor_required === 1 && application.guarantor_token && (
+          {application.guarantor_required && application.guarantor_token && (
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Guarantor Workflow</h2>
 
@@ -598,7 +598,7 @@ export default function AdminViewApplicationPage({ params }: PageProps) {
           )}
 
           {/* ID Documents */}
-          {(applicantIdUploaded || (application.guarantor_required === 1 && guarantorIdUploaded)) && (
+          {(applicantIdUploaded || (application.guarantor_required && guarantorIdUploaded)) && (
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">ID Documents</h2>
 
@@ -621,7 +621,7 @@ export default function AdminViewApplicationPage({ params }: PageProps) {
                 )}
 
                 {/* Guarantor ID */}
-                {application.guarantor_required === 1 && guarantorIdUploaded && (
+                {application.guarantor_required && guarantorIdUploaded && (
                   <div className={applicantIdUploaded ? "pt-4 border-t border-gray-200" : ""}>
                     <h3 className="font-semibold text-gray-900 mb-2">Guarantor ID Document</h3>
                     <button

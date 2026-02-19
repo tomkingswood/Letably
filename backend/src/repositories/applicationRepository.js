@@ -1,9 +1,16 @@
 /**
  * Application Repository
  * Centralized database queries for application-related data
+ *
+ * Uses the form_data hybrid pattern:
+ *   - Core columns: always-present fields stored as SQL columns
+ *   - JSONB form_data: conditional fields (varies by application_type / residential_status)
+ *   - All read functions return hydrated rows where form_data fields are
+ *     spread onto the object with safe defaults (see helpers/formData.js)
  */
 
 const db = require('../db');
+const { hydrateApplication, hydrateApplications, extractFormData } = require('../helpers/formData');
 
 /**
  * Get user by ID
@@ -43,7 +50,7 @@ async function getUserInProgressApplication(userId, agencyId) {
  * @param {number} data.userId - User ID
  * @param {string} data.applicationType - Application type (student/professional)
  * @param {boolean} data.guarantorRequired - Whether guarantor is required
- * @returns {Promise<Object>} Created application
+ * @returns {Promise<Object>} Created application (hydrated)
  */
 async function createApplication({ agencyId, userId, applicationType, guarantorRequired, firstName, surname }) {
   const result = await db.query(
@@ -55,7 +62,7 @@ async function createApplication({ agencyId, userId, applicationType, guarantorR
     [agencyId, userId, applicationType, guarantorRequired, firstName || null, surname || null],
     agencyId
   );
-  return result.rows[0];
+  return hydrateApplication(result.rows[0]);
 }
 
 /**
@@ -64,7 +71,7 @@ async function createApplication({ agencyId, userId, applicationType, guarantorR
  * @param {string|null} filters.status - Status filter
  * @param {string|null} filters.applicationType - Application type filter
  * @param {number} agencyId - Agency context
- * @returns {Promise<Array>} Array of applications
+ * @returns {Promise<Array>} Array of hydrated applications
  */
 async function getAllApplications({ status, applicationType }, agencyId) {
   let query = `
@@ -94,14 +101,14 @@ async function getAllApplications({ status, applicationType }, agencyId) {
   query += ' ORDER BY a.created_at DESC';
 
   const result = await db.query(query, params, agencyId);
-  return result.rows;
+  return hydrateApplications(result.rows);
 }
 
 /**
  * Get user's applications
  * @param {number} userId - User ID
  * @param {number} agencyId - Agency context
- * @returns {Promise<Array>} Array of applications
+ * @returns {Promise<Array>} Array of hydrated applications
  */
 async function getUserApplications(userId, agencyId) {
   const result = await db.query(
@@ -112,14 +119,14 @@ async function getUserApplications(userId, agencyId) {
     [userId, agencyId],
     agencyId
   );
-  return result.rows;
+  return hydrateApplications(result.rows);
 }
 
 /**
  * Get application by ID with user details
  * @param {number} applicationId - Application ID
  * @param {number} agencyId - Agency context
- * @returns {Promise<Object|null>} Application with user details or null
+ * @returns {Promise<Object|null>} Hydrated application with user details or null
  */
 async function getApplicationByIdWithUser(applicationId, agencyId) {
   const result = await db.query(
@@ -134,14 +141,14 @@ async function getApplicationByIdWithUser(applicationId, agencyId) {
     [applicationId, agencyId],
     agencyId
   );
-  return result.rows[0] || null;
+  return hydrateApplication(result.rows[0]);
 }
 
 /**
  * Get application by ID (basic)
  * @param {number} applicationId - Application ID
  * @param {number} agencyId - Agency context
- * @returns {Promise<Object|null>} Application or null
+ * @returns {Promise<Object|null>} Hydrated application or null
  */
 async function getApplicationById(applicationId, agencyId) {
   const result = await db.query(
@@ -149,33 +156,38 @@ async function getApplicationById(applicationId, agencyId) {
     [applicationId, agencyId],
     agencyId
   );
-  return result.rows[0] || null;
+  return hydrateApplication(result.rows[0]);
 }
 
 /**
  * Update application fields
+ *
+ * Core columns are written directly. Conditional fields (residential_status,
+ * landlord_*, student fields, professional fields, address_history) are
+ * stored in the JSONB form_data column.
+ *
  * @param {number} applicationId - Application ID
- * @param {Object} data - Fields to update
+ * @param {Object} data - Fields to update (flat object with all fields)
  * @param {number} agencyId - Agency context
  * @returns {Promise<void>}
  */
 async function updateApplication(applicationId, data, agencyId) {
+  // Extract conditional fields (including guarantor personal info) into form_data JSONB
+  const formData = extractFormData(data);
+
+  // PostgreSQL rejects empty strings for date/timestamptz columns — coerce to null
+  const dateOrNull = (v) => (v === '' || v === undefined) ? null : v;
+
   const {
-    title, title_other, date_of_birth, first_name, middle_name, surname, email, phone,
-    residential_status, residential_status_other, period_years, period_months,
-    current_address,
-    landlord_name, landlord_address, landlord_email, landlord_phone,
-    address_history,
-    id_type,
-    payment_method, payment_plan, university, year_of_study, course, student_number,
-    employment_type, company_name, employment_start_date,
-    contact_name, contact_job_title, contact_email, contact_phone,
-    company_address,
-    guarantor_name, guarantor_dob, guarantor_email, guarantor_phone,
-    guarantor_address, guarantor_relationship,
+    title, title_other, first_name, middle_name, surname, email, phone,
+    current_address, id_type, payment_method,
     declaration_name, declaration_agreed,
-    status, completed_at, guarantor_token, guarantor_token_expires_at
+    status, guarantor_token
   } = data;
+
+  const date_of_birth = dateOrNull(data.date_of_birth);
+  const completed_at = dateOrNull(data.completed_at);
+  const guarantor_token_expires_at = dateOrNull(data.guarantor_token_expires_at);
 
   await db.query(
     `UPDATE applications SET
@@ -187,67 +199,28 @@ async function updateApplication(applicationId, data, agencyId) {
       surname = COALESCE($6, surname),
       email = COALESCE($7, email),
       phone = COALESCE($8, phone),
-      residential_status = $9,
-      residential_status_other = $10,
-      period_years = $11,
-      period_months = $12,
-      current_address = $13,
-      landlord_name = $14,
-      landlord_address = $15,
-      landlord_email = $16,
-      landlord_phone = $17,
-      address_history = $18,
-      id_type = $19,
-      payment_method = $20,
-      payment_plan = $21,
-      university = $22,
-      year_of_study = $23,
-      course = $24,
-      student_number = $25,
-      employment_type = $26,
-      company_name = $27,
-      employment_start_date = $28,
-      contact_name = $29,
-      contact_job_title = $30,
-      contact_email = $31,
-      contact_phone = $32,
-      company_address = $33,
-      guarantor_name = $34,
-      guarantor_dob = $35,
-      guarantor_email = $36,
-      guarantor_phone = $37,
-      guarantor_address = $38,
-      guarantor_relationship = $39,
-      declaration_name = $40,
-      declaration_agreed = $41,
-      declaration_date = CASE WHEN $42 = true THEN CURRENT_TIMESTAMP ELSE declaration_date END,
-      status = $43,
-      completed_at = $44,
-      guarantor_token = $45,
-      guarantor_token_expires_at = $46,
+      current_address = $9,
+      id_type = $10,
+      payment_method = $11,
+      declaration_name = $12,
+      declaration_agreed = $13,
+      declaration_date = CASE WHEN $14 = true THEN CURRENT_TIMESTAMP ELSE declaration_date END,
+      status = $15,
+      completed_at = $16,
+      guarantor_token = $17,
+      guarantor_token_expires_at = $18,
+      form_data = $19,
+      form_version = 1,
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $47 AND agency_id = $48`,
+    WHERE id = $20 AND agency_id = $21`,
     [
       title, title_other, date_of_birth, first_name, middle_name, surname, email, phone,
-      residential_status, residential_status_other, period_years, period_months,
-      current_address,
-      landlord_name, landlord_address, landlord_email, landlord_phone,
-      address_history,
-      id_type,
-      payment_method, payment_plan, university, year_of_study, course, student_number,
-      employment_type, company_name, employment_start_date,
-      contact_name, contact_job_title, contact_email, contact_phone,
-      company_address,
-      guarantor_name, guarantor_dob, guarantor_email, guarantor_phone,
-      guarantor_address, guarantor_relationship,
+      current_address, id_type, payment_method,
       declaration_name, declaration_agreed,
-      declaration_agreed,
-      status,
-      completed_at,
-      guarantor_token,
-      guarantor_token_expires_at,
-      applicationId,
-      agencyId
+      declaration_agreed, // $14: for the CASE WHEN (same value)
+      status, completed_at, guarantor_token, guarantor_token_expires_at,
+      JSON.stringify(formData),
+      applicationId, agencyId
     ],
     agencyId
   );
@@ -288,7 +261,7 @@ async function deleteApplication(applicationId, agencyId) {
  * Get application by guarantor token
  * @param {string} token - Guarantor token
  * @param {number} agencyId - Agency context
- * @returns {Promise<Object|null>} Application or null
+ * @returns {Promise<Object|null>} Hydrated application or null
  */
 async function getApplicationByGuarantorToken(token, agencyId) {
   const result = await db.query(
@@ -301,14 +274,14 @@ async function getApplicationByGuarantorToken(token, agencyId) {
     [token, agencyId],
     agencyId
   );
-  return result.rows[0] || null;
+  return hydrateApplication(result.rows[0]);
 }
 
 /**
  * Get application by guarantor token (basic)
  * @param {string} token - Guarantor token
  * @param {number} agencyId - Agency context
- * @returns {Promise<Object|null>} Application or null
+ * @returns {Promise<Object|null>} Hydrated application or null
  */
 async function getApplicationByGuarantorTokenBasic(token, agencyId) {
   const result = await db.query(
@@ -316,42 +289,42 @@ async function getApplicationByGuarantorTokenBasic(token, agencyId) {
     [token, agencyId],
     agencyId
   );
-  return result.rows[0] || null;
+  return hydrateApplication(result.rows[0]);
 }
 
 /**
  * Update guarantor information
+ * Guarantor personal fields are stored in form_data (conditional on guarantor_required).
+ * Merges into existing form_data using JSONB || operator.
+ * Workflow columns (guarantor_completed_at, status) stay as core columns.
+ *
  * @param {string} token - Guarantor token
  * @param {Object} data - Guarantor data
  * @param {number} agencyId - Agency context
  * @returns {Promise<void>}
  */
 async function updateGuarantorInfo(token, data, agencyId) {
-  const {
-    guarantor_name, guarantor_dob, guarantor_email, guarantor_phone,
-    guarantor_address, guarantor_relationship, guarantor_id_type,
-    guarantor_signature_name, guarantor_signature_agreed
-  } = data;
+  const guarantorFormData = {
+    guarantor_name: data.guarantor_name,
+    guarantor_dob: data.guarantor_dob,
+    guarantor_email: data.guarantor_email,
+    guarantor_phone: data.guarantor_phone,
+    guarantor_address: data.guarantor_address,
+    guarantor_relationship: data.guarantor_relationship,
+    guarantor_id_type: data.guarantor_id_type,
+    guarantor_signature_name: data.guarantor_signature_name,
+    guarantor_signature_agreed: data.guarantor_signature_agreed,
+  };
 
   await db.query(
     `UPDATE applications SET
-      guarantor_name = $1,
-      guarantor_dob = $2,
-      guarantor_email = $3,
-      guarantor_phone = $4,
-      guarantor_address = $5,
-      guarantor_relationship = $6,
-      guarantor_id_type = $7,
-      guarantor_signature_name = $8,
-      guarantor_signature_agreed = $9,
+      form_data = COALESCE(form_data, '{}')::jsonb || $1::jsonb,
       guarantor_completed_at = CURRENT_TIMESTAMP,
       status = 'submitted',
       updated_at = CURRENT_TIMESTAMP
-    WHERE guarantor_token = $10 AND agency_id = $11`,
+    WHERE guarantor_token = $2 AND agency_id = $3`,
     [
-      guarantor_name, guarantor_dob, guarantor_email, guarantor_phone,
-      guarantor_address, guarantor_relationship, guarantor_id_type,
-      guarantor_signature_name, guarantor_signature_agreed,
+      JSON.stringify(guarantorFormData),
       token, agencyId
     ],
     agencyId

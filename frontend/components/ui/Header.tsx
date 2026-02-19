@@ -5,6 +5,13 @@ import { getEffectiveAgencySlug } from '@/lib/api';
 import { useAuthState } from '@/hooks/useAuth';
 import { RoleBanner, RoleIcon } from '@/components/ui/RoleBanner';
 
+function getPortalHref(role: string, agencySlug: string | null): string {
+  const prefix = agencySlug ? `/${agencySlug}` : '';
+  if (role === 'admin') return `${prefix}/admin`;
+  if (role === 'landlord') return `${prefix}/landlord`;
+  return `${prefix}/tenancy`;
+}
+
 export default function Header() {
   const { user } = useAuthState({ listenForChanges: true });
 
@@ -42,7 +49,7 @@ export default function Header() {
         <div className={`sticky ${isDevMode ? 'top-[36px]' : 'top-0'} z-50`}>
           <RoleBanner role={user.role}>
             <Link
-              href={user.role === 'admin' ? '/admin' : user.role === 'landlord' ? '/landlord' : '/tenancy'}
+              href={getPortalHref(user.role, getEffectiveAgencySlug())}
               className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 py-3 text-white hover:opacity-90 transition-opacity text-center"
             >
               <div className="flex items-center gap-2">

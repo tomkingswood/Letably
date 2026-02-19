@@ -14,6 +14,7 @@ const { decryptFile } = require('../utils/encryption');
 const { formatDate: formatDateUtil, formatDateTime: formatDateTimeUtil } = require('../utils/dateFormatter');
 const handleError = require('../utils/handleError');
 const { parseJsonField } = require('../utils/parseJsonField');
+const { hydrateApplication } = require('../helpers/formData');
 
 const SECURE_DOCS_DIR = path.join(__dirname, '../../../secure-documents');
 const APPLICANT_DOCS_DIR = path.join(SECURE_DOCS_DIR, 'applicants');
@@ -42,14 +43,11 @@ exports.generateApplicationPDF = async (req, res) => {
       WHERE a.id = $1 AND a.agency_id = $2
     `, [id, agencyId], agencyId);
 
-    const application = applicationResult.rows[0];
+    const application = hydrateApplication(applicationResult.rows[0]);
 
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
-
-    // Parse JSON fields
-    parseJsonField(application, 'address_history');
 
     // Get ID documents
     // Defense-in-depth: explicit agency_id filtering via application
@@ -246,7 +244,7 @@ exports.generateApplicationPDF = async (req, res) => {
       for (const idDoc of idDocuments) {
         try {
           const directory = idDoc.document_type === 'applicant_id' ? APPLICANT_DOCS_DIR : GUARANTOR_DOCS_DIR;
-          const filePath = path.join(directory, idDoc.stored_filename);
+          const filePath = path.join(directory, path.basename(idDoc.file_path));
 
           // Read and decrypt file
           const encryptedData = await fs.readFile(filePath);

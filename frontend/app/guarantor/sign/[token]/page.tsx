@@ -25,6 +25,7 @@ export default function GuarantorAgreementSigningPage({ params }: PageProps) {
   const [signatureData, setSignatureData] = useState('');
   const [signatureError, setSignatureError] = useState('');
   const [showTenantAgreementModal, setShowTenantAgreementModal] = useState(false);
+  const [agencySlug, setAgencySlug] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAgreement();
@@ -34,6 +35,7 @@ export default function GuarantorAgreementSigningPage({ params }: PageProps) {
     try {
       const response = await guarantorApi.getAgreementByToken(token);
       setAgreement(response.data.agreement);
+      if (response.data.agreement.agency_slug) setAgencySlug(response.data.agreement.agency_slug);
 
       // Check if already signed
       if (response.data.agreement.is_signed) {
@@ -172,7 +174,7 @@ export default function GuarantorAgreementSigningPage({ params }: PageProps) {
             <h2 className="text-xl font-bold text-red-800 mb-2">Unable to Access Agreement</h2>
             <p className="text-red-700 mb-4">{error}</p>
             <Link
-              href="/"
+              href={agencySlug ? `/${agencySlug}/tenancy` : '/'}
               className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
             >
               Return to Homepage
@@ -194,7 +196,7 @@ export default function GuarantorAgreementSigningPage({ params }: PageProps) {
               Thank you for signing the guarantor agreement. The letting agent has been notified.
             </p>
             <Link
-              href="/"
+              href={agencySlug ? `/${agencySlug}/tenancy` : '/'}
               className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
             >
               Return to Homepage

@@ -31,6 +31,9 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
   const [filterStatus, setFilterStatus] = useState('all');
   const [previewEmail, setPreviewEmail] = useState<QueuedEmail | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deleteAllConfirmStep, setDeleteAllConfirmStep] = useState(0); // 0=initial, 1=pending warning shown
+  const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
     fetchEmails();
@@ -73,6 +76,30 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
     }
   };
 
+  const handleDeleteAll = async () => {
+    // If there are pending emails and user hasn't seen the second warning yet
+    if (stats.pending > 0 && deleteAllConfirmStep === 0) {
+      setDeleteAllConfirmStep(1);
+      return;
+    }
+
+    setDeletingAll(true);
+    try {
+      await emailQueue.deleteAll();
+      setMessage({ type: 'success', text: 'All emails deleted successfully' });
+      setShowDeleteAllModal(false);
+      setDeleteAllConfirmStep(0);
+      fetchEmails();
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.error || 'Failed to delete emails',
+      });
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   const filteredEmails = emails.filter(e => {
     return filterStatus === 'all' || e.status === filterStatus;
   });
@@ -104,9 +131,22 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
   return (
     <div>
       {/* Section Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Email Queue</h2>
-        <p className="text-gray-600">Monitor and manage the email sending queue</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Email Queue</h2>
+          <p className="text-gray-600">Monitor and manage the email sending queue</p>
+        </div>
+        {emails.length > 0 && (
+          <button
+            onClick={() => { setShowDeleteAllModal(true); setDeleteAllConfirmStep(0); }}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete All
+          </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -245,6 +285,70 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
           ))
         )}
       </div>
+
+      {/* Delete All Confirmation Modal */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            {deleteAllConfirmStep === 0 ? (
+              <>
+                <h3 className="text-xl font-bold text-red-900 mb-2">Delete All Emails</h3>
+                <p className="text-gray-600 mb-4">
+                  This will permanently delete <strong>all {emails.length} email{emails.length !== 1 ? 's' : ''}</strong> from the queue.
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-800">
+                  <strong>This action cannot be undone.</strong>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={stats.pending > 0 ? handleDeleteAll : handleDeleteAll}
+                    disabled={deletingAll}
+                    className="flex-1 bg-red-700 hover:bg-red-800 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50 transition-colors"
+                  >
+                    {deletingAll ? 'Deleting...' : 'Delete All'}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteAllModal(false)}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2.5 rounded-lg font-semibold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-bold text-red-900 mb-2">Pending Emails Will Be Lost</h3>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 text-sm text-amber-900">
+                  <p className="font-semibold mb-2">There {stats.pending === 1 ? 'is' : 'are'} {stats.pending} pending email{stats.pending !== 1 ? 's' : ''} that {stats.pending === 1 ? 'has' : 'have'} not been sent yet:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    {emails.filter(e => e.status === 'pending').slice(0, 5).map(e => (
+                      <li key={e.id} className="truncate">{e.subject} &rarr; {e.to_email}</li>
+                    ))}
+                    {stats.pending > 5 && <li>...and {stats.pending - 5} more</li>}
+                  </ul>
+                  <p className="mt-3 font-semibold text-red-700">These emails will never be sent if you delete them.</p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDeleteAll}
+                    disabled={deletingAll}
+                    className="flex-1 bg-red-700 hover:bg-red-800 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50 transition-colors"
+                  >
+                    {deletingAll ? 'Deleting...' : 'Yes, Delete Everything'}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteAllModal(false)}
+                    disabled={deletingAll}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2.5 rounded-lg font-semibold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal */}
       {previewEmail && (

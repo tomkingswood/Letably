@@ -442,13 +442,15 @@ async function getGuarantorAgreementByToken(token, agencyId) {
         l.legal_name as landlord_legal_name,
         l.address_line1 as landlord_address_line1,
         l.city as landlord_city,
-        l.postcode as landlord_postcode
+        l.postcode as landlord_postcode,
+        ag.slug as agency_slug
       FROM guarantor_agreements ga
       JOIN tenancy_members tm ON ga.tenancy_member_id = tm.id
       JOIN tenancies t ON tm.tenancy_id = t.id
       JOIN users u ON tm.user_id = u.id
       JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
+      JOIN agencies ag ON ga.agency_id = ag.id
       WHERE ga.guarantor_token = $1
     `, [token], agencyId);
 

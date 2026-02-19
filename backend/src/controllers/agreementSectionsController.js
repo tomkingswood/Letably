@@ -14,11 +14,11 @@ exports.getAllSections = asyncHandler(async (req, res) => {
       l.name as landlord_name
     FROM agreement_sections s
     LEFT JOIN landlords l ON s.landlord_id = l.id
-    WHERE 1=1
+    WHERE s.agency_id = $1
   `;
 
-  const params = [];
-  let paramIndex = 1;
+  const params = [agencyId];
+  let paramIndex = 2;
 
   if (landlord_id) {
     if (landlord_id === 'default') {

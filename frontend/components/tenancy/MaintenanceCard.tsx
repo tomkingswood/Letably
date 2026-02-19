@@ -18,6 +18,7 @@ interface MaintenanceCardProps {
   setNewRequestForm: (form: NewRequestForm) => void;
   submittingRequest: boolean;
   onSubmitRequest: (e: React.FormEvent) => void;
+  agencySlug: string;
 }
 
 export function MaintenanceCard({
@@ -29,6 +30,7 @@ export function MaintenanceCard({
   setNewRequestForm,
   submittingRequest,
   onSubmitRequest,
+  agencySlug,
 }: MaintenanceCardProps) {
   if (isExpired) return null;
 
@@ -65,7 +67,7 @@ export function MaintenanceCard({
             {maintenanceRequests.map((request) => (
               <a
                 key={request.id}
-                href={`/tenancy/maintenance/${request.id}`}
+                href={`/${agencySlug}/tenancy/maintenance/${request.id}`}
                 className="block border rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">

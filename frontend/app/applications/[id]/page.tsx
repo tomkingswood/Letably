@@ -334,8 +334,17 @@ export default function ApplicationFormPage({ params }: PageProps) {
       return;
     }
 
-    // Validate guarantor email is different from applicant email
-    if (application?.guarantor_required === 1 && formData.guarantor_email) {
+    // Validate guarantor fields when guarantor is required
+    if (application?.guarantor_required) {
+      if (!formData.guarantor_name?.trim() || !formData.guarantor_email?.trim()) {
+        setSubmitting(false);
+        setMessage({
+          type: 'error',
+          text: 'Guarantor name and email are required. Please complete the guarantor details section.'
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
       if (formData.guarantor_email.toLowerCase().trim() === formData.email.toLowerCase().trim()) {
         setSubmitting(false);
         setMessage({
@@ -378,11 +387,11 @@ export default function ApplicationFormPage({ params }: PageProps) {
 
       // Update local application state
       // If guarantor required, status becomes 'awaiting_guarantor', otherwise 'submitted' (awaiting admin review)
-      const newStatus = application!.guarantor_required === 1 ? 'awaiting_guarantor' : 'submitted';
+      const newStatus = application!.guarantor_required ? 'awaiting_guarantor' : 'submitted';
       setApplication({
         ...application!,
         status: newStatus,
-        completed_at: application!.guarantor_required === 1 ? application!.completed_at : new Date().toISOString()
+        completed_at: application!.guarantor_required ? application!.completed_at : new Date().toISOString()
       });
 
       // Trigger event to update header banner
@@ -1408,7 +1417,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
             )}
 
             {/* Guarantor Information */}
-            {application.guarantor_required === 1 && (
+            {application.guarantor_required && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Guarantor Information</h2>
                 <p className="text-sm text-gray-600 mb-4">

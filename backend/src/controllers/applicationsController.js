@@ -468,7 +468,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
       `, 'info')}
 
       <div style="text-align: center;">
-        ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/applications/${id}`, 'View Application Details')}
+        ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/${branding.agencySlug}/admin?section=applications&action=view&id=${id}`, 'View Application Details')}
       </div>
 
       <p style="color: #666; font-size: 14px; margin-top: 30px;">
@@ -562,12 +562,13 @@ exports.deleteApplication = asyncHandler(async (req, res) => {
   for (const doc of idDocuments) {
     try {
       const directory = doc.document_type === 'applicant_id' ? APPLICANT_DOCS_DIR : GUARANTOR_DOCS_DIR;
-      const filePath = path.join(directory, doc.stored_filename);
+      const filename = path.basename(doc.file_path);
+      const filePath = path.join(directory, filename);
       await fs.unlink(filePath);
-      console.log(`Deleted ID document file: ${doc.stored_filename}`);
+      console.log(`Deleted ID document file: ${filename}`);
     } catch (fileError) {
       // Log error but continue - file might already be deleted
-      console.error(`Error deleting file ${doc.stored_filename}:`, fileError.message);
+      console.error(`Error deleting file ${path.basename(doc.file_path)}:`, fileError.message);
     }
   }
 
@@ -578,9 +579,19 @@ exports.deleteApplication = asyncHandler(async (req, res) => {
 }, 'delete application');
 
 // Get application by guarantor token (no auth required)
+// Token is globally unique — agency context is derived from the application itself
 exports.getApplicationByGuarantorToken = asyncHandler(async (req, res) => {
-  const agencyId = req.agencyId;
   const { token } = req.params;
+
+  // Look up by token only (no agency filter needed — token is cryptographically unique)
+  const agencyLookup = await db.systemQuery(
+    'SELECT agency_id FROM applications WHERE guarantor_token = $1',
+    [token]
+  );
+  if (!agencyLookup.rows[0]) {
+    return res.status(404).json({ error: 'Application not found' });
+  }
+  const agencyId = agencyLookup.rows[0].agency_id;
 
   const application = await appRepo.getApplicationByGuarantorToken(token, agencyId);
 
@@ -598,6 +609,13 @@ exports.getApplicationByGuarantorToken = asyncHandler(async (req, res) => {
     return res.status(403).json({ error: 'This guarantor form has already been completed.' });
   }
 
+  // Get agency slug for frontend navigation
+  const agencyResult = await db.query(
+    'SELECT slug FROM agencies WHERE id = $1',
+    [agencyId],
+    agencyId
+  );
+
   // Only return necessary fields
   const guarantorData = {
     id: application.id,
@@ -608,15 +626,16 @@ exports.getApplicationByGuarantorToken = asyncHandler(async (req, res) => {
     guarantor_phone: application.guarantor_phone,
     guarantor_address: application.guarantor_address,
     guarantor_relationship: application.guarantor_relationship,
-    guarantor_id_type: application.guarantor_id_type
+    guarantor_id_type: application.guarantor_id_type,
+    agency_slug: agencyResult.rows[0]?.slug || null
   };
 
   res.json(guarantorData);
 }, 'fetch application');
 
 // Submit guarantor form (no auth required)
+// Token is globally unique — agency context is derived from the application itself
 exports.submitGuarantorForm = asyncHandler(async (req, res) => {
-  const agencyId = req.agencyId;
   const { token } = req.params;
   const {
     guarantor_name,
@@ -634,6 +653,16 @@ exports.submitGuarantorForm = asyncHandler(async (req, res) => {
   if (!guarantor_signature_agreed) {
     return res.status(400).json({ error: 'You must agree to the declaration' });
   }
+
+  // Look up by token only (no agency filter needed — token is cryptographically unique)
+  const agencyLookup = await db.systemQuery(
+    'SELECT agency_id FROM applications WHERE guarantor_token = $1',
+    [token]
+  );
+  if (!agencyLookup.rows[0]) {
+    return res.status(404).json({ error: 'Application not found' });
+  }
+  const agencyId = agencyLookup.rows[0].agency_id;
 
   const application = await appRepo.getApplicationByGuarantorTokenBasic(token, agencyId);
 
@@ -689,7 +718,7 @@ exports.submitGuarantorForm = asyncHandler(async (req, res) => {
     <p>The application is now complete and ready for review.</p>
 
     <div style="text-align: center;">
-      ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/applications/${applicationDetails.id}`, 'View Complete Application')}
+      ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/${branding.agencySlug}/admin?section=applications&action=view&id=${applicationDetails.id}`, 'View Complete Application')}
     </div>
   `;
 
@@ -810,11 +839,7 @@ exports.approveApplication = asyncHandler(async (req, res) => {
 
       <p>Great news! Your application has been approved.</p>
 
-      <p>We will be in touch with next steps. Please log in to your account for updates:</p>
-
-      <div style="text-align: center;">
-        ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`, 'Log In to Continue')}
-      </div>
+      <p>We will be in touch with next steps.</p>
 
       <p style="color: #666; font-size: 14px;">
         If you have any questions, please don't hesitate to contact us.
@@ -828,7 +853,7 @@ exports.approveApplication = asyncHandler(async (req, res) => {
       to_name: `${user.first_name} ${user.last_name}`,
       subject: `Your Application Has Been Approved - ${brandName}`,
       html_body: emailHtml,
-      text_body: `Great news! Your application has been approved. We will be in touch with next steps. Please log in to your account for updates.`,
+      text_body: `Great news! Your application has been approved. We will be in touch with next steps. If you have any questions, please don't hesitate to contact us.`,
       priority: 1
     }, agencyId);
   }

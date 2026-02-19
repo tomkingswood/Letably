@@ -63,7 +63,12 @@ const agencyContext = async (req, res, next) => {
       }
     }
 
-    // Option 3: Agency slug in body or query (for login endpoints)
+    // Option 3: Agency slug in X-Agency-Slug header (set by frontend API client)
+    if (!agency && req.headers['x-agency-slug']) {
+      agency = await getAgencyBySlug(req.headers['x-agency-slug']);
+    }
+
+    // Option 4: Agency slug in body or query (for login endpoints)
     if (!agency && (req.body?.agency_slug || req.query?.agency_slug)) {
       const slug = req.body?.agency_slug || req.query?.agency_slug;
       agency = await getAgencyBySlug(slug);

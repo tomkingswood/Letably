@@ -10,8 +10,9 @@ const asyncHandler = require('../utils/asyncHandler');
 /**
  * Generate email notification for new viewing request
  */
-const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipientEmail) => {
+const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipientEmail, agencySlug) => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const adminUrl = `${frontendUrl}/${agencySlug || ''}/admin?section=viewing-requests`;
 
   const bodyContent = `
     <h1>New Viewing Request</h1>
@@ -47,7 +48,7 @@ const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipie
       <p style="margin: 0 0 15px 0; color: #666; font-size: 14px;">
         Manage this viewing request in the admin panel:
       </p>
-      ${createButton(`${frontendUrl}/admin/viewing-requests`, 'View All Viewing Requests')}
+      ${createButton(`${adminUrl}`, 'View All Viewing Requests')}
     </div>
 
     <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
@@ -84,7 +85,7 @@ const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipie
   }
 
   textParts.push('---');
-  textParts.push(`Manage viewing requests: ${frontendUrl}/admin/viewing-requests`);
+  textParts.push(`Manage viewing requests: ${adminUrl}`);
 
   return {
     to: recipientEmail,
@@ -183,7 +184,8 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
       const emailContent = generateNewViewingRequestEmail(
         viewingRequestData,
         property.address_line1,
-        recipientEmail
+        recipientEmail,
+        req.agency?.slug
       );
 
       queueEmail({

@@ -86,7 +86,13 @@ export function middleware(request: NextRequest) {
   }
 
   // Reserved paths that are not agency slugs
-  const reservedPaths = ['signup', 'guarantor', 'api', '_next', 'static'];
+  const reservedPaths = [
+    'signup', 'guarantor', 'api', '_next', 'static',
+    'account', 'applications', 'complaints',
+    'cookie-policy', 'forgot-password', 'login', 'my-applications',
+    'redress-scheme', 'reset-password', 'setup-password',
+    'terms-and-conditions', 'robots.txt', 'sitemap.xml',
+  ];
   if (reservedPaths.includes(agencySlug)) {
     return NextResponse.next();
   }
