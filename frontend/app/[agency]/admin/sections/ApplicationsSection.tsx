@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { applications as applicationsApi } from '@/lib/api';
 import { Application, getErrorMessage } from '@/lib/types';
@@ -30,6 +30,15 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Re-fetch when navigating back from detail view
+  const wasViewMode = useRef(false);
+  useEffect(() => {
+    if (wasViewMode.current && !isViewMode) {
+      fetchData();
+    }
+    wasViewMode.current = isViewMode;
+  }, [isViewMode]);
 
   const fetchData = async () => {
     try {
