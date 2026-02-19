@@ -237,7 +237,7 @@ function validateTenancyType(tenancyType) {
  * @returns {{ valid: boolean, error?: string }}
  */
 function validateTenancyStatus(status) {
-  const validStatuses = ['pending', 'awaiting_signatures', 'signed', 'approval', 'active', 'expired'];
+  const validStatuses = ['pending', 'awaiting_signatures', 'approval', 'active', 'expired'];
   if (!validStatuses.includes(status)) {
     return {
       valid: false,
@@ -260,8 +260,7 @@ function validateStatusTransition(currentStatus, newStatus) {
 
   const allowedTransitions = {
     'pending': ['awaiting_signatures'],
-    'awaiting_signatures': [], // Auto-transitions to 'signed' when all members sign
-    'signed': ['approval'],
+    'awaiting_signatures': [], // Auto-transitions to 'approval' when all tenants + guarantors sign
     'approval': ['active'],
     'active': ['expired'],
     'expired': []
@@ -275,9 +274,7 @@ function validateStatusTransition(currentStatus, newStatus) {
     if (currentStatus === 'pending') {
       errorMessage += ' Tenancy must be marked as awaiting signatures first.';
     } else if (currentStatus === 'awaiting_signatures') {
-      errorMessage += ' Status will automatically change to signed when all members sign their agreements.';
-    } else if (currentStatus === 'signed') {
-      errorMessage += ' Tenancy must move to approval status first.';
+      errorMessage += ' Status will automatically change to approval when all tenants and guarantors have signed.';
     } else if (currentStatus === 'approval') {
       errorMessage += ' Tenancy can only be activated from approval status once all guarantor agreements are signed.';
     } else if (currentStatus === 'active' || currentStatus === 'expired') {

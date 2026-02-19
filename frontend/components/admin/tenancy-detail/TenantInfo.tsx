@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useAgency } from '@/lib/agency-context';
 import { TenancyMember, Tenancy, Bedroom, GuarantorAgreement } from '@/lib/types';
 import Input from '@/components/ui/Input';
 
@@ -46,6 +47,7 @@ export function TenantInfo({
   onCopyGuarantorLink,
   onRegenerateGuarantorToken,
 }: TenantInfoProps) {
+  const { agencySlug } = useAgency();
   return (
     <div className="pt-6">
       <h3 className="text-xl font-bold text-gray-900 mb-4">Tenant Information</h3>
@@ -153,7 +155,7 @@ export function TenantInfo({
             {/* View Application - only if application exists */}
             {selectedMember.application_id ? (
               <Link
-                href={`/admin/applications/${selectedMember.application_id}`}
+                href={`/${agencySlug}/admin?section=applications&action=view&id=${selectedMember.application_id}`}
                 className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,8 +209,8 @@ export function TenantInfo({
                     View Signed Agreement - Guarantor
                   </button>
                 )}
-                {/* Only show revert signature button when tenancy is in 'signed' status */}
-                {tenancy.status === 'signed' && (
+                {/* Only show revert signature button before approval */}
+                {tenancy.status === 'awaiting_signatures' && (
                   <button
                     onClick={() => onRevertSignature(selectedMember)}
                     className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
@@ -220,8 +222,8 @@ export function TenantInfo({
             )}
           </div>
 
-          {/* Guarantor Agreement Section - Show when tenancy is in approval or active status */}
-          {(tenancy.status === 'approval' || tenancy.status === 'active') && (
+          {/* Guarantor Agreement Section - Show when member has signed (during awaiting_signatures) or post-approval */}
+          {((tenancy.status === 'awaiting_signatures' && selectedMember.is_signed) || tenancy.status === 'approval' || tenancy.status === 'active') && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Guarantor Agreement</h4>
 

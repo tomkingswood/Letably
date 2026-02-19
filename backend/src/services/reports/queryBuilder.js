@@ -378,7 +378,7 @@ const QueryBuilderFactory = {
           ROW_NUMBER() OVER (PARTITION BY tm.bedroom_id ORDER BY t.start_date ASC) as rn
         FROM tenancy_members tm
         INNER JOIN tenancies t ON tm.tenancy_id = t.id
-        WHERE t.status IN ('active', 'signed', 'awaiting_signatures') AND t.start_date > ?
+        WHERE t.status IN ('active', 'awaiting_signatures') AND t.start_date > ?
       `, [today]);
     }
 

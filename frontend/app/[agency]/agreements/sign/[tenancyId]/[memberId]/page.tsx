@@ -305,6 +305,11 @@ export default function SignAgreementPage({ params }: PageProps) {
             <p className="text-gray-700 mb-4">
               <strong>Signature:</strong> {memberData?.signature_data}
             </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-blue-800 text-sm">
+                Thank you for signing your tenancy agreement. Your letting agent will review everything and be in touch with the next steps, including move-in details and any further information you may need.
+              </p>
+            </div>
             <button
               onClick={() => router.push(`/${agencySlug}/tenancy`)}
               className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"

@@ -206,98 +206,6 @@ function generateGuarantorAgreementContent(data) {
 }
 
 /**
- * Create guarantor agreements for a tenancy
- * Checks which tenants require guarantors and creates agreements for them
- */
-async function createGuarantorAgreements(tenancyId, agencyId) {
-  try {
-    const tenancyResult = await db.query(`
-      SELECT t.*, p.*, l.name as landlord_name, l.legal_name as landlord_legal_name
-      FROM tenancies t
-      JOIN properties p ON t.property_id = p.id
-      LEFT JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.id = $1
-    `, [tenancyId], agencyId);
-
-    const tenancy = tenancyResult.rows[0];
-
-    if (!tenancy) {
-      throw new Error('Tenancy not found');
-    }
-
-    // Get all tenancy members who have guarantors
-    const membersResult = await db.query(`
-      SELECT tm.*
-      FROM tenancy_members tm
-      WHERE tm.tenancy_id = $1
-      AND tm.guarantor_required = true
-      AND tm.guarantor_name IS NOT NULL
-      AND tm.guarantor_email IS NOT NULL
-    `, [tenancyId], agencyId);
-
-    const membersWithGuarantors = membersResult.rows;
-
-    const createdAgreements = [];
-
-    for (const member of membersWithGuarantors) {
-      // Check if agreement already exists
-      const existingResult = await db.query(`
-        SELECT id FROM guarantor_agreements
-        WHERE tenancy_member_id = $1
-      `, [member.id], agencyId);
-
-      const existing = existingResult.rows[0];
-
-      if (!existing) {
-        // Generate unique token
-        const token = crypto.randomBytes(32).toString('hex');
-
-        // Create guarantor agreement
-        const insertResult = await db.query(`
-          INSERT INTO guarantor_agreements (
-            agency_id,
-            tenancy_member_id,
-            guarantor_name,
-            guarantor_email,
-            guarantor_phone,
-            guarantor_address,
-            guarantor_token,
-            is_signed,
-            created_at,
-            updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          RETURNING *
-        `, [
-          agencyId,
-          member.id,
-          member.guarantor_name,
-          member.guarantor_email,
-          member.guarantor_phone || null,
-          member.guarantor_address || null,
-          token
-        ], agencyId);
-
-        const result = insertResult.rows[0];
-
-        createdAgreements.push({
-          id: result.id,
-          tenancy_id: tenancyId,
-          application_id: member.application_id,
-          guarantor_name: member.guarantor_name,
-          guarantor_email: member.guarantor_email,
-          tenant_name: `${member.first_name} ${member.surname}`,
-          token
-        });
-      }
-    }
-
-    return createdAgreements;
-  } catch (error) {
-    throw error;
-  }
-}
-
-/**
  * Send guarantor agreement emails for newly created agreements
  */
 async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
@@ -541,7 +449,7 @@ async function signGuarantorAgreement(token, signatureData, agencyId) {
     });
 
     // Update guarantor agreement with signature
-    await db.query(`
+    const updatedResult = await db.query(`
       UPDATE guarantor_agreements
       SET
         is_signed = true,
@@ -553,7 +461,7 @@ async function signGuarantorAgreement(token, signatureData, agencyId) {
       RETURNING *
     `, [signatureData, agreementHTML, token], agencyId);
 
-    return true;
+    return updatedResult.rows[0];
   } catch (error) {
     throw error;
   }
@@ -581,10 +489,110 @@ async function getGuarantorAgreementsByTenancy(tenancyId, agencyId) {
   }
 }
 
+/**
+ * Create a guarantor agreement for a specific tenancy member (called after each tenant signs)
+ * Idempotent: returns null if member doesn't need a guarantor or agreement already exists
+ */
+async function createGuarantorAgreementForMember(tenancyId, memberId, agencyId) {
+  try {
+    // Query this specific member
+    const memberResult = await db.query(`
+      SELECT tm.*
+      FROM tenancy_members tm
+      WHERE tm.id = $1 AND tm.tenancy_id = $2
+      AND tm.guarantor_required = true
+      AND tm.guarantor_name IS NOT NULL
+      AND tm.guarantor_email IS NOT NULL
+    `, [memberId, tenancyId], agencyId);
+
+    const member = memberResult.rows[0];
+    if (!member) {
+      return null; // Member doesn't need a guarantor or missing guarantor info
+    }
+
+    // Check if agreement already exists (idempotent)
+    const existingResult = await db.query(`
+      SELECT id FROM guarantor_agreements
+      WHERE tenancy_member_id = $1
+    `, [member.id], agencyId);
+
+    if (existingResult.rows[0]) {
+      return null; // Agreement already exists
+    }
+
+    // Generate unique token
+    const token = crypto.randomBytes(32).toString('hex');
+
+    // Create guarantor agreement
+    const insertResult = await db.query(`
+      INSERT INTO guarantor_agreements (
+        agency_id,
+        tenancy_member_id,
+        guarantor_name,
+        guarantor_email,
+        guarantor_phone,
+        guarantor_address,
+        guarantor_token,
+        is_signed,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING *
+    `, [
+      agencyId,
+      member.id,
+      member.guarantor_name,
+      member.guarantor_email,
+      member.guarantor_phone || null,
+      member.guarantor_address || null,
+      token
+    ], agencyId);
+
+    const result = insertResult.rows[0];
+
+    return {
+      id: result.id,
+      tenancy_id: tenancyId,
+      application_id: member.application_id,
+      guarantor_name: member.guarantor_name,
+      guarantor_email: member.guarantor_email,
+      tenant_name: `${member.first_name} ${member.surname}`,
+      token
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Check if all tenants and all guarantors for a tenancy have signed
+ * Returns true only when every member has signed AND every guarantor agreement is signed
+ */
+async function checkTenancySigningComplete(tenancyId, agencyId) {
+  try {
+    // Check all members have signed
+    const unsignedMembersResult = await db.query(`
+      SELECT COUNT(*) as count
+      FROM tenancy_members
+      WHERE tenancy_id = $1 AND (is_signed = false OR is_signed IS NULL)
+    `, [tenancyId], agencyId);
+
+    if (parseInt(unsignedMembersResult.rows[0].count) > 0) {
+      return false;
+    }
+
+    // Check all guarantor agreements are signed
+    const allGuarantorsSigned = await checkGuarantorAgreementsComplete(tenancyId, agencyId);
+    return allGuarantorsSigned;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
-  createGuarantorAgreements,
   sendGuarantorAgreementEmails,
-  checkGuarantorAgreementsComplete,
+  createGuarantorAgreementForMember,
+  checkTenancySigningComplete,
   getGuarantorAgreementByToken,
   signGuarantorAgreement,
   getGuarantorAgreementsByTenancy,

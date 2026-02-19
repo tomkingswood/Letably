@@ -79,8 +79,8 @@ export function PaymentScheduleGrid({
 
       const group = groups.get(key)!;
       group.payments.push(payment);
-      group.totalDue += payment.amount_due;
-      group.totalPaid += payment.amount_paid || 0;
+      group.totalDue += Number(payment.amount_due) || 0;
+      group.totalPaid += Number(payment.amount_paid) || 0;
       group.balance = group.totalDue - group.totalPaid;
 
       // Check if this payment is overdue
@@ -114,8 +114,8 @@ export function PaymentScheduleGrid({
   }, [payments]);
 
   // Calculate summary statistics
-  const totalDue = payments.reduce((sum, p) => sum + p.amount_due, 0);
-  const totalPaid = payments.reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+  const totalDue = payments.reduce((sum, p) => sum + (Number(p.amount_due) || 0), 0);
+  const totalPaid = payments.reduce((sum, p) => sum + (Number(p.amount_paid) || 0), 0);
   const totalBalance = totalDue - totalPaid;
 
   const toggleMonth = (key: string) => {

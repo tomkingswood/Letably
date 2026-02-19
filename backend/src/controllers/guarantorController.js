@@ -1,16 +1,29 @@
-const { getGuarantorAgreementByToken, signGuarantorAgreement, generateGuarantorAgreementContent } = require('../services/guarantorService');
+const { getGuarantorAgreementByToken, signGuarantorAgreement, checkTenancySigningComplete, generateGuarantorAgreementContent } = require('../services/guarantorService');
+const { generatePaymentSchedulesForTenancy } = require('../services/paymentService');
 const db = require('../db');
 const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 
 /**
+ * Look up agency_id from a guarantor token (for public endpoints with no auth)
+ */
+async function getAgencyIdFromToken(token) {
+  const result = await db.query(
+    'SELECT agency_id FROM guarantor_agreements WHERE guarantor_token = $1',
+    [token]
+  );
+  return result.rows[0]?.agency_id || null;
+}
+
+/**
  * Get guarantor agreement by token (public endpoint)
  * This allows guarantors to view the agreement they need to sign
  */
-exports.getAgreementByToken = asyncHandler((req, res) => {
+exports.getAgreementByToken = asyncHandler(async (req, res) => {
   const { token } = req.params;
 
-  const agreement = getGuarantorAgreementByToken(token);
+  const agencyId = await getAgencyIdFromToken(token);
+  const agreement = await getGuarantorAgreementByToken(token, agencyId);
 
   if (!agreement) {
     return res.status(404).json({ error: 'Guarantor agreement not found' });
@@ -76,7 +89,47 @@ exports.signAgreement = async (req, res) => {
       return res.status(400).json({ error: 'Invalid signature format' });
     }
 
-    const signedAgreement = await signGuarantorAgreement(token, signature_data.trim());
+    const agencyId = await getAgencyIdFromToken(token);
+    const signedAgreement = await signGuarantorAgreement(token, signature_data.trim(), agencyId);
+
+    // Check if all guarantor agreements for this tenancy are now signed
+    // If so, auto-promote the tenancy to 'approval' status
+    try {
+      // Get tenancy_id from the signed agreement's member
+      const memberResult = await db.query(
+        'SELECT tenancy_id FROM tenancy_members WHERE id = $1',
+        [signedAgreement.tenancy_member_id]
+      );
+      const tenancyId = memberResult.rows[0]?.tenancy_id;
+
+      if (tenancyId) {
+        // Get tenancy status and agency_id
+        const tenancyResult = await db.query(
+          'SELECT status, agency_id FROM tenancies WHERE id = $1',
+          [tenancyId]
+        );
+        const tenancy = tenancyResult.rows[0];
+
+        // Auto-promote if tenancy is in 'awaiting_signatures' and all tenants + guarantors have signed
+        if (tenancy?.status === 'awaiting_signatures') {
+          const allComplete = await checkTenancySigningComplete(tenancyId, tenancy.agency_id);
+
+          if (allComplete) {
+            await db.query(
+              'UPDATE tenancies SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND agency_id = $3',
+              ['approval', tenancyId, tenancy.agency_id],
+              tenancy.agency_id
+            );
+
+            const paymentResult = await generatePaymentSchedulesForTenancy(tenancyId, tenancy.agency_id);
+            console.log(`Auto-approval: All tenants + guarantors signed. Generated payment schedules for tenancy ${tenancyId}:`, paymentResult);
+          }
+        }
+      }
+    } catch (approvalError) {
+      console.error('Error checking auto-approval after guarantor signing:', approvalError);
+      // Don't fail the guarantor signing response
+    }
 
     res.json({
       message: 'Guarantor agreement signed successfully',
@@ -103,10 +156,11 @@ exports.signAgreement = async (req, res) => {
  * Get signed agreement HTML (public endpoint)
  * This allows guarantors to view their signed agreement
  */
-exports.getSignedAgreement = asyncHandler((req, res) => {
+exports.getSignedAgreement = asyncHandler(async (req, res) => {
   const { token } = req.params;
 
-  const agreement = getGuarantorAgreementByToken(token);
+  const agencyId = await getAgencyIdFromToken(token);
+  const agreement = await getGuarantorAgreementByToken(token, agencyId);
 
   if (!agreement) {
     return res.status(404).json({ error: 'Guarantor agreement not found' });

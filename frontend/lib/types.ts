@@ -164,7 +164,7 @@ export interface Tenancy {
   tenancy_type: 'room_only' | 'whole_house';
   start_date: string;
   end_date: string | null;
-  status: 'pending' | 'awaiting_signatures' | 'signed' | 'approval' | 'active' | 'expired';
+  status: 'pending' | 'awaiting_signatures' | 'approval' | 'active' | 'expired';
   // Rolling monthly tenancy fields
   is_rolling_monthly?: boolean;
   auto_generate_payments?: boolean;

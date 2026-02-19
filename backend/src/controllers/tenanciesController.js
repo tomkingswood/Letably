@@ -1,6 +1,5 @@
 const db = require('../db');
 const { generatePaymentSchedulesForTenancy } = require('../services/paymentService');
-const { createGuarantorAgreements, sendGuarantorAgreementEmails } = require('../services/guarantorService');
 const { queueEmail } = require('../services/emailService');
 const { getTenancyMembersWithDetails } = require('../helpers/queries');
 const asyncHandler = require('../utils/asyncHandler');
@@ -43,9 +42,9 @@ exports.getAllTenancies = asyncHandler(async (req, res) => {
   // Status group filter (current, workflow, active, expired)
   // 'current' = workflow + active (excludes expired)
   if (statusGroup === 'current') {
-    conditions.push(`t.status IN ('pending', 'awaiting_signatures', 'signed', 'approval', 'active')`);
+    conditions.push(`t.status IN ('pending', 'awaiting_signatures', 'approval', 'active')`);
   } else if (statusGroup === 'workflow') {
-    conditions.push(`t.status IN ('pending', 'awaiting_signatures', 'signed', 'approval')`);
+    conditions.push(`t.status IN ('pending', 'awaiting_signatures', 'approval')`);
   } else if (statusGroup === 'active') {
     conditions.push(`t.status = 'active'`);
   } else if (statusGroup === 'expired') {
@@ -94,10 +93,9 @@ exports.getAllTenancies = asyncHandler(async (req, res) => {
       CASE t.status
         WHEN 'pending' THEN 1
         WHEN 'awaiting_signatures' THEN 2
-        WHEN 'signed' THEN 3
-        WHEN 'approval' THEN 4
-        WHEN 'active' THEN 5
-        WHEN 'expired' THEN 6
+        WHEN 'approval' THEN 3
+        WHEN 'active' THEN 4
+        WHEN 'expired' THEN 5
       END,
       t.created_at DESC
   `, params, agencyId);
@@ -138,7 +136,7 @@ exports.getAllTenancies = asyncHandler(async (req, res) => {
   const statsResult = await db.query(`
     SELECT
       COUNT(*) as total,
-      SUM(CASE WHEN status IN ('pending', 'awaiting_signatures', 'signed', 'approval') THEN 1 ELSE 0 END) as workflow,
+      SUM(CASE WHEN status IN ('pending', 'awaiting_signatures', 'approval') THEN 1 ELSE 0 END) as workflow,
       SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
       SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired
     FROM tenancies
@@ -484,7 +482,7 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
   const { start_date, end_date, status, auto_generate_payments } = req.body;
 
   // Validate status if provided
-  const validStatuses = ['pending', 'awaiting_signatures', 'signed', 'approval', 'active', 'expired'];
+  const validStatuses = ['pending', 'awaiting_signatures', 'approval', 'active', 'expired'];
   if (status && !validStatuses.includes(status)) {
     return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
   }
@@ -569,8 +567,7 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
     // Define allowed transitions
     const allowedTransitions = {
       'pending': ['awaiting_signatures'],
-      'awaiting_signatures': [], // Auto-transitions to 'signed' when all members sign
-      'signed': ['approval'],
+      'awaiting_signatures': [], // Auto-transitions to 'approval' when all tenants + guarantors sign
       'approval': ['active'],
       'active': ['expired'], // Can mark as expired for early termination
       'expired': [] // Cannot change from expired
@@ -584,11 +581,9 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
       if (currentStatus === 'pending') {
         errorMessage += ' Tenancy must be marked as awaiting signatures first.';
       } else if (currentStatus === 'awaiting_signatures') {
-        errorMessage += ' Status will automatically change to signed when all members sign their agreements.';
-      } else if (currentStatus === 'signed') {
-        errorMessage += ' Tenancy must move to approval status first.';
+        errorMessage += ' Status will automatically change to approval when all tenants and guarantors have signed.';
       } else if (currentStatus === 'approval') {
-        errorMessage += ' Tenancy can only be activated from approval status once all guarantor agreements are signed.';
+        errorMessage += ' Tenancy can only be activated from approval status.';
       } else if (currentStatus === 'active' || currentStatus === 'expired') {
         errorMessage += ' Status cannot be changed once tenancy is active or expired.';
       }
@@ -669,27 +664,12 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
     }
   }
 
-  // If tenancy is moving to approval status
+  // If tenancy is moving to approval status (e.g. manually by admin)
   if (isMovingToApproval) {
     try {
       // Generate payment schedules
-      const paymentResult = await generatePaymentSchedulesForTenancy(db, id, agencyId);
+      const paymentResult = await generatePaymentSchedulesForTenancy(id, agencyId);
       console.log(`Generated payment schedules for tenancy ${id}:`, paymentResult);
-
-      // Create guarantor agreements and send emails (async, don't block response)
-      createGuarantorAgreements(id, agencyId)
-        .then(async (createdAgreements) => {
-          console.log(`Created ${createdAgreements.length} guarantor agreement(s) for tenancy ${id}`);
-
-          // Send emails to guarantors
-          if (createdAgreements.length > 0) {
-            await sendGuarantorAgreementEmails(createdAgreements, id, agencyId);
-            console.log(`Sent ${createdAgreements.length} guarantor email(s) for tenancy ${id}`);
-          }
-        })
-        .catch(error => {
-          console.error('Error creating guarantor agreements:', error);
-        });
     } catch (error) {
       console.error('Error in approval process:', error);
       // Don't fail the entire request, but log the error

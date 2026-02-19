@@ -11,6 +11,7 @@ import { KeyTracking } from '@/components/admin/tenancy-detail/KeyTracking';
 import PaymentScheduleGrid from '@/components/shared/PaymentScheduleGrid';
 import { PersonalDocuments } from '@/components/admin/tenancy-detail/PersonalDocuments';
 import { TenancyOverview } from '@/components/admin/tenancy-detail/TenancyOverview';
+import { SigningProgress } from '@/components/admin/tenancy-detail/SigningProgress';
 import { RecordPaymentModal, CreateManualPaymentModal, EditPaymentScheduleModal, EditSinglePaymentModal } from '@/components/admin/tenancy-detail/PaymentModals';
 import { SignedAgreementModal } from '@/components/admin/tenancy-detail/SignedAgreementModal';
 import { PreviewAgreementModal } from '@/components/admin/tenancy-detail/PreviewAgreementModal';
@@ -42,7 +43,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
   const [tenancyFormData, setTenancyFormData] = useState({
     start_date: '',
     end_date: '' as string | null,
-    status: 'pending' as 'pending' | 'awaiting_signatures' | 'signed' | 'approval' | 'active' | 'expired',
+    status: 'pending' as 'pending' | 'awaiting_signatures' | 'approval' | 'active' | 'expired',
     auto_generate_payments: true,
   });
 
@@ -270,9 +271,9 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
     }
   }, [selectedMember]);
 
-  // Fetch guarantor agreements when tenancy is in approval or any post-active status
+  // Fetch guarantor agreements when tenancy is awaiting signatures or later
   useEffect(() => {
-    if (tenancy && ['approval', 'active', 'expired'].includes(tenancy.status)) {
+    if (tenancy && ['awaiting_signatures', 'approval', 'active', 'expired'].includes(tenancy.status)) {
       fetchGuarantorAgreements();
     }
   }, [tenancy?.status]);
@@ -1069,6 +1070,16 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
         onDelete={handleDelete}
         onOpenCreateRollingModal={openCreateRollingModal}
       />
+
+      {/* Signing Progress - visible during awaiting_signatures */}
+      {tenancy.status === 'awaiting_signatures' && tenancy.members && tenancy.members.length > 0 && (
+        <SigningProgress
+          tenancy={tenancy}
+          guarantorAgreements={guarantorAgreements}
+          onCopyGuarantorLink={handleCopyGuarantorLink}
+          onRegenerateGuarantorToken={handleRegenerateGuarantorToken}
+        />
+      )}
 
       {/* Tenant Tabs */}
       {tenancy.members && tenancy.members.length > 0 && (

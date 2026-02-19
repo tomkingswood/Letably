@@ -179,7 +179,7 @@ async function getRoomOccupancy(propertyId, today, includeNextTenant, agencyId) 
 
   if (includeNextTenant) {
     // CTE for next tenant (earliest future tenant per bedroom)
-    // Include pending, signed, awaiting_signatures, and active tenancies that start in the future
+    // Include pending, awaiting_signatures, and active tenancies that start in the future
     qb.withCTE('next_tenant', `
       SELECT
         tm.id as next_member_id,
@@ -193,7 +193,7 @@ async function getRoomOccupancy(propertyId, today, includeNextTenant, agencyId) 
         ROW_NUMBER() OVER (PARTITION BY tm.bedroom_id ORDER BY t.start_date ASC) as rn
       FROM tenancy_members tm
       INNER JOIN tenancies t ON tm.tenancy_id = t.id
-      WHERE t.status IN ('active', 'signed', 'awaiting_signatures', 'pending') AND t.start_date > ?
+      WHERE t.status IN ('active', 'awaiting_signatures', 'pending') AND t.start_date > ?
     `, [today]);
   }
 
@@ -281,7 +281,7 @@ async function getNextWholeHouseTenancy(propertyId, today, agencyId) {
     .from('tenancies', 't')
     .join('tenancy_members', 'tm', 't.id = tm.tenancy_id', 'INNER')
     .where('t.property_id = ?', propertyId)
-    .where("t.status IN ('active', 'signed', 'awaiting_signatures', 'pending')")
+    .where("t.status IN ('active', 'awaiting_signatures', 'pending')")
     .where("t.tenancy_type = 'whole_house'")
     .where('t.start_date > ?', today)
     .groupBy('t.id')

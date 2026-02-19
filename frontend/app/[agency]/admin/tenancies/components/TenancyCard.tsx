@@ -5,7 +5,7 @@ import { getStatusLabel } from '@/lib/statusBadges';
 
 // Status group definitions
 const STATUS_GROUPS = {
-  workflow: ['pending', 'awaiting_signatures', 'signed', 'approval'],
+  workflow: ['pending', 'awaiting_signatures', 'approval'],
   active: ['active'],
   expired: ['expired']
 };

@@ -6,6 +6,7 @@ import { applications as applicationsApi } from '@/lib/api';
 import { Application, getErrorMessage } from '@/lib/types';
 import { getStatusBadge, getStatusLabel } from '@/lib/statusBadges';
 import { useAgency } from '@/lib/agency-context';
+import ApplicationDetailView from '../applications/ApplicationDetailView';
 import { SectionProps } from './index';
 
 export default function ApplicationsSection({ onNavigate, action, itemId, onBack }: SectionProps) {
@@ -19,18 +20,12 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
   const isCreateMode = action === 'new';
   const isViewMode = action === 'view' && !!itemId;
 
-  // Redirect to standalone pages for create/view (complex pages with modals and workflows)
+  // Redirect to standalone page for create (has its own complex form)
   useEffect(() => {
     if (isCreateMode) {
       router.push(`/${agencySlug}/admin/applications/create`);
     }
   }, [isCreateMode, agencySlug, router]);
-
-  useEffect(() => {
-    if (isViewMode && itemId) {
-      router.push(`/${agencySlug}/admin/applications/${itemId}`);
-    }
-  }, [isViewMode, itemId, agencySlug, router]);
 
   useEffect(() => {
     fetchData();
@@ -46,6 +41,16 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
       setLoading(false);
     }
   };
+
+  // View mode - render application detail inline
+  if (isViewMode) {
+    return (
+      <ApplicationDetailView
+        id={itemId}
+        onBack={() => onNavigate?.('applications')}
+      />
+    );
+  }
 
   const filteredApplications = applications.filter(app => {
     const searchLower = searchTerm.toLowerCase();
@@ -72,8 +77,8 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     );
   }
 
-  // Show loading while redirecting to create/view pages
-  if (isCreateMode || isViewMode) {
+  // Show loading while redirecting to create page
+  if (isCreateMode) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

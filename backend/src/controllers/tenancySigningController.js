@@ -1,5 +1,7 @@
 const db = require('../db');
 const { generateAgreement, generateAgreementHTML, saveSignedDocument } = require('../services/agreementService');
+const { generatePaymentSchedulesForTenancy } = require('../services/paymentService');
+const { createGuarantorAgreementForMember, sendGuarantorAgreementEmails, checkTenancySigningComplete } = require('../services/guarantorService');
 const { validatePaymentOption, validateSignature } = require('../validators/tenancyValidator');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -144,26 +146,34 @@ exports.signAgreement = asyncHandler(async (req, res) => {
       signatureData: signature_data,
       signedHtml: agreementHTML,
       ipAddress: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
-      userAgent: req.headers['user-agent']
+      userAgent: req.headers['user-agent'],
+      agencyId
     }, client, agencyId);
-
-    // Check if all members have signed
-    const unsignedMembersResult = await client.query(`
-      SELECT COUNT(*) as count
-      FROM tenancy_members
-      WHERE tenancy_id = $1 AND (is_signed = false OR is_signed IS NULL)
-    `, [tenancyId]);
-
-    // If all signed, update tenancy status to 'signed'
-    if (parseInt(unsignedMembersResult.rows[0].count) === 0) {
-      await client.query(`
-        UPDATE tenancies
-        SET status = 'signed',
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1
-      `, [tenancyId]);
-    }
   }, agencyId);
+
+  // After transaction: create guarantor agreement for this member if needed, then check overall completion
+  try {
+    const agreement = await createGuarantorAgreementForMember(tenancyId, memberId, agencyId);
+    if (agreement) {
+      await sendGuarantorAgreementEmails([agreement], tenancyId, agencyId);
+      console.log(`Tenant signed: Created and sent guarantor agreement for member ${memberId} in tenancy ${tenancyId}`);
+    }
+
+    // Check if all tenants + all guarantors have signed
+    const allComplete = await checkTenancySigningComplete(tenancyId, agencyId);
+    if (allComplete) {
+      await db.query(`
+        UPDATE tenancies SET status = 'approval', updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND agency_id = $2
+      `, [tenancyId, agencyId], agencyId);
+
+      const paymentResult = await generatePaymentSchedulesForTenancy(tenancyId, agencyId);
+      console.log(`Auto-approval: All tenants + guarantors signed. Generated payment schedules for tenancy ${tenancyId}:`, paymentResult);
+    }
+  } catch (error) {
+    console.error('Error in post-signing process:', error);
+    // Don't fail the signing response, just log the error
+  }
 
   // Get updated member data
   // Defense-in-depth: explicit agency_id filtering
@@ -214,10 +224,10 @@ exports.revertMemberSignature = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'This tenant has not signed the agreement yet' });
   }
 
-  // Only allow reverting signatures when tenancy is in 'signed' status
+  // Only allow reverting signatures when tenancy is in 'awaiting_signatures' status
   // Once moved to 'approval' or 'active', signatures are locked
-  if (member.tenancy_status !== 'signed') {
-    return res.status(400).json({ error: `Cannot revert signature after tenancy has moved to '${member.tenancy_status}' status. Signatures can only be reverted during 'signed' status.` });
+  if (member.tenancy_status !== 'awaiting_signatures') {
+    return res.status(400).json({ error: `Cannot revert signature after tenancy has moved to '${member.tenancy_status}' status. Signatures can only be reverted before approval.` });
   }
 
   // Revert signature in a transaction
@@ -234,22 +244,16 @@ exports.revertMemberSignature = asyncHandler(async (req, res) => {
       WHERE id = $1 AND agency_id = $2
     `, [memberId, agencyId]);
 
-    // If tenancy status is 'signed', change it back to 'awaiting_signatures'
-    // because now not all members have signed
-    // Defense-in-depth: explicit agency_id filtering
-    if (member.tenancy_status === 'signed') {
-      await client.query(`
-        UPDATE tenancies
-        SET status = 'awaiting_signatures',
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND agency_id = $2
-      `, [tenancyId, agencyId]);
-    }
+    // Delete guarantor agreement for THIS member only
+    await client.query(`
+      DELETE FROM guarantor_agreements
+      WHERE tenancy_member_id = $1 AND agency_id = $2
+    `, [memberId, agencyId]);
   }, agencyId);
 
   res.json({
     message: 'Signature has been reverted. This tenant must sign the agreement again.',
-    tenancy_status: member.tenancy_status === 'signed' ? 'awaiting_signatures' : member.tenancy_status
+    tenancy_status: 'awaiting_signatures'
   });
 }, 'revert signature');
 

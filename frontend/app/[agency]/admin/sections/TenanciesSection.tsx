@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAgency } from '@/lib/agency-context';
 import { tenancies as tenanciesApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/types';
@@ -39,6 +39,15 @@ export default function TenanciesSection({ onNavigate, action, itemId, onBack }:
   } = useTenancyFilters();
 
   const isViewMode = action === 'view' && !!itemId;
+
+  // Refresh list data when navigating back from detail view
+  const wasViewMode = useRef(false);
+  useEffect(() => {
+    if (wasViewMode.current && !isViewMode) {
+      refreshData();
+    }
+    wasViewMode.current = isViewMode;
+  }, [isViewMode]);
 
   const handleDeleteTenancy = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();

@@ -21,6 +21,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Uploaded/encrypted documents
+secure-documents/
+
 # Logs
 *.log
 npm-debug.log*

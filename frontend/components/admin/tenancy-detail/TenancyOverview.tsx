@@ -11,7 +11,7 @@ interface TenancyOverviewProps {
   tenancyFormData: {
     start_date: string;
     end_date: string | null;
-    status: 'pending' | 'awaiting_signatures' | 'signed' | 'approval' | 'active' | 'expired';
+    status: 'pending' | 'awaiting_signatures' | 'approval' | 'active' | 'expired';
     auto_generate_payments: boolean;
   };
   canMarkAsExpired: boolean;
@@ -23,7 +23,7 @@ interface TenancyOverviewProps {
   onFormDataChange: (data: {
     start_date: string;
     end_date: string | null;
-    status: 'pending' | 'awaiting_signatures' | 'signed' | 'approval' | 'active' | 'expired';
+    status: 'pending' | 'awaiting_signatures' | 'approval' | 'active' | 'expired';
     auto_generate_payments: boolean;
   }) => void;
   onMarkAsAwaitingSignatures: () => void;
@@ -143,13 +143,10 @@ export function TenancyOverview({
                 {tenancy?.status === 'pending' && (
                   <option value="awaiting_signatures">Awaiting Signatures</option>
                 )}
-                {tenancy?.status === 'signed' && (
-                  <option value="active">Active</option>
-                )}
 
                 {/* Info about restricted transitions */}
                 {tenancy?.status === 'awaiting_signatures' && (
-                  <option disabled>Signed (auto when all members sign)</option>
+                  <option disabled>Approval (auto when all tenants + guarantors sign)</option>
                 )}
                 {(tenancy?.status === 'active' || tenancy?.status === 'expired') && (
                   <option disabled>Status cannot be changed</option>
@@ -256,17 +253,7 @@ export function TenancyOverview({
                 Edit End Date
               </button>
             )}
-            {tenancy.status === 'signed' && (
-              <button
-                onClick={() => onUpdateTenancyStatus('approval')}
-                className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-              >
-                Move to Approval
-              </button>
-            )}
             {tenancy.status === 'approval' && (
-              guarantorAgreements.length === 0 || guarantorAgreements.every(g => g.is_signed)
-            ) && (
               <button
                 onClick={onMarkAsActive}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"

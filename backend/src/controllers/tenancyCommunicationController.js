@@ -191,7 +191,7 @@ exports.getMyThread = asyncHandler(async (req, res) => {
     FROM tenancies t
     JOIN tenancy_members tm ON t.id = tm.tenancy_id
     JOIN properties p ON t.property_id = p.id
-    WHERE tm.user_id = $1 AND t.status IN ('active', 'signed', 'awaiting_signatures')
+    WHERE tm.user_id = $1 AND t.status IN ('active', 'awaiting_signatures')
     ORDER BY t.created_at DESC
     LIMIT 1
   `, [userId], agencyId);
@@ -284,7 +284,7 @@ exports.sendMessage = async (req, res) => {
       SELECT t.id
       FROM tenancies t
       JOIN tenancy_members tm ON t.id = tm.tenancy_id
-      WHERE tm.user_id = $1 AND t.status IN ('active', 'signed', 'awaiting_signatures')
+      WHERE tm.user_id = $1 AND t.status IN ('active', 'awaiting_signatures')
       ORDER BY t.created_at DESC
       LIMIT 1
     `, [userId], agencyId);
@@ -582,7 +582,7 @@ exports.getLandlordTenancies = asyncHandler(async (req, res) => {
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
     JOIN landlords l ON p.landlord_id = l.id
-    WHERE LOWER(l.email) = LOWER($1) AND t.status IN ('active', 'signed', 'awaiting_signatures') AND t.agency_id = $2
+    WHERE LOWER(l.email) = LOWER($1) AND t.status IN ('active', 'awaiting_signatures') AND t.agency_id = $2
     ORDER BY last_message_at DESC NULLS LAST, t.created_at DESC
   `, [userEmail, agencyId], agencyId);
 

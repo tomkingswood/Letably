@@ -9,7 +9,7 @@ const db = require('../db');
  * Status groups for filtering
  */
 const STATUS_GROUPS = {
-  WORKFLOW: ['pending', 'awaiting_signatures', 'signed', 'approval'],
+  WORKFLOW: ['pending', 'awaiting_signatures', 'approval'],
   ACTIVE: ['active'],
   EXPIRED: ['expired']
 };

@@ -15,8 +15,6 @@ export type StatusType =
   | 'property'
   | 'userRole'
   | 'applicantType'
-  | 'guarantor'
-  | 'agreement'
   | 'maintenance';
 
 interface StatusConfig {
@@ -108,10 +106,6 @@ const STATUS_CONFIGS: Record<StatusType, Record<string, StatusConfig>> = {
     awaiting_signatures: {
       badge: 'bg-blue-800 text-white',
       label: 'Awaiting Signatures'
-    },
-    signed: {
-      badge: 'bg-blue-800 text-white',
-      label: 'Signed'
     },
     approval: {
       badge: 'bg-blue-800 text-white',
@@ -238,32 +232,6 @@ const STATUS_CONFIGS: Record<StatusType, Record<string, StatusConfig>> = {
     professional: {
       badge: 'bg-blue-800 text-white',
       label: 'Professional'
-    },
-  },
-
-  guarantor: {
-    signed: {
-      badge: 'bg-blue-800 text-white',
-      label: 'Signed'
-    },
-    pending: {
-      badge: 'bg-blue-800 text-white',
-      label: 'Pending'
-    },
-  },
-
-  agreement: {
-    signed: {
-      badge: 'bg-blue-800 text-white',
-      label: 'Signed'
-    },
-    pending: {
-      badge: 'bg-blue-800 text-white',
-      label: 'Pending'
-    },
-    required: {
-      badge: 'bg-red-700 text-white',
-      label: 'Required'
     },
   },
 
