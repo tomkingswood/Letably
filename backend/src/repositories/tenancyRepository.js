@@ -4,6 +4,7 @@
  */
 
 const db = require('../db');
+const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 /**
  * Status groups for filtering
@@ -359,7 +360,7 @@ async function getSiteSettings(agencyId) {
 async function getBaseUrl(agencyId) {
   try {
     const settings = await getSiteSettings(agencyId);
-    return settings.base_url || process.env.FRONTEND_URL || 'http://localhost:3000';
+    return settings.base_url || getFrontendBaseUrl();
   } catch (error) {
     throw error;
   }
@@ -465,7 +466,6 @@ async function revertMemberSignature(memberId, agencyId) {
 }
 
 module.exports = {
-  STATUS_GROUPS,
   // Tenancy queries
   getTenancyWithProperty,
   getTenancyWithPropertyAndLandlord,

@@ -5,33 +5,42 @@ import { Tenancy } from '@/lib/types';
 import Input from '@/components/ui/Input';
 import { getStatusBadge, getStatusLabel } from '@/lib/statusBadges';
 
-interface TenancyOverviewProps {
-  tenancy: Tenancy;
-  editingTenancy: boolean;
-  tenancyFormData: {
-    start_date: string;
-    end_date: string | null;
-    status: 'pending' | 'awaiting_signatures' | 'approval' | 'active' | 'expired';
-    auto_generate_payments: boolean;
-  };
-  canMarkAsExpired: boolean;
-  deleting: boolean;
-  guarantorAgreements: { is_signed: boolean }[];
-  onEditTenancy: () => void;
-  onUpdateTenancy: (e: React.FormEvent) => void;
-  onCancelEdit: () => void;
-  onFormDataChange: (data: {
-    start_date: string;
-    end_date: string | null;
-    status: 'pending' | 'awaiting_signatures' | 'approval' | 'active' | 'expired';
-    auto_generate_payments: boolean;
-  }) => void;
+type TenancyFormData = {
+  start_date: string;
+  end_date: string | null;
+  status: 'pending' | 'awaiting_signatures' | 'approval' | 'active' | 'expired';
+  auto_generate_payments: boolean;
+};
+
+export interface TenancyEditHandlers {
+  onEdit: () => void;
+  onUpdate: (e: React.FormEvent) => void;
+  onCancel: () => void;
+  onFormDataChange: (data: TenancyFormData) => void;
+}
+
+export interface StatusHandlers {
   onMarkAsAwaitingSignatures: () => void;
   onMarkAsActive: () => void;
   onShowExpireModal: () => void;
-  onUpdateTenancyStatus: (newStatus: 'approval' | 'active' | 'awaiting_signatures') => void;
+  onUpdateStatus: (newStatus: 'approval' | 'active' | 'awaiting_signatures') => void;
+}
+
+export interface LifecycleHandlers {
   onDelete: () => void;
   onOpenCreateRollingModal: () => void;
+}
+
+interface TenancyOverviewProps {
+  tenancy: Tenancy;
+  editingTenancy: boolean;
+  tenancyFormData: TenancyFormData;
+  canMarkAsExpired: boolean;
+  deleting: boolean;
+  guarantorAgreements: { is_signed: boolean }[];
+  tenancyEditHandlers: TenancyEditHandlers;
+  statusHandlers: StatusHandlers;
+  lifecycleHandlers: LifecycleHandlers;
 }
 
 export function TenancyOverview({
@@ -41,16 +50,22 @@ export function TenancyOverview({
   canMarkAsExpired,
   deleting,
   guarantorAgreements,
-  onEditTenancy,
-  onUpdateTenancy,
-  onCancelEdit,
-  onFormDataChange,
-  onMarkAsAwaitingSignatures,
-  onMarkAsActive,
-  onShowExpireModal,
-  onUpdateTenancyStatus,
-  onDelete,
-  onOpenCreateRollingModal,
+  tenancyEditHandlers: {
+    onEdit: onEditTenancy,
+    onUpdate: onUpdateTenancy,
+    onCancel: onCancelEdit,
+    onFormDataChange,
+  },
+  statusHandlers: {
+    onMarkAsAwaitingSignatures,
+    onMarkAsActive,
+    onShowExpireModal,
+    onUpdateStatus: onUpdateTenancyStatus,
+  },
+  lifecycleHandlers: {
+    onDelete,
+    onOpenCreateRollingModal,
+  },
 }: TenancyOverviewProps) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">

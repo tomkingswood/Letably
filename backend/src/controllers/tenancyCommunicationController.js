@@ -6,6 +6,7 @@ const { createEmailTemplate, createButton, createInfoBox, escapeHtml } = require
 const { getAgencyBranding } = require('../services/brandingService');
 const asyncHandler = require('../utils/asyncHandler');
 const handleError = require('../utils/handleError');
+const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 /**
  * Send notifications for new tenancy communication messages
@@ -136,7 +137,7 @@ async function sendCommunicationNotifications(tenancyId, actingUser, messageCont
     }
 
     // Send emails
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = getFrontendBaseUrl();
     const slug = req.agency?.slug || '';
 
     for (const recipient of recipients) {

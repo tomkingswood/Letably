@@ -137,23 +137,13 @@ export default function CreateApplicationPage() {
               <p className="text-lg font-semibold text-gray-900">#{successData.applicationId}</p>
             </div>
 
-            <div className="flex gap-3">
-              <Button
-                onClick={() => router.push(`/${agencySlug}/admin/applications/${successData.applicationId}`)}
-                size="lg"
-                className="flex-1"
-              >
-                View Application
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => router.push(`/${agencySlug}/admin?section=applications`)}
-                size="lg"
-                className="flex-1"
-              >
-                Back to List
-              </Button>
-            </div>
+            <Button
+              onClick={() => router.push(`/${agencySlug}/admin?section=applications`)}
+              size="lg"
+              className="w-full"
+            >
+              Back to List
+            </Button>
           </div>
         </div>
       )}

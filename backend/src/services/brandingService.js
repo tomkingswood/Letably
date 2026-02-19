@@ -5,6 +5,7 @@
  */
 
 const db = require('../db');
+const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 /**
  * Get agency branding for emails and documents
@@ -38,7 +39,7 @@ async function getAgencyBranding(agencyId) {
     }
 
     // Build frontend URL for logo
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = getFrontendBaseUrl();
 
     return {
       companyName: settings.company_name || agency.name || 'Letably',

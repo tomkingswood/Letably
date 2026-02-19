@@ -91,7 +91,7 @@ export default function Header() {
                       {user.first_name}
                     </span>
                     <Link
-                      href="/account"
+                      href={`/${getEffectiveAgencySlug()}/account`}
                       className="text-primary hover:text-primary-dark whitespace-nowrap"
                     >
                       <span className="hidden sm:inline">Manage Account</span>

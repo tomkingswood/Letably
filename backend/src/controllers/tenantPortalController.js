@@ -328,7 +328,7 @@ exports.getMyStatus = asyncHandler(async (req, res) => {
   let priority = null;
 
   if (pendingApplication) {
-    redirectTo = `/applications/${pendingApplication.id}`;
+    redirectTo = `/${req.agency?.slug || ''}/applications/${pendingApplication.id}`;
     priority = 'pending_application';
   } else if (pendingAgreement) {
     redirectTo = `/${req.agency?.slug || ''}/agreements/sign/${pendingAgreement.tenancy_id}/${pendingAgreement.member_id}`;

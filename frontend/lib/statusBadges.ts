@@ -294,16 +294,3 @@ export function getStatusConfig(type: StatusType, status: string): StatusConfig 
   };
 }
 
-/**
- * Render a status badge component props
- * @param type - Type of entity
- * @param status - Status value
- * @returns Props object for rendering a badge
- */
-export function getStatusBadgeProps(type: StatusType, status: string) {
-  const config = getStatusConfig(type, status);
-  return {
-    className: `inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.badge}`,
-    children: config.label,
-  };
-}

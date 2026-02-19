@@ -6,6 +6,25 @@ import { useAgency } from '@/lib/agency-context';
 import { TenancyMember, Tenancy, Bedroom, GuarantorAgreement } from '@/lib/types';
 import Input from '@/components/ui/Input';
 
+export interface MemberEditHandlers {
+  onEdit: () => void;
+  onUpdate: (e: React.FormEvent) => void;
+  onCancel: () => void;
+  onFormDataChange: (data: { bedroom_id: number | null; rent_pppw: number; deposit_amount: number }) => void;
+}
+
+export interface AgreementHandlers {
+  onOpenSigned: (member: TenancyMember) => void;
+  onOpenPreview: (member: TenancyMember) => void;
+  onRevertSignature: (member: TenancyMember) => void;
+}
+
+export interface GuarantorHandlers {
+  onOpenSigned?: (agreement: GuarantorAgreement) => void;
+  onCopyLink?: (token: string, guarantorName: string) => void;
+  onRegenerateToken?: (agreementId: number, guarantorName: string) => void;
+}
+
 interface TenantInfoProps {
   tenancy: Tenancy;
   selectedMember: TenancyMember;
@@ -17,16 +36,9 @@ interface TenantInfoProps {
   };
   rooms: Bedroom[];
   guarantorAgreement?: GuarantorAgreement | null;
-  onEditMember: () => void;
-  onUpdateMember: (e: React.FormEvent) => void;
-  onCancelEdit: () => void;
-  onFormDataChange: (data: { bedroom_id: number | null; rent_pppw: number; deposit_amount: number }) => void;
-  onOpenSignedAgreement: (member: TenancyMember) => void;
-  onOpenPreviewAgreement: (member: TenancyMember) => void;
-  onRevertSignature: (member: TenancyMember) => void;
-  onOpenSignedGuarantorAgreement?: (agreement: GuarantorAgreement) => void;
-  onCopyGuarantorLink?: (token: string, guarantorName: string) => void;
-  onRegenerateGuarantorToken?: (agreementId: number, guarantorName: string) => void;
+  memberEditHandlers: MemberEditHandlers;
+  agreementHandlers: AgreementHandlers;
+  guarantorHandlers: GuarantorHandlers;
 }
 
 export function TenantInfo({
@@ -36,16 +48,22 @@ export function TenantInfo({
   memberFormData,
   rooms,
   guarantorAgreement,
-  onEditMember,
-  onUpdateMember,
-  onCancelEdit,
-  onFormDataChange,
-  onOpenSignedAgreement,
-  onOpenPreviewAgreement,
-  onRevertSignature,
-  onOpenSignedGuarantorAgreement,
-  onCopyGuarantorLink,
-  onRegenerateGuarantorToken,
+  memberEditHandlers: {
+    onEdit: onEditMember,
+    onUpdate: onUpdateMember,
+    onCancel: onCancelEdit,
+    onFormDataChange,
+  },
+  agreementHandlers: {
+    onOpenSigned: onOpenSignedAgreement,
+    onOpenPreview: onOpenPreviewAgreement,
+    onRevertSignature,
+  },
+  guarantorHandlers: {
+    onOpenSigned: onOpenSignedGuarantorAgreement,
+    onCopyLink: onCopyGuarantorLink,
+    onRegenerateToken: onRegenerateGuarantorToken,
+  },
 }: TenantInfoProps) {
   const { agencySlug } = useAgency();
   return (

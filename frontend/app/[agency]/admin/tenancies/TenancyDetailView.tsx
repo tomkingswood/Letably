@@ -1059,16 +1059,22 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
         canMarkAsExpired={canMarkAsExpired}
         deleting={deleting}
         guarantorAgreements={guarantorAgreements}
-        onEditTenancy={handleEditTenancy}
-        onUpdateTenancy={handleUpdateTenancy}
-        onCancelEdit={() => setEditingTenancy(false)}
-        onFormDataChange={setTenancyFormData}
-        onMarkAsAwaitingSignatures={handleMarkAsAwaitingSignatures}
-        onMarkAsActive={handleMarkAsActive}
-        onShowExpireModal={() => setShowExpireModal(true)}
-        onUpdateTenancyStatus={handleUpdateTenancyStatus}
-        onDelete={handleDelete}
-        onOpenCreateRollingModal={openCreateRollingModal}
+        tenancyEditHandlers={{
+          onEdit: handleEditTenancy,
+          onUpdate: handleUpdateTenancy,
+          onCancel: () => setEditingTenancy(false),
+          onFormDataChange: setTenancyFormData,
+        }}
+        statusHandlers={{
+          onMarkAsAwaitingSignatures: handleMarkAsAwaitingSignatures,
+          onMarkAsActive: handleMarkAsActive,
+          onShowExpireModal: () => setShowExpireModal(true),
+          onUpdateStatus: handleUpdateTenancyStatus,
+        }}
+        lifecycleHandlers={{
+          onDelete: handleDelete,
+          onOpenCreateRollingModal: openCreateRollingModal,
+        }}
       />
 
       {/* Signing Progress - visible during awaiting_signatures */}
@@ -1117,16 +1123,22 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
                 memberFormData={memberFormData}
                 rooms={rooms}
                 guarantorAgreement={guarantorAgreements.find(g => g.tenancy_member_id === selectedMember.id)}
-                onEditMember={handleEditMember}
-                onUpdateMember={handleUpdateMember}
-                onCancelEdit={() => setEditingMember(false)}
-                onFormDataChange={setMemberFormData}
-                onOpenSignedAgreement={openSignedAgreement}
-                onOpenPreviewAgreement={openPreviewAgreement}
-                onRevertSignature={handleRevertMemberSignature}
-                onOpenSignedGuarantorAgreement={openSignedGuarantorAgreement}
-                onCopyGuarantorLink={handleCopyGuarantorLink}
-                onRegenerateGuarantorToken={handleRegenerateGuarantorToken}
+                memberEditHandlers={{
+                  onEdit: handleEditMember,
+                  onUpdate: handleUpdateMember,
+                  onCancel: () => setEditingMember(false),
+                  onFormDataChange: setMemberFormData,
+                }}
+                agreementHandlers={{
+                  onOpenSigned: openSignedAgreement,
+                  onOpenPreview: openPreviewAgreement,
+                  onRevertSignature: handleRevertMemberSignature,
+                }}
+                guarantorHandlers={{
+                  onOpenSigned: openSignedGuarantorAgreement,
+                  onCopyLink: handleCopyGuarantorLink,
+                  onRegenerateToken: handleRegenerateGuarantorToken,
+                }}
               />
 
               {/* Payment Schedules - Visible when tenancy is in approval or any post-active status */}

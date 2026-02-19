@@ -3,6 +3,7 @@ const { queueEmail } = require('./emailService');
 const { createEmailTemplate, createButton, COLORS, escapeHtml } = require('../utils/emailTemplates');
 const { formatDate } = require('../utils/dateFormatter');
 const { getAgencyBranding } = require('./brandingService');
+const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 /**
  * Get reminder recipient email from settings
@@ -196,7 +197,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
   const renderReminder = (reminder) => {
     let propertyLink = '';
     if (reminder.reference_type === 'property' && reminder.reference_id) {
-      propertyLink = `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/${agencySlug}/admin?section=properties&action=edit&id=${reminder.reference_id}" style="color: #CF722F; text-decoration: none; font-weight: 600;">View Property →</a>`;
+      propertyLink = `<a href="${getFrontendBaseUrl()}/${agencySlug}/admin?section=properties&action=edit&id=${reminder.reference_id}" style="color: #CF722F; text-decoration: none; font-weight: 600;">View Property →</a>`;
     }
 
     let viewingRequestDetails = '';
@@ -256,7 +257,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
         View and manage all reminders in the admin panel:
       </p>
       ${createButton(
-        `${process.env.FRONTEND_URL || 'http://localhost:3000'}/${agencySlug}/admin?section=reminders`,
+        `${getFrontendBaseUrl()}/${agencySlug}/admin?section=reminders`,
         'Open Admin Panel'
       )}
     </div>
@@ -302,7 +303,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
   }
 
   textParts.push('---');
-  textParts.push(`View all reminders: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/${agencySlug}/admin?section=reminders`);
+  textParts.push(`View all reminders: ${getFrontendBaseUrl()}/${agencySlug}/admin?section=reminders`);
 
   return {
     to: recipientEmail,

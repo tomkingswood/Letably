@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { applications, settings } from '@/lib/api';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useRequireAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/lib/auth-context';
+import { useAgency } from '@/lib/agency-context';
 import { getStatusLabel } from '@/lib/statusBadges';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -18,19 +18,19 @@ interface Application {
 }
 
 export default function MyApplicationsPage() {
-  const router = useRouter();
-  const { user, isLoading: authLoading, isAuthenticated } = useRequireAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { agencySlug } = useAgency();
   const [myApplications, setMyApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [adminEmail, setAdminEmail] = useState<string>('');
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    if (!authLoading && user) {
       window.scrollTo(0, 0);
       fetchMyApplications();
       fetchSettings();
     }
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, user]);
 
   const fetchMyApplications = async () => {
     try {
@@ -104,7 +104,7 @@ export default function MyApplicationsPage() {
               it will appear here.
             </p>
             <Link
-              href="/properties"
+              href={`/${agencySlug}`}
               className="text-primary hover:text-primary-dark font-semibold"
             >
               Browse Properties
@@ -174,7 +174,7 @@ export default function MyApplicationsPage() {
                 )}
 
                 <Link
-                  href={`/applications/${app.id}`}
+                  href={`/${agencySlug}/applications/${app.id}`}
                   className="inline-block bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                 >
                   {app.status === 'pending' ? 'Complete Application' : 'View Application'}
