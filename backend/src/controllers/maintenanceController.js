@@ -209,7 +209,7 @@ async function sendMaintenanceNotifications(requestId, eventType, actingUser, ex
 
     // Send emails
     const frontendUrl = getFrontendBaseUrl();
-    const slug = req.agency?.slug || '';
+    const slug = branding.agencySlug || '';
 
     for (const recipient of recipients) {
       // Generate role-specific URL

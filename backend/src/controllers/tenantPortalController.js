@@ -327,11 +327,13 @@ exports.getMyStatus = asyncHandler(async (req, res) => {
   let redirectTo = null;
   let priority = null;
 
+  const slugPrefix = req.agency?.slug ? `/${req.agency.slug}` : '';
+
   if (pendingApplication) {
-    redirectTo = `/${req.agency?.slug || ''}/applications/${pendingApplication.id}`;
+    redirectTo = `${slugPrefix}/applications/${pendingApplication.id}`;
     priority = 'pending_application';
   } else if (pendingAgreement) {
-    redirectTo = `/${req.agency?.slug || ''}/agreements/sign/${pendingAgreement.tenancy_id}/${pendingAgreement.member_id}`;
+    redirectTo = `${slugPrefix}/agreements/sign/${pendingAgreement.tenancy_id}/${pendingAgreement.member_id}`;
     priority = 'pending_agreement';
   }
   // If none of the above, user stays on /tenancy page
