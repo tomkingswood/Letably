@@ -1,44 +1,65 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { applications as applicationsApi } from '@/lib/api';
 import { Application, getErrorMessage } from '@/lib/types';
 import { getStatusBadge, getStatusLabel } from '@/lib/statusBadges';
-import { useAgency } from '@/lib/agency-context';
 import ApplicationDetailView from '../applications/ApplicationDetailView';
 import { SectionProps } from './index';
+import Button from '@/components/ui/Button';
+import UserEmailLookup from '@/components/admin/UserEmailLookup';
+import { MessageAlert } from '@/components/ui/MessageAlert';
+
+interface UserData {
+  userId: number | null;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  isNewUser: boolean;
+}
+
+interface SuccessData {
+  applicationId: number;
+  isNewUser: boolean;
+  userEmail: string;
+  userName: string;
+}
 
 export default function ApplicationsSection({ onNavigate, action, itemId, onBack }: SectionProps) {
-  const router = useRouter();
-  const { agencySlug } = useAgency();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [listMessage, setListMessage] = useState<string | null>(null);
+
+  // Create form state
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [successData, setSuccessData] = useState<SuccessData | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [createFormData, setCreateFormData] = useState({
+    application_type: 'student' as 'student' | 'professional',
+    guarantor_required: true,
+  });
 
   const isCreateMode = action === 'new';
   const isViewMode = action === 'view' && !!itemId;
-
-  // Redirect to standalone page for create (has its own complex form)
-  useEffect(() => {
-    if (isCreateMode) {
-      router.push(`/${agencySlug}/admin/applications/create`);
-    }
-  }, [isCreateMode, agencySlug, router]);
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  // Re-fetch when navigating back from detail view
+  // Re-fetch when navigating back from detail view or create mode
   const wasViewMode = useRef(false);
+  const wasCreateMode = useRef(false);
   useEffect(() => {
-    if (wasViewMode.current && !isViewMode) {
+    if ((wasViewMode.current && !isViewMode) || (wasCreateMode.current && !isCreateMode)) {
       fetchData();
     }
     wasViewMode.current = isViewMode;
-  }, [isViewMode]);
+    wasCreateMode.current = isCreateMode;
+  }, [isViewMode, isCreateMode]);
 
   const fetchData = async () => {
     try {
@@ -51,13 +72,217 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     }
   };
 
+  // Create form handlers
+  const handleCreateFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    setCreateFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const resetCreateForm = () => {
+    setUserData(null);
+    setCreateFormData({ application_type: 'student', guarantor_required: true });
+    setCreateError(null);
+    setSuccessData(null);
+    setCreating(false);
+  };
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    setCreateError(null);
+
+    try {
+      if (!userData || !userData.email) {
+        setCreateError('Please enter a valid email address');
+        setCreating(false);
+        return;
+      }
+
+      if (userData.isNewUser && (!userData.firstName || !userData.lastName)) {
+        setCreateError('Please enter first name and last name for the new user');
+        setCreating(false);
+        return;
+      }
+
+      const data = {
+        user_id: userData.userId,
+        email: userData.email,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        phone: userData.phone || undefined,
+        is_new_user: userData.isNewUser,
+        application_type: createFormData.application_type,
+        guarantor_required: createFormData.guarantor_required,
+      };
+
+      const response = await applicationsApi.create(data);
+
+      setSuccessData({
+        applicationId: response.data.application_id,
+        isNewUser: userData.isNewUser,
+        userEmail: userData.email,
+        userName: `${userData.firstName} ${userData.lastName}`,
+      });
+    } catch (err: unknown) {
+      setCreateError(getErrorMessage(err, 'Failed to create application'));
+      setCreating(false);
+    }
+  };
+
   // View mode - render application detail inline
   if (isViewMode) {
     return (
       <ApplicationDetailView
         id={itemId}
         onBack={() => onNavigate?.('applications')}
+        onDeleted={() => {
+          setListMessage('Application deleted successfully');
+          onNavigate?.('applications');
+        }}
       />
+    );
+  }
+
+  // Create mode - render inline form
+  if (isCreateMode) {
+    return (
+      <div>
+        {/* Success Modal */}
+        {successData && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Created</h2>
+                <p className="text-gray-600 mb-4">
+                  {successData.isNewUser ? (
+                    <>
+                      A new account has been created for <strong>{successData.userName}</strong>. They will receive an email at <strong>{successData.userEmail}</strong> with instructions to set up their password and complete their application.
+                    </>
+                  ) : (
+                    <>
+                      An application has been created for <strong>{successData.userName}</strong>. They will receive an email notification.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-3 mb-6 text-center">
+                <p className="text-sm text-gray-500">Application ID</p>
+                <p className="text-lg font-semibold text-gray-900">#{successData.applicationId}</p>
+              </div>
+
+              <Button
+                onClick={() => {
+                  resetCreateForm();
+                  onNavigate?.('applications');
+                }}
+                size="lg"
+                className="w-full"
+              >
+                Back to List
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Header with Back Button */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Create Application</h2>
+            <p className="text-gray-600">Create a new application for a user</p>
+          </div>
+          <button
+            onClick={() => {
+              resetCreateForm();
+              onNavigate?.('applications');
+            }}
+            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <MessageAlert type="error" message={createError} className="mb-6" />
+
+          <form onSubmit={handleCreateSubmit} className="space-y-6">
+            {/* Tenant Email Lookup */}
+            <UserEmailLookup
+              onUserChange={(data: UserData) => setUserData(data)}
+              phoneRequired={false}
+              label="Tenant"
+              disabled={creating}
+            />
+
+            {/* Application Type */}
+            <div>
+              <label htmlFor="application_type" className="block text-sm font-medium text-gray-700 mb-2">
+                Application Type *
+              </label>
+              <select
+                id="application_type"
+                name="application_type"
+                value={createFormData.application_type}
+                onChange={handleCreateFormChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="student">Student</option>
+                <option value="professional">Professional</option>
+              </select>
+            </div>
+
+            {/* Guarantor Required */}
+            <div className="flex items-start">
+              <input
+                type="checkbox"
+                id="guarantor_required"
+                name="guarantor_required"
+                checked={createFormData.guarantor_required}
+                onChange={handleCreateFormChange}
+                className="mt-1 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <label htmlFor="guarantor_required" className="ml-2 block text-sm text-gray-900">
+                Guarantor Required
+                <span className="block text-xs text-gray-500 mt-1">
+                  If unchecked, guarantor information will not be required in the application
+                </span>
+                <span className="block text-xs text-amber-600 font-medium mt-1">
+                  Warning: This also means no guarantor will be required for the tenancy
+                </span>
+              </label>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+              <p className="text-sm text-blue-900">
+                <strong>Note:</strong> The user will receive an email notification with a link to complete their application.
+                They will be able to fill in all required details including personal information, address history{createFormData.guarantor_required ? ', and guarantor details' : ''}.
+                Property assignment happens when creating the tenancy.
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={creating}
+              fullWidth
+              size="lg"
+            >
+              {creating ? 'Creating...' : 'Create Application'}
+            </Button>
+          </form>
+        </div>
+      </div>
     );
   }
 
@@ -86,17 +311,10 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     );
   }
 
-  // Show loading while redirecting to create page
-  if (isCreateMode) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   return (
     <div>
+      <MessageAlert type="success" message={listMessage} className="mb-6" />
+
       {/* Section Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>

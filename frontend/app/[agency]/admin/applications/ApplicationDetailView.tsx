@@ -9,9 +9,10 @@ import { MessageAlert } from '@/components/ui/MessageAlert';
 interface ApplicationDetailViewProps {
   id: string;
   onBack: () => void;
+  onDeleted?: () => void;
 }
 
-export default function ApplicationDetailView({ id, onBack }: ApplicationDetailViewProps) {
+export default function ApplicationDetailView({ id, onBack, onDeleted }: ApplicationDetailViewProps) {
   const { agencySlug } = useAgency();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<ApplicationFormData | null>(null);
@@ -69,19 +70,16 @@ export default function ApplicationDetailView({ id, onBack }: ApplicationDetailV
     setDeleting(true);
     try {
       await applications.delete(id);
-      setMessage({
-        type: 'success',
-        text: 'Application deleted successfully'
-      });
-      setTimeout(() => {
+      if (onDeleted) {
+        onDeleted();
+      } else {
         onBack();
-      }, 1500);
+      }
     } catch (error: any) {
       setMessage({
         type: 'error',
         text: error.response?.data?.error || 'Failed to delete application'
       });
-    } finally {
       setDeleting(false);
     }
   };

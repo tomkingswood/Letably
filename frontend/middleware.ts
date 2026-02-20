@@ -23,7 +23,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Public routes that don't require agency context
-  const publicRoutes = ['/signup', '/guarantor'];
+  const publicRoutes = ['/signup'];
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
   if (isPublicRoute) {
@@ -87,8 +87,8 @@ export function middleware(request: NextRequest) {
 
   // Reserved paths that are not agency slugs
   const reservedPaths = [
-    'signup', 'guarantor', 'api', '_next', 'static',
-    'applications', 'complaints',
+    'signup', 'api', '_next', 'static',
+    'complaints',
     'cookie-policy', 'forgot-password', 'login',
     'redress-scheme', 'reset-password', 'setup-password',
     'terms-and-conditions', 'robots.txt', 'sitemap.xml',

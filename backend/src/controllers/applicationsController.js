@@ -490,7 +490,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
 
     // If guarantor is required, send email to guarantor
     if (newStatus === 'awaiting_guarantor' && guarantor_email) {
-      const guarantorLink = `${buildPublicUrl(`guarantor/${guarantorToken}`)}`;
+      const guarantorLink = `${buildAgencyUrl(branding.agencySlug, `guarantor/${guarantorToken}`)}`;
 
       const guarantorBodyContent = `
         <h1>Guarantor Form Required</h1>
@@ -763,11 +763,10 @@ exports.regenerateGuarantorToken = asyncHandler(async (req, res) => {
   // Send new email to guarantor
   if (application.guarantor_email) {
     const user = await appRepo.getUserById(application.user_id, agencyId);
-    const guarantorLink = `${buildPublicUrl(`guarantor/${newToken}`)}`;
-
     // Get branding for email
     const branding = await getAgencyBranding(agencyId);
     const brandName = branding.companyName || 'Letably';
+    const guarantorLink = `${buildAgencyUrl(branding.agencySlug, `guarantor/${newToken}`)}`;
 
     const guarantorBodyContent = `
       <h1>New Guarantor Form Link</h1>

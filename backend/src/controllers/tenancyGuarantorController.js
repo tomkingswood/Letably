@@ -1,8 +1,9 @@
 const db = require('../db');
 const { getGuarantorAgreementsByTenancy } = require('../services/guarantorService');
 const { queueEmail } = require('../services/emailService');
-const { getSiteSettings, getBaseUrl } = require('../repositories/tenancyRepository');
+const { getSiteSettings } = require('../repositories/tenancyRepository');
 const { buildGuarantorRegenerationEmail } = require('../utils/tenancyEmailBuilder');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 const asyncHandler = require('../utils/asyncHandler');
 
 /**
@@ -49,11 +50,13 @@ exports.regenerateGuarantorAgreementToken = asyncHandler(async (req, res) => {
       t.start_date as tenancy_start_date,
       t.end_date as tenancy_end_date,
       p.address_line1,
-      p.city
+      p.city,
+      ag.slug as agency_slug
     FROM guarantor_agreements ga
     JOIN tenancy_members tm ON ga.tenancy_member_id = tm.id
     JOIN tenancies t ON tm.tenancy_id = t.id
     JOIN properties p ON t.property_id = p.id
+    JOIN agencies ag ON ga.agency_id = ag.id
     WHERE ga.id = $1 AND tm.tenancy_id = $2 AND ga.agency_id = $3
   `, [agreementId, tenancyId, agencyId], agencyId);
   const agreement = agreementResult.rows[0];
@@ -79,10 +82,9 @@ exports.regenerateGuarantorAgreementToken = asyncHandler(async (req, res) => {
     WHERE id = $2 AND agency_id = $3
   `, [newToken, agreementId, agencyId], agencyId);
 
-  // Get base URL and settings from repository
-  const baseUrl = await getBaseUrl(agencyId);
+  // Get settings and build signing URL
   const settings = await getSiteSettings(agencyId);
-  const signingUrl = `${baseUrl}/guarantor/sign/${newToken}`;
+  const signingUrl = buildAgencyUrl(agreement.agency_slug, `guarantor/sign/${newToken}`);
   const companyName = settings.company_name || 'Letably';
 
   // Build email using email builder
