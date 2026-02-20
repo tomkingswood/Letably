@@ -79,7 +79,7 @@ export default function LandlordTenancyDetailPage({ params }: { params: Promise<
   };
 
   const formatCurrency = (amount: number) => {
-    return `£${amount.toFixed(2)}`;
+    return `£${Number(amount).toFixed(2)}`;
   };
 
   const getStatusColor = (status: string) => {

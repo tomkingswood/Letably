@@ -212,7 +212,7 @@ exports.getMyThread = asyncHandler(async (req, res) => {
       u.first_name,
       u.last_name,
       u.role
-    FROM tenancy_messages tm
+    FROM tenancy_communications tm
     JOIN users u ON tm.user_id = u.id
     WHERE tm.tenancy_id = $1 AND (tm.is_private = false OR tm.is_private IS NULL) AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $4)
     ORDER BY tm.created_at DESC
@@ -229,7 +229,7 @@ exports.getMyThread = asyncHandler(async (req, res) => {
     const placeholders = messageIds.map((_, i) => `$${i + 1}`).join(',');
     const attachmentsResult = await db.query(`
       SELECT tma.* FROM tenancy_message_attachments tma
-      INNER JOIN tenancy_messages tm ON tma.message_id = tm.id
+      INNER JOIN tenancy_communications tm ON tma.message_id = tm.id
       WHERE tma.message_id IN (${placeholders}) AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $${messageIds.length + 1})
     `, [...messageIds, agencyId], agencyId);
     attachments = attachmentsResult.rows;
@@ -246,7 +246,7 @@ exports.getMyThread = asyncHandler(async (req, res) => {
   // Get total count for pagination (only public messages for tenants)
   // Defense-in-depth: explicit agency_id filtering
   const countResult = await db.query(`
-    SELECT COUNT(*) as count FROM tenancy_messages WHERE tenancy_id = $1 AND (is_private = false OR is_private IS NULL) AND tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
+    SELECT COUNT(*) as count FROM tenancy_communications WHERE tenancy_id = $1 AND (is_private = false OR is_private IS NULL) AND tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
   `, [tenancy.id, agencyId], agencyId);
   const totalCount = parseInt(countResult.rows[0].count);
 
@@ -302,7 +302,7 @@ exports.sendMessage = async (req, res) => {
 
     // Insert message
     const insertResult = await db.query(`
-      INSERT INTO tenancy_messages (tenancy_id, user_id, content)
+      INSERT INTO tenancy_communications (tenancy_id, user_id, content)
       VALUES ($1, $2, $3)
       RETURNING *
     `, [tenancy.id, userId, (content || '').trim()], agencyId);
@@ -329,7 +329,7 @@ exports.sendMessage = async (req, res) => {
     // Defense-in-depth: explicit agency_id filtering
     const messageResult = await db.query(`
       SELECT tm.*, u.first_name, u.last_name, u.role
-      FROM tenancy_messages tm
+      FROM tenancy_communications tm
       JOIN users u ON tm.user_id = u.id
       WHERE tm.id = $1 AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
     `, [messageId, agencyId], agencyId);
@@ -401,7 +401,7 @@ exports.getLandlordThread = asyncHandler(async (req, res) => {
       u.first_name,
       u.last_name,
       u.role
-    FROM tenancy_messages tm
+    FROM tenancy_communications tm
     JOIN users u ON tm.user_id = u.id
     WHERE tm.tenancy_id = $1 AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $4)
     ORDER BY tm.created_at DESC
@@ -418,7 +418,7 @@ exports.getLandlordThread = asyncHandler(async (req, res) => {
     const placeholders = messageIds.map((_, i) => `$${i + 1}`).join(',');
     const attachmentsResult = await db.query(`
       SELECT tma.* FROM tenancy_message_attachments tma
-      INNER JOIN tenancy_messages tm ON tma.message_id = tm.id
+      INNER JOIN tenancy_communications tm ON tma.message_id = tm.id
       WHERE tma.message_id IN (${placeholders}) AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $${messageIds.length + 1})
     `, [...messageIds, agencyId], agencyId);
     attachments = attachmentsResult.rows;
@@ -435,7 +435,7 @@ exports.getLandlordThread = asyncHandler(async (req, res) => {
   // Get total count for pagination
   // Defense-in-depth: explicit agency_id filtering
   const countResult = await db.query(`
-    SELECT COUNT(*) as count FROM tenancy_messages WHERE tenancy_id = $1 AND tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
+    SELECT COUNT(*) as count FROM tenancy_communications WHERE tenancy_id = $1 AND tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
   `, [tenancyId, agencyId], agencyId);
   const totalCount = parseInt(countResult.rows[0].count);
 
@@ -498,7 +498,7 @@ exports.sendMessageLandlord = async (req, res) => {
 
     // Insert message with is_private flag
     const insertResult = await db.query(`
-      INSERT INTO tenancy_messages (tenancy_id, user_id, content, is_private)
+      INSERT INTO tenancy_communications (tenancy_id, user_id, content, is_private)
       VALUES ($1, $2, $3, $4)
       RETURNING *
     `, [tenancyId, userId, (content || '').trim(), isPrivate], agencyId);
@@ -525,7 +525,7 @@ exports.sendMessageLandlord = async (req, res) => {
     // Defense-in-depth: explicit agency_id filtering
     const messageResult = await db.query(`
       SELECT tm.*, u.first_name, u.last_name, u.role
-      FROM tenancy_messages tm
+      FROM tenancy_communications tm
       JOIN users u ON tm.user_id = u.id
       WHERE tm.id = $1 AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
     `, [messageId, agencyId], agencyId);
@@ -578,8 +578,8 @@ exports.getLandlordTenancies = asyncHandler(async (req, res) => {
       p.address_line1,
       p.city,
       p.postcode,
-      (SELECT COUNT(*) FROM tenancy_messages WHERE tenancy_id = t.id) as message_count,
-      (SELECT MAX(created_at) FROM tenancy_messages WHERE tenancy_id = t.id) as last_message_at
+      (SELECT COUNT(*) FROM tenancy_communications WHERE tenancy_id = t.id) as message_count,
+      (SELECT MAX(created_at) FROM tenancy_communications WHERE tenancy_id = t.id) as last_message_at
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
     JOIN landlords l ON p.landlord_id = l.id
@@ -653,9 +653,9 @@ exports.getAllTenanciesWithCommunication = asyncHandler(async (req, res) => {
       p.city,
       p.postcode,
       l.name as landlord_name,
-      (SELECT COUNT(*) FROM tenancy_messages WHERE tenancy_id = t.id) as message_count,
-      (SELECT MAX(created_at) FROM tenancy_messages WHERE tenancy_id = t.id) as last_message_at,
-      (SELECT content FROM tenancy_messages WHERE tenancy_id = t.id ORDER BY created_at DESC LIMIT 1) as last_message_preview
+      (SELECT COUNT(*) FROM tenancy_communications WHERE tenancy_id = t.id) as message_count,
+      (SELECT MAX(created_at) FROM tenancy_communications WHERE tenancy_id = t.id) as last_message_at,
+      (SELECT content FROM tenancy_communications WHERE tenancy_id = t.id ORDER BY created_at DESC LIMIT 1) as last_message_preview
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
     LEFT JOIN landlords l ON p.landlord_id = l.id
@@ -741,7 +741,7 @@ exports.getAdminThread = asyncHandler(async (req, res) => {
       u.first_name,
       u.last_name,
       u.role
-    FROM tenancy_messages tm
+    FROM tenancy_communications tm
     JOIN users u ON tm.user_id = u.id
     WHERE tm.tenancy_id = $1 AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $4)
     ORDER BY tm.created_at DESC
@@ -758,7 +758,7 @@ exports.getAdminThread = asyncHandler(async (req, res) => {
     const placeholders = messageIds.map((_, i) => `$${i + 1}`).join(',');
     const attachmentsResult = await db.query(`
       SELECT tma.* FROM tenancy_message_attachments tma
-      INNER JOIN tenancy_messages tm ON tma.message_id = tm.id
+      INNER JOIN tenancy_communications tm ON tma.message_id = tm.id
       WHERE tma.message_id IN (${placeholders}) AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $${messageIds.length + 1})
     `, [...messageIds, agencyId], agencyId);
     attachments = attachmentsResult.rows;
@@ -775,7 +775,7 @@ exports.getAdminThread = asyncHandler(async (req, res) => {
   // Get total count for pagination
   // Defense-in-depth: explicit agency_id filtering
   const countResult = await db.query(`
-    SELECT COUNT(*) as count FROM tenancy_messages WHERE tenancy_id = $1 AND tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
+    SELECT COUNT(*) as count FROM tenancy_communications WHERE tenancy_id = $1 AND tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
   `, [tenancyId, agencyId], agencyId);
   const totalCount = parseInt(countResult.rows[0].count);
 
@@ -842,7 +842,7 @@ exports.sendMessageAdmin = async (req, res) => {
 
     // Insert message with is_private flag
     const insertResult = await db.query(`
-      INSERT INTO tenancy_messages (tenancy_id, user_id, content, is_private)
+      INSERT INTO tenancy_communications (tenancy_id, user_id, content, is_private)
       VALUES ($1, $2, $3, $4)
       RETURNING *
     `, [tenancyId, userId, (content || '').trim(), isPrivate], agencyId);
@@ -869,7 +869,7 @@ exports.sendMessageAdmin = async (req, res) => {
     // Defense-in-depth: explicit agency_id filtering
     const messageResult = await db.query(`
       SELECT tm.*, u.first_name, u.last_name, u.role
-      FROM tenancy_messages tm
+      FROM tenancy_communications tm
       JOIN users u ON tm.user_id = u.id
       WHERE tm.id = $1 AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
     `, [messageId, agencyId], agencyId);
@@ -913,7 +913,7 @@ exports.deleteMessage = asyncHandler(async (req, res) => {
   // Get message to check it exists and get file paths
   // Defense-in-depth: explicit agency_id filtering
   const messageResult = await db.query(`
-    SELECT tm.* FROM tenancy_messages tm
+    SELECT tm.* FROM tenancy_communications tm
     WHERE tm.id = $1 AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
   `, [messageId, agencyId], agencyId);
   const message = messageResult.rows[0];
@@ -925,7 +925,7 @@ exports.deleteMessage = asyncHandler(async (req, res) => {
   // Defense-in-depth: explicit agency_id filtering
   const attachmentsResult = await db.query(`
     SELECT tma.* FROM tenancy_message_attachments tma
-    INNER JOIN tenancy_messages tm ON tma.message_id = tm.id
+    INNER JOIN tenancy_communications tm ON tma.message_id = tm.id
     WHERE tma.message_id = $1 AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
   `, [messageId, agencyId], agencyId);
   const attachments = attachmentsResult.rows;
@@ -940,7 +940,7 @@ exports.deleteMessage = asyncHandler(async (req, res) => {
 
   // Delete message (explicit agency check via tenancy join for defense-in-depth; cascades to attachments)
   await db.query(
-    `DELETE FROM tenancy_messages
+    `DELETE FROM tenancy_communications
      WHERE id = $1
      AND tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)`,
     [messageId, agencyId],
@@ -961,7 +961,7 @@ exports.deleteAttachment = asyncHandler(async (req, res) => {
   // Defense-in-depth: explicit agency_id filtering
   const attachmentResult = await db.query(`
     SELECT tma.* FROM tenancy_message_attachments tma
-    INNER JOIN tenancy_messages tm ON tma.message_id = tm.id
+    INNER JOIN tenancy_communications tm ON tma.message_id = tm.id
     WHERE tma.id = $1 AND tm.tenancy_id IN (SELECT id FROM tenancies WHERE agency_id = $2)
   `, [attachmentId, agencyId], agencyId);
   const attachment = attachmentResult.rows[0];
@@ -980,7 +980,7 @@ exports.deleteAttachment = asyncHandler(async (req, res) => {
     `DELETE FROM tenancy_message_attachments
      WHERE id = $1
      AND message_id IN (
-       SELECT tm.id FROM tenancy_messages tm
+       SELECT tm.id FROM tenancy_communications tm
        INNER JOIN tenancies t ON tm.tenancy_id = t.id
        WHERE t.agency_id = $2
      )`,

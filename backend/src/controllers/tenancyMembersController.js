@@ -109,15 +109,66 @@ exports.updateTenancyMember = asyncHandler(async (req, res) => {
 }, 'update tenant information');
 
 /**
- * Update key tracking information for a tenant (member)
+ * Update key tracking for a tenancy member
  * PUT /api/tenancies/:id/members/:memberId/key-tracking
- *
- * NOTE: The tenancy_members table does not have key_status, key_collection_date,
- * or key_return_date columns. This endpoint is kept for API compatibility but
- * returns an error.
  */
 exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
-  return res.status(400).json({
-    error: 'Key tracking columns (key_status, key_collection_date, key_return_date) are not available on the tenancy_members table. This feature requires a schema migration.'
+  const agencyId = req.agencyId;
+  const { id: tenancyId, memberId } = req.params;
+  const { key_status, key_collection_date, key_return_date } = req.body;
+
+  const validStatuses = ['not_collected', 'collected', 'returned'];
+  if (!key_status || !validStatuses.includes(key_status)) {
+    return res.status(400).json({ error: 'Invalid key_status. Must be one of: not_collected, collected, returned' });
+  }
+
+  // Verify member belongs to this tenancy
+  const memberResult = await db.query(
+    `SELECT tm.id FROM tenancy_members tm WHERE tm.id = $1 AND tm.tenancy_id = $2 AND tm.agency_id = $3`,
+    [memberId, tenancyId, agencyId], agencyId
+  );
+  if (memberResult.rows.length === 0) {
+    return res.status(404).json({ error: 'Tenancy member not found' });
+  }
+
+  // Update key tracking
+  await db.query(
+    `UPDATE tenancy_members
+     SET key_status = $1, key_collection_date = $2, key_return_date = $3, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $4 AND agency_id = $5`,
+    [key_status, key_collection_date || null, key_return_date || null, memberId, agencyId], agencyId
+  );
+
+  // Check if all members have returned keys
+  const allMembersResult = await db.query(
+    `SELECT id, key_status FROM tenancy_members WHERE tenancy_id = $1 AND agency_id = $2`,
+    [tenancyId, agencyId], agencyId
+  );
+  const allMembersReturnedKeys = allMembersResult.rows.every(m => m.key_status === 'returned');
+
+  // Check if deposit return schedules already exist
+  let canCreateDepositReturns = false;
+  let latestKeyReturnDate = null;
+  if (allMembersReturnedKeys) {
+    const existingDepositsResult = await db.query(
+      `SELECT COUNT(*) as count FROM payment_schedules ps
+       INNER JOIN tenancy_members tm ON ps.tenancy_member_id = tm.id
+       WHERE tm.tenancy_id = $1 AND ps.payment_type = 'deposit_return' AND ps.agency_id = $2`,
+      [tenancyId, agencyId], agencyId
+    );
+    canCreateDepositReturns = parseInt(existingDepositsResult.rows[0].count) === 0;
+
+    const latestDateResult = await db.query(
+      `SELECT MAX(key_return_date) as latest FROM tenancy_members WHERE tenancy_id = $1 AND agency_id = $2`,
+      [tenancyId, agencyId], agencyId
+    );
+    latestKeyReturnDate = latestDateResult.rows[0]?.latest;
+  }
+
+  res.json({
+    success: true,
+    allMembersReturnedKeys,
+    canCreateDepositReturns,
+    latestKeyReturnDate,
   });
 }, 'update key tracking information');

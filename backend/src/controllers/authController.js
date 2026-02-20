@@ -12,7 +12,10 @@ const db = require('../db');
 const { getAgencyBySlug } = require('../middleware/agencyContext');
 const asyncHandler = require('../utils/asyncHandler');
 const { validateRequiredFields, validateEmail, validatePassword } = require('../utils/validators');
-const { buildAgencyUrl } = require('../utils/urlBuilder');
+const { buildAgencyUrl, buildPublicUrl } = require('../utils/urlBuilder');
+const { queueEmail } = require('../services/emailService');
+const { getAgencyBranding } = require('../services/brandingService');
+const { createEmailTemplate, createButton, escapeHtml } = require('../utils/emailTemplates');
 
 /**
  * Generate JWT token with agency context
@@ -769,7 +772,43 @@ exports.adminResetPassword = asyncHandler(async (req, res) => {
       agencyId
     );
 
-    // TODO: Queue password reset email
+    // Queue password reset email
+    const setupUrl = `${buildPublicUrl(`setup-password/${setupToken}`)}`;
+    const branding = await getAgencyBranding(agencyId);
+    const companyName = branding.companyName || 'Letably';
+
+    const bodyContent = `
+      <h1>Reset Your Password</h1>
+      <p>Hi ${escapeHtml(user.first_name)},</p>
+      <p>Your password has been reset by an administrator at ${escapeHtml(companyName)}. Please click the link below to set a new password:</p>
+      <div style="text-align: center;">
+        ${createButton(setupUrl, 'Set New Password', branding.primaryColor)}
+      </div>
+      <p style="font-size: 14px; color: #666;">This link will expire in 7 days. If you did not expect this, please contact your letting agent.</p>
+    `;
+
+    const emailHtml = createEmailTemplate('Reset Your Password', bodyContent, branding);
+
+    const emailText = `Reset Your Password
+
+Hi ${user.first_name},
+
+Your password has been reset by an administrator at ${companyName}. Please visit the link below to set a new password:
+
+${setupUrl}
+
+This link will expire in 7 days. If you did not expect this, please contact your letting agent.
+
+${companyName}`;
+
+    queueEmail({
+      to_email: user.email,
+      to_name: user.first_name,
+      subject: `${companyName} - Reset Your Password`,
+      html_body: emailHtml,
+      text_body: emailText,
+      priority: 1,
+    }, agencyId);
   } else {
     // Generate temporary password
     temporaryPassword = generateReadablePassword();
