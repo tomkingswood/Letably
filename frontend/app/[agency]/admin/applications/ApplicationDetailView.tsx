@@ -9,9 +9,10 @@ import { MessageAlert } from '@/components/ui/MessageAlert';
 interface ApplicationDetailViewProps {
   id: string;
   onBack: () => void;
+  onDeleted?: () => void;
 }
 
-export default function ApplicationDetailView({ id, onBack }: ApplicationDetailViewProps) {
+export default function ApplicationDetailView({ id, onBack, onDeleted }: ApplicationDetailViewProps) {
   const { agencySlug } = useAgency();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<ApplicationFormData | null>(null);
@@ -69,19 +70,16 @@ export default function ApplicationDetailView({ id, onBack }: ApplicationDetailV
     setDeleting(true);
     try {
       await applications.delete(id);
-      setMessage({
-        type: 'success',
-        text: 'Application deleted successfully'
-      });
-      setTimeout(() => {
+      if (onDeleted) {
+        onDeleted();
+      } else {
         onBack();
-      }, 1500);
+      }
     } catch (error: any) {
       setMessage({
         type: 'error',
         text: error.response?.data?.error || 'Failed to delete application'
       });
-    } finally {
       setDeleting(false);
     }
   };
@@ -101,6 +99,7 @@ export default function ApplicationDetailView({ id, onBack }: ApplicationDetailV
       });
       // Refresh application data to get new status
       await fetchApplication();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
       setMessage({
         type: 'error',
@@ -214,7 +213,7 @@ export default function ApplicationDetailView({ id, onBack }: ApplicationDetailV
   };
 
   const handleCopyLink = () => {
-    const guarantorLink = `${window.location.origin}/guarantor/${application?.guarantor_token}`;
+    const guarantorLink = `${window.location.origin}/${agencySlug}/guarantor/${application?.guarantor_token}`;
     navigator.clipboard.writeText(guarantorLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -504,7 +503,7 @@ export default function ApplicationDetailView({ id, onBack }: ApplicationDetailV
                   <input
                     type="text"
                     readOnly
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/guarantor/${application.guarantor_token}`}
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/${agencySlug}/guarantor/${application.guarantor_token}`}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
                   />
                   <button

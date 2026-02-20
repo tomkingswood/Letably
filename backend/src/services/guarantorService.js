@@ -5,7 +5,7 @@ const { queueEmail } = require('./emailService');
 const { formatAddress } = require('../utils/formatAddress');
 const { formatDate } = require('../utils/dateFormatter');
 const { getAgencyBranding } = require('./brandingService');
-const { getFrontendBaseUrl } = require('../utils/urlBuilder');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 
 /**
  * Generate guarantor agreement HTML (returns complete HTML document)
@@ -223,20 +223,20 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
       settings[setting.setting_key] = setting.setting_value;
     });
 
-    // Get tenancy info
+    // Get tenancy info and agency slug
     const tenancyResult = await db.query(`
-      SELECT t.*, p.address_line1, p.city
+      SELECT t.*, p.address_line1, p.city, ag.slug as agency_slug
       FROM tenancies t
       JOIN properties p ON t.property_id = p.id
-      WHERE t.id = $1
-    `, [tenancyId], agencyId);
+      JOIN agencies ag ON t.agency_id = ag.id
+      WHERE t.id = $1 AND t.agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
 
     const tenancy = tenancyResult.rows[0];
 
     for (const agreement of agreements) {
       // Generate signing URL
-      const baseUrl = settings.base_url || getFrontendBaseUrl();
-      const signingUrl = `${baseUrl}/guarantor/sign/${agreement.token}`;
+      const signingUrl = buildAgencyUrl(tenancy.agency_slug, `guarantor/sign/${agreement.token}`);
       const companyName = settings.company_name || 'Letably';
 
       // Generate email body content using template system

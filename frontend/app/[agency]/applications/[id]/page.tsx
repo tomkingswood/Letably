@@ -3,9 +3,10 @@
 import { useState, useEffect, use } from 'react';
 import { applications, settings, getAuthToken } from '@/lib/api';
 import { validateSignatureAgainstName } from '@/lib/validation';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useRequireAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/lib/auth-context';
+import { useAgency } from '@/lib/agency-context';
 import { useIdDocument } from '@/hooks/useIdDocument';
 import { ApplicationFormData } from '@/lib/types';
 import { MessageAlert } from '@/components/ui/MessageAlert';
@@ -27,10 +28,9 @@ interface PageProps {
 export default function ApplicationFormPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const pathname = usePathname();
-  const { isLoading: authLoading, isAuthenticated } = useRequireAuth({
-    redirectTo: `/login?returnUrl=${encodeURIComponent(pathname)}`
-  });
+  const { user, isLoading: authLoading } = useAuth();
+  const { agencySlug } = useAgency();
+  const isAuthenticated = !!user;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -110,7 +110,11 @@ export default function ApplicationFormPage({ params }: PageProps) {
   });
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.push(`/${agencySlug}`);
+      return;
+    }
 
     window.scrollTo(0, 0);
 
@@ -126,7 +130,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
     };
     fetchSettings();
     fetchApplication();
-  }, [authLoading, isAuthenticated, id]);
+  }, [authLoading, isAuthenticated, id, agencySlug, router]);
 
   const fetchApplication = async () => {
     try {
@@ -199,7 +203,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
           setApplication(null); // Set to null to show the error state
         } else {
           // User is not logged in, redirect to login
-          router.push(`/login?returnUrl=${encodeURIComponent(pathname)}`);
+          router.push(`/${agencySlug}`);
           return;
         }
       } else {
@@ -426,7 +430,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
           ) : (
             <p className="text-red-600 mb-4">Application not found</p>
           )}
-          <Link href="/" className="text-primary hover:underline font-semibold">
+          <Link href={`/${agencySlug}`} className="text-primary hover:underline font-semibold">
             Return to Homepage
           </Link>
         </div>
