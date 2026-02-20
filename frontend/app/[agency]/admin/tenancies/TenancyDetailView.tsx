@@ -1032,7 +1032,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
           Maintenance
         </Link>
         <Link
-          href={`/${agencySlug}/admin/tenancies/${id}/communication`}
+          href={`/${agencySlug}/admin?section=communications&action=view&id=${id}`}
           className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
