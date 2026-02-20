@@ -361,7 +361,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
         end_date: tenancy!.end_date || '',
         status: 'awaiting_signatures',
       });
-      setSuccess('Tenancy marked as awaiting signatures');
+      setSuccess('Tenancy marked as awaiting signatures. All tenants have been emailed with a direct link to log in and sign their agreement.');
       fetchTenancy();
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to mark as awaiting signatures'));

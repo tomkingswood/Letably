@@ -99,6 +99,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
       });
       // Refresh application data to get new status
       await fetchApplication();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
       setMessage({
         type: 'error',
@@ -212,7 +213,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   };
 
   const handleCopyLink = () => {
-    const guarantorLink = `${window.location.origin}/guarantor/${application?.guarantor_token}`;
+    const guarantorLink = `${window.location.origin}/${agencySlug}/guarantor/${application?.guarantor_token}`;
     navigator.clipboard.writeText(guarantorLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -502,7 +503,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
                   <input
                     type="text"
                     readOnly
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/guarantor/${application.guarantor_token}`}
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/${agencySlug}/guarantor/${application.guarantor_token}`}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
                   />
                   <button
