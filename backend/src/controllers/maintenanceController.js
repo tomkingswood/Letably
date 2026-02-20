@@ -7,6 +7,7 @@ const { getAgencyBranding } = require('../services/brandingService');
 const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 const maintenanceRepo = require('../repositories/maintenanceRepository');
+const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 // Category display names
 const CATEGORY_LABELS = {
@@ -207,8 +208,8 @@ async function sendMaintenanceNotifications(requestId, eventType, actingUser, ex
     }
 
     // Send emails
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const slug = req.agency?.slug || '';
+    const frontendUrl = getFrontendBaseUrl();
+    const slug = branding.agencySlug || '';
 
     for (const recipient of recipients) {
       // Generate role-specific URL

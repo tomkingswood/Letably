@@ -7,6 +7,7 @@ const db = require('../db');
 const appRepo = require('../repositories/applicationRepository');
 const asyncHandler = require('../utils/asyncHandler');
 const { parseJsonField, parseJsonFields } = require('../utils/parseJsonField');
+const { buildAgencyUrl, buildPublicUrl } = require('../utils/urlBuilder');
 
 // Helper function to generate guarantor token
 function generateGuarantorToken() {
@@ -104,7 +105,7 @@ exports.createApplication = asyncHandler(async (req, res) => {
 
   if (is_new_user && setupToken) {
     // Send a SINGLE combined email: welcome + application notification
-    const setupUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/setup-password/${setupToken}`;
+    const setupUrl = `${buildPublicUrl(`setup-password/${setupToken}`)}`;
 
     const bodyContent = `
       <h1>Welcome to ${escapeHtml(companyName)}!</h1>
@@ -128,7 +129,7 @@ exports.createApplication = asyncHandler(async (req, res) => {
       <p>Once your password is set, you can complete your application here:</p>
 
       <div style="text-align: center;">
-        ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/applications/${applicationId}`, 'Complete Application')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`)}`, 'Complete Application')}
       </div>
 
       ${createInfoBox(`
@@ -155,7 +156,7 @@ ${setupUrl}
 This setup link will expire in 7 days. If it expires, please contact us for a new link.
 
 Once your password is set, you can complete your application here:
-${process.env.FRONTEND_URL || 'http://localhost:3000'}/applications/${applicationId}
+${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`)}
 
 Important: You must complete this application before we can proceed with your tenancy.
 
@@ -186,7 +187,7 @@ ${companyName}`;
       <p>Please click the button below to complete your application:</p>
 
       <div style="text-align: center;">
-        ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/applications/${applicationId}`, 'Complete Application')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`)}`, 'Complete Application')}
       </div>
 
       ${createInfoBox(`
@@ -208,7 +209,7 @@ An application has been created for you to complete.
 Application Type: ${application_type === 'student' ? 'Student' : 'Professional'}
 
 Please visit the following link to complete your application:
-${process.env.FRONTEND_URL || 'http://localhost:3000'}/applications/${applicationId}
+${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`)}
 
 Important: You must complete this application before we can proceed with your tenancy.
 
@@ -468,7 +469,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
       `, 'info')}
 
       <div style="text-align: center;">
-        ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/${branding.agencySlug}/admin?section=applications&action=view&id=${id}`, 'View Application Details')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${id}`)}`, 'View Application Details')}
       </div>
 
       <p style="color: #666; font-size: 14px; margin-top: 30px;">
@@ -489,7 +490,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
 
     // If guarantor is required, send email to guarantor
     if (newStatus === 'awaiting_guarantor' && guarantor_email) {
-      const guarantorLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/guarantor/${guarantorToken}`;
+      const guarantorLink = `${buildPublicUrl(`guarantor/${guarantorToken}`)}`;
 
       const guarantorBodyContent = `
         <h1>Guarantor Form Required</h1>
@@ -718,7 +719,7 @@ exports.submitGuarantorForm = asyncHandler(async (req, res) => {
     <p>The application is now complete and ready for review.</p>
 
     <div style="text-align: center;">
-      ${createButton(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/${branding.agencySlug}/admin?section=applications&action=view&id=${applicationDetails.id}`, 'View Complete Application')}
+      ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${applicationDetails.id}`)}`, 'View Complete Application')}
     </div>
   `;
 
@@ -762,7 +763,7 @@ exports.regenerateGuarantorToken = asyncHandler(async (req, res) => {
   // Send new email to guarantor
   if (application.guarantor_email) {
     const user = await appRepo.getUserById(application.user_id, agencyId);
-    const guarantorLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/guarantor/${newToken}`;
+    const guarantorLink = `${buildPublicUrl(`guarantor/${newToken}`)}`;
 
     // Get branding for email
     const branding = await getAgencyBranding(agencyId);

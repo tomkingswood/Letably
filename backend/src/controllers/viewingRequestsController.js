@@ -6,12 +6,13 @@ const { formatDate } = require('../utils/dateFormatter');
 const { validateFormSubmission, validateHoneypot } = require('../utils/spamDetection');
 const { getAgencyBranding } = require('../services/brandingService');
 const asyncHandler = require('../utils/asyncHandler');
+const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 /**
  * Generate email notification for new viewing request
  */
 const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipientEmail, agencySlug) => {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = getFrontendBaseUrl();
   const adminUrl = `${frontendUrl}/${agencySlug || ''}/admin?section=viewing-requests`;
 
   const bodyContent = `

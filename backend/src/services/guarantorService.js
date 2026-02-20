@@ -5,6 +5,7 @@ const { queueEmail } = require('./emailService');
 const { formatAddress } = require('../utils/formatAddress');
 const { formatDate } = require('../utils/dateFormatter');
 const { getAgencyBranding } = require('./brandingService');
+const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 /**
  * Generate guarantor agreement HTML (returns complete HTML document)
@@ -234,7 +235,7 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
 
     for (const agreement of agreements) {
       // Generate signing URL
-      const baseUrl = settings.base_url || process.env.FRONTEND_URL || 'http://localhost:3000';
+      const baseUrl = settings.base_url || getFrontendBaseUrl();
       const signingUrl = `${baseUrl}/guarantor/sign/${agreement.token}`;
       const companyName = settings.company_name || 'Letably';
 

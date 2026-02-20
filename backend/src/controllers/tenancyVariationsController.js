@@ -14,6 +14,7 @@ const {
   validateNoDuplicateUsers
 } = require('../validators/tenancyValidator');
 const asyncHandler = require('../utils/asyncHandler');
+const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 /**
  * Create a rolling tenancy from an existing tenancy
@@ -377,7 +378,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
   let emailsSent = 0;
   let setupEmailsSent = 0;
   if (send_portal_email) {
-    const siteUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const siteUrl = getFrontendBaseUrl();
     const slug = req.agency?.slug || '';
     const portalUrl = `${siteUrl}/${slug}/tenancy`;
     const propertyAddress = tenancy.property_address

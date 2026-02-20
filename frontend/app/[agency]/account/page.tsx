@@ -4,17 +4,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { auth, getEffectiveAgencySlug } from '@/lib/api';
-import { useRequireAuth } from '@/hooks/useAuth';
+import { auth } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { useAgency } from '@/lib/agency-context';
 import { getErrorMessage, User } from '@/lib/types';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import { validatePassword } from '@/lib/validation';
 
 export default function AccountPage() {
   const router = useRouter();
-  const { isLoading: authLoading, isAuthenticated } = useRequireAuth({
-    redirectTo: '/login?returnUrl=' + encodeURIComponent('/account')
-  });
+  const { user: authUser, isLoading: authLoading, isAuthenticated, logout } = useAuth();
+  const { agencySlug } = useAgency();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -36,9 +36,13 @@ export default function AccountPage() {
   const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
+    if (authLoading) return;
 
-    // Load current user data
+    if (!isAuthenticated) {
+      router.push(`/${agencySlug}`);
+      return;
+    }
+
     const fetchUser = async () => {
       try {
         const response = await auth.getCurrentUser();
@@ -51,13 +55,7 @@ export default function AccountPage() {
         console.error('Error fetching user:', err);
         const axiosErr = err as { response?: { status?: number } };
         if (axiosErr.response?.status === 401) {
-          // Clear agency-scoped storage
-          const agencySlug = getEffectiveAgencySlug();
-          const tokenKey = agencySlug ? `token_${agencySlug}` : 'token';
-          const userKey = agencySlug ? `user_${agencySlug}` : 'user';
-          localStorage.removeItem(tokenKey);
-          localStorage.removeItem(userKey);
-          router.push('/login?returnUrl=' + encodeURIComponent('/account'));
+          logout();
         }
       } finally {
         setLoading(false);
@@ -65,7 +63,7 @@ export default function AccountPage() {
     };
 
     fetchUser();
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, agencySlug, router, logout]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,9 +78,7 @@ export default function AccountPage() {
         phone: phone || undefined,
       });
 
-      // Update local storage with new user data (agency-scoped)
       const updatedUser = response.data.user;
-      const agencySlug = getEffectiveAgencySlug();
       const userKey = agencySlug ? `user_${agencySlug}` : 'user';
       localStorage.setItem(userKey, JSON.stringify(updatedUser));
       setUser(updatedUser);

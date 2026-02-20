@@ -12,6 +12,7 @@ const db = require('../db');
 const { getAgencyBySlug } = require('../middleware/agencyContext');
 const asyncHandler = require('../utils/asyncHandler');
 const { validateRequiredFields, validateEmail, validatePassword } = require('../utils/validators');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 
 /**
  * Generate JWT token with agency context
@@ -260,8 +261,7 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   );
 
   // Generate reset URL
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const resetUrl = `${baseUrl}/${agency.slug}/reset-password?token=${token}`;
+  const resetUrl = buildAgencyUrl(agency.slug, `reset-password?token=${token}`);
 
   // TODO: Queue password reset email with agency branding
   console.log(`Password reset URL for ${user.email}: ${resetUrl}`);
