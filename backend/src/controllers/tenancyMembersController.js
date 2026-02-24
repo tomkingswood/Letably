@@ -126,6 +126,20 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
   let effectiveCollectionDate = key_collection_date || null;
   let effectiveReturnDate = key_return_date || null;
 
+  // Validate date formats when provided
+  if (effectiveCollectionDate) {
+    const parsed = new Date(effectiveCollectionDate);
+    if (isNaN(parsed.getTime())) {
+      return res.status(400).json({ error: 'Invalid key_collection_date format' });
+    }
+  }
+  if (effectiveReturnDate) {
+    const parsed = new Date(effectiveReturnDate);
+    if (isNaN(parsed.getTime())) {
+      return res.status(400).json({ error: 'Invalid key_return_date format' });
+    }
+  }
+
   if (key_status === 'not_collected') {
     // Clear both dates when resetting to not_collected
     effectiveCollectionDate = null;
@@ -141,6 +155,10 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
     }
     if (!effectiveReturnDate) {
       return res.status(400).json({ error: 'key_return_date is required when key_status is returned' });
+    }
+    // Ensure return date is not before collection date
+    if (new Date(effectiveReturnDate) < new Date(effectiveCollectionDate)) {
+      return res.status(400).json({ error: 'key_return_date cannot be before key_collection_date' });
     }
   }
 
@@ -161,12 +179,12 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
     [key_status, effectiveCollectionDate, effectiveReturnDate, memberId, agencyId, tenancyId], agencyId
   );
 
-  // Check if all members have returned keys
+  // Check if all members have returned keys (require both status and date)
   const allMembersResult = await db.query(
-    `SELECT key_status FROM tenancy_members WHERE tenancy_id = $1 AND agency_id = $2`,
+    `SELECT key_status, key_return_date FROM tenancy_members WHERE tenancy_id = $1 AND agency_id = $2`,
     [tenancyId, agencyId], agencyId
   );
-  const allMembersReturnedKeys = allMembersResult.rows.length > 0 && allMembersResult.rows.every(m => m.key_status === 'returned');
+  const allMembersReturnedKeys = allMembersResult.rows.length > 0 && allMembersResult.rows.every(m => m.key_status === 'returned' && m.key_return_date != null);
 
   // Check if deposit return schedules already exist
   let canCreateDepositReturns = false;
