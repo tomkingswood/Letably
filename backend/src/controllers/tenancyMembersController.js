@@ -166,7 +166,7 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
     `SELECT key_status FROM tenancy_members WHERE tenancy_id = $1 AND agency_id = $2`,
     [tenancyId, agencyId], agencyId
   );
-  const allMembersReturnedKeys = allMembersResult.rows.every(m => m.key_status === 'returned');
+  const allMembersReturnedKeys = allMembersResult.rows.length > 0 && allMembersResult.rows.every(m => m.key_status === 'returned');
 
   // Check if deposit return schedules already exist
   let canCreateDepositReturns = false;

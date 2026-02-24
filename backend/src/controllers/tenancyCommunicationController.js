@@ -574,8 +574,8 @@ exports.getLandlordTenancies = asyncHandler(async (req, res) => {
   const userEmail = req.user.email;
   const agencyId = req.agencyId;
 
-  // Get all tenancies for landlord's properties with message counts
-  // Defense-in-depth: explicit agency_id filtering
+  // Get all tenancies for landlord's properties with message counts and tenant names
+  // Defense-in-depth: explicit agency_id filtering via JOIN tenancies in subqueries
   const tenanciesResult = await db.query(`
     SELECT
       t.id,
@@ -585,8 +585,9 @@ exports.getLandlordTenancies = asyncHandler(async (req, res) => {
       p.address_line1,
       p.city,
       p.postcode,
-      (SELECT COUNT(*) FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $2) as message_count,
-      (SELECT MAX(created_at) FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $2) as last_message_at
+      (SELECT COUNT(*) FROM tenancy_communications tc2 JOIN tenancies t2 ON tc2.tenancy_id = t2.id WHERE tc2.tenancy_id = t.id AND t2.agency_id = $2) as message_count,
+      (SELECT MAX(tc2.created_at) FROM tenancy_communications tc2 JOIN tenancies t2 ON tc2.tenancy_id = t2.id WHERE tc2.tenancy_id = t.id AND t2.agency_id = $2) as last_message_at,
+      (SELECT STRING_AGG(u.first_name || ' ' || u.last_name, ', ') FROM tenancy_members tm2 JOIN tenancies t2 ON tm2.tenancy_id = t2.id JOIN users u ON tm2.user_id = u.id WHERE tm2.tenancy_id = t.id AND t2.agency_id = $2) as tenant_names
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
     JOIN landlords l ON p.landlord_id = l.id
@@ -594,28 +595,13 @@ exports.getLandlordTenancies = asyncHandler(async (req, res) => {
     ORDER BY last_message_at DESC NULLS LAST, t.created_at DESC
   `, [userEmail, agencyId], agencyId);
 
-  const tenancies = tenanciesResult.rows;
+  const tenancies = tenanciesResult.rows.map(t => ({
+    ...t,
+    property_address: `${t.address_line1}, ${t.city}`,
+    tenant_names: t.tenant_names ? t.tenant_names.split(', ') : []
+  }));
 
-  // Get tenant names for each tenancy
-  // Defense-in-depth: explicit agency_id filtering
-  const tenanciesWithTenants = [];
-  for (const t of tenancies) {
-    const tenantsResult = await db.query(`
-      SELECT u.first_name, u.last_name
-      FROM tenancy_members tm
-      JOIN tenancies t ON tm.tenancy_id = t.id
-      JOIN users u ON tm.user_id = u.id
-      WHERE tm.tenancy_id = $1 AND t.agency_id = $2
-    `, [t.id, agencyId], agencyId);
-
-    tenanciesWithTenants.push({
-      ...t,
-      property_address: `${t.address_line1}, ${t.city}`,
-      tenant_names: tenantsResult.rows.map(tenant => `${tenant.first_name} ${tenant.last_name}`)
-    });
-  }
-
-  res.json({ tenancies: tenanciesWithTenants });
+  res.json({ tenancies });
 }, 'get tenancies');
 
 // ============================================
@@ -656,9 +642,10 @@ exports.getAllTenanciesWithCommunication = asyncHandler(async (req, res) => {
       p.city,
       p.postcode,
       l.name as landlord_name,
-      (SELECT COUNT(*) FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $1) as message_count,
-      (SELECT MAX(created_at) FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $1) as last_message_at,
-      (SELECT content FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $1 ORDER BY created_at DESC LIMIT 1) as last_message_preview
+      (SELECT COUNT(*) FROM tenancy_communications tc2 JOIN tenancies t2 ON tc2.tenancy_id = t2.id WHERE tc2.tenancy_id = t.id AND t2.agency_id = $1) as message_count,
+      (SELECT MAX(tc2.created_at) FROM tenancy_communications tc2 JOIN tenancies t2 ON tc2.tenancy_id = t2.id WHERE tc2.tenancy_id = t.id AND t2.agency_id = $1) as last_message_at,
+      (SELECT tc2.content FROM tenancy_communications tc2 JOIN tenancies t2 ON tc2.tenancy_id = t2.id WHERE tc2.tenancy_id = t.id AND t2.agency_id = $1 ORDER BY tc2.created_at DESC LIMIT 1) as last_message_preview,
+      (SELECT STRING_AGG(u.first_name || ' ' || u.last_name, ', ') FROM tenancy_members tm2 JOIN tenancies t2 ON tm2.tenancy_id = t2.id JOIN users u ON tm2.user_id = u.id WHERE tm2.tenancy_id = t.id AND t2.agency_id = $1) as tenant_names
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
     LEFT JOIN landlords l ON p.landlord_id = l.id
@@ -668,27 +655,14 @@ exports.getAllTenanciesWithCommunication = asyncHandler(async (req, res) => {
 
   const tenancies = tenanciesResult.rows;
 
-  // Get tenant names for each tenancy
-  // Defense-in-depth: explicit agency_id filtering
-  const tenanciesWithTenants = [];
-  for (const t of tenancies) {
-    const tenantsResult = await db.query(`
-      SELECT u.first_name, u.last_name
-      FROM tenancy_members tm
-      JOIN tenancies t ON tm.tenancy_id = t.id
-      JOIN users u ON tm.user_id = u.id
-      WHERE tm.tenancy_id = $1 AND t.agency_id = $2
-    `, [t.id, agencyId], agencyId);
-
-    tenanciesWithTenants.push({
-      ...t,
-      property_address: `${t.address_line1}, ${t.city}`,
-      tenant_names: tenantsResult.rows.map(tenant => `${tenant.first_name} ${tenant.last_name}`),
-      last_message_preview: t.last_message_preview
+  const tenanciesWithTenants = tenancies.map(t => ({
+    ...t,
+    property_address: `${t.address_line1}, ${t.city}`,
+    tenant_names: t.tenant_names ? t.tenant_names.split(', ') : [],
+    last_message_preview: t.last_message_preview
         ? (t.last_message_preview.length > 100 ? t.last_message_preview.substring(0, 100) + '...' : t.last_message_preview)
         : null
-    });
-  }
+  }));
 
   // Filter by has_messages if specified
   let filteredTenancies = tenanciesWithTenants;

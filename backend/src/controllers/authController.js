@@ -264,9 +264,8 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   );
 
   // Generate reset URL and queue email
-  const resetUrl = buildAgencyUrl(agency.slug, `reset-password?token=${token}`);
-
   try {
+    const resetUrl = buildAgencyUrl(agency.slug, `reset-password?token=${token}`);
     const branding = await getAgencyBranding(agency.id);
     const companyName = branding?.companyName || 'Letably';
 
