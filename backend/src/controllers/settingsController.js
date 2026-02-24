@@ -17,6 +17,17 @@ const getAllSettings = asyncHandler(async (req, res) => {
     settingsObject[setting.setting_key] = setting.setting_value;
   });
 
+  // Merge identity fields from agencies table (single source of truth)
+  const agencyResult = await db.query(
+    'SELECT name, email, phone FROM agencies WHERE id = $1', [agencyId], agencyId
+  );
+  const agency = agencyResult.rows[0];
+  if (agency) {
+    settingsObject.company_name = agency.name || '';
+    settingsObject.email_address = agency.email || '';
+    settingsObject.phone_number = agency.phone || '';
+  }
+
   res.json(settingsObject);
 }, 'fetch settings');
 
@@ -110,9 +121,14 @@ const updateSettings = asyncHandler(async (req, res) => {
     );
   };
 
-  // Update all settings
-  await updateSetting(phone_number, 'phone_number');
-  await updateSetting(email_address, 'email_address');
+  // Update agency identity fields (single source of truth: agencies table)
+  await db.query(
+    `UPDATE agencies SET name = $1, email = $2, phone = $3, updated_at = NOW()
+     WHERE id = $4`,
+    [company_name, email_address, phone_number || '', agencyId], agencyId
+  );
+
+  // Update remaining settings in site_settings
   await updateSetting(address_line1 || '', 'address_line1');
   await updateSetting(address_line2 || '', 'address_line2');
   await updateSetting(city || '', 'city');
@@ -120,7 +136,6 @@ const updateSettings = asyncHandler(async (req, res) => {
   await updateSetting(facebook_url || '', 'facebook_url');
   await updateSetting(twitter_url || '', 'twitter_url');
   await updateSetting(instagram_url || '', 'instagram_url');
-  await updateSetting(company_name, 'company_name');
   await updateSetting(redress_scheme_name, 'redress_scheme_name');
   await updateSetting(redress_scheme_number, 'redress_scheme_number');
   await updateSetting(redress_scheme_url || '', 'redress_scheme_url');

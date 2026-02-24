@@ -16,7 +16,7 @@ async function getAgencyBranding(agencyId) {
   try {
     // Get agency info
     const agencyResult = await db.query(
-      'SELECT name, slug, primary_color, logo_url FROM agencies WHERE id = $1',
+      'SELECT name, slug, email, phone, primary_color, logo_url FROM agencies WHERE id = $1',
       [agencyId],
       agencyId
     );
@@ -42,10 +42,10 @@ async function getAgencyBranding(agencyId) {
     const frontendUrl = getFrontendBaseUrl();
 
     return {
-      companyName: settings.company_name || agency.name || 'Letably',
+      companyName: agency.name || 'Letably',
       tagline: settings.tagline || '',
-      email: settings.contact_email || '',
-      phone: settings.contact_phone || '',
+      email: agency.email || '',
+      phone: agency.phone || '',
       website: settings.website || '',
       logoUrl: agency.logo_url ? `${frontendUrl}${agency.logo_url}` : null,
       primaryColor: agency.primary_color || '#1E3A5F',

@@ -11,11 +11,9 @@ const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 const getReminderRecipient = async (agencyId) => {
   try {
     const result = await db.query(
-      'SELECT setting_value FROM site_settings WHERE setting_key = $1',
-      ['email_address'],
-      agencyId
+      'SELECT email FROM agencies WHERE id = $1', [agencyId], agencyId
     );
-    return result.rows[0] ? result.rows[0].setting_value : null;
+    return result.rows[0]?.email || null;
   } catch (error) {
     console.error('Error getting reminder recipient:', error);
     return null;

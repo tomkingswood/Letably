@@ -91,6 +91,7 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
 
     try {
       await settings.update(formData);
+      await refreshAgency(); // Refresh agency context with updated name/email/phone
       setMessage({ type: 'success', text: 'Settings updated successfully!' });
     } catch (error: any) {
       setMessage({
