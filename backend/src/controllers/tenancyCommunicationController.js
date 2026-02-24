@@ -36,8 +36,8 @@ async function sendCommunicationNotifications(tenancyId, actingUser, messageCont
       FROM tenancies t
       JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.id = $1
-    `, [tenancyId], agencyId);
+      WHERE t.id = $1 AND t.agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
 
     const tenancy = tenancyResult.rows[0];
 
@@ -45,8 +45,8 @@ async function sendCommunicationNotifications(tenancyId, actingUser, messageCont
 
     // Get admin email from settings
     const settingsResult = await db.query(
-      'SELECT setting_value FROM site_settings WHERE setting_key = $1',
-      ['email_address'],
+      'SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2',
+      ['email_address', agencyId],
       agencyId
     );
     const adminEmail = settingsResult.rows[0]?.setting_value || 'support@letably.com';
@@ -193,15 +193,15 @@ exports.getMyThread = asyncHandler(async (req, res) => {
     FROM tenancies t
     JOIN tenancy_members tm ON t.id = tm.tenancy_id
     JOIN properties p ON t.property_id = p.id
-    WHERE tm.user_id = $1 AND t.status IN ('active', 'awaiting_signatures')
+    WHERE tm.user_id = $1 AND t.status IN ('active', 'awaiting_signatures') AND t.agency_id = $2
     ORDER BY t.created_at DESC
     LIMIT 1
-  `, [userId], agencyId);
+  `, [userId, agencyId], agencyId);
 
   const tenancy = tenancyResult.rows[0];
 
   if (!tenancy) {
-    return res.status(404).json({ error: 'No active tenancy not found' });
+    return res.status(404).json({ error: 'No active tenancy found' });
   }
 
   // Get messages with user info
@@ -288,10 +288,10 @@ exports.sendMessage = async (req, res) => {
       SELECT t.id
       FROM tenancies t
       JOIN tenancy_members tm ON t.id = tm.tenancy_id
-      WHERE tm.user_id = $1 AND t.status IN ('active', 'awaiting_signatures')
+      WHERE tm.user_id = $1 AND t.status IN ('active', 'awaiting_signatures') AND t.agency_id = $2
       ORDER BY t.created_at DESC
       LIMIT 1
-    `, [userId], agencyId);
+    `, [userId, agencyId], agencyId);
 
     const tenancy = tenancyResult.rows[0];
 
@@ -300,7 +300,7 @@ exports.sendMessage = async (req, res) => {
       for (const file of files) {
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       }
-      return res.status(404).json({ error: 'No active tenancy not found' });
+      return res.status(404).json({ error: 'No active tenancy found' });
     }
 
     // Insert message
@@ -341,7 +341,7 @@ exports.sendMessage = async (req, res) => {
     const message = messageResult.rows[0];
 
     // Get acting user info for notification
-    const actingUserResult = await db.query(`SELECT id, first_name, last_name, email, role FROM users WHERE id = $1`, [userId], agencyId);
+    const actingUserResult = await db.query(`SELECT id, first_name, last_name, email, role FROM users WHERE id = $1 AND agency_id = $2`, [userId, agencyId], agencyId);
     const actingUser = actingUserResult.rows[0];
 
     // Send notifications
@@ -388,8 +388,8 @@ exports.getLandlordThread = asyncHandler(async (req, res) => {
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
     JOIN landlords l ON p.landlord_id = l.id
-    WHERE t.id = $1 AND LOWER(l.email) = LOWER($2)
-  `, [tenancyId, userEmail], agencyId);
+    WHERE t.id = $1 AND LOWER(l.email) = LOWER($2) AND t.agency_id = $3
+  `, [tenancyId, userEmail, agencyId], agencyId);
 
   const tenancy = tenancyResult.rows[0];
 
@@ -489,8 +489,8 @@ exports.sendMessageLandlord = async (req, res) => {
       FROM tenancies t
       JOIN properties p ON t.property_id = p.id
       JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.id = $1 AND LOWER(l.email) = LOWER($2)
-    `, [tenancyId, userEmail], agencyId);
+      WHERE t.id = $1 AND LOWER(l.email) = LOWER($2) AND t.agency_id = $3
+    `, [tenancyId, userEmail, agencyId], agencyId);
 
     const tenancy = tenancyResult.rows[0];
 
@@ -540,7 +540,7 @@ exports.sendMessageLandlord = async (req, res) => {
     const message = messageResult.rows[0];
 
     // Get acting user info for notification
-    const actingUserResult = await db.query(`SELECT id, first_name, last_name, email, role FROM users WHERE id = $1`, [userId], agencyId);
+    const actingUserResult = await db.query(`SELECT id, first_name, last_name, email, role FROM users WHERE id = $1 AND agency_id = $2`, [userId, agencyId], agencyId);
     const actingUser = actingUserResult.rows[0];
 
     // Send notifications (pass isPrivate to skip tenants if private message)
@@ -885,7 +885,7 @@ exports.sendMessageAdmin = async (req, res) => {
     const message = messageResult.rows[0];
 
     // Get acting user info for notification
-    const actingUserResult = await db.query(`SELECT id, first_name, last_name, email, role FROM users WHERE id = $1`, [userId], agencyId);
+    const actingUserResult = await db.query(`SELECT id, first_name, last_name, email, role FROM users WHERE id = $1 AND agency_id = $2`, [userId, agencyId], agencyId);
     const actingUser = actingUserResult.rows[0];
 
     // Send notifications (pass isPrivate to skip tenants if private message)

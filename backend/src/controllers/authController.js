@@ -772,24 +772,25 @@ exports.adminResetPassword = asyncHandler(async (req, res) => {
       agencyId
     );
 
-    // Queue password reset email
-    const setupUrl = `${buildPublicUrl(`setup-password/${setupToken}`)}`;
-    const branding = await getAgencyBranding(agencyId);
-    const companyName = branding.companyName || 'Letably';
+    // Build and queue password reset email
+    try {
+      const setupUrl = `${buildPublicUrl(`setup-password/${setupToken}`)}`;
+      const branding = await getAgencyBranding(agencyId);
+      const companyName = branding.companyName || 'Letably';
 
-    const bodyContent = `
-      <h1>Reset Your Password</h1>
-      <p>Hi ${escapeHtml(user.first_name)},</p>
-      <p>Your password has been reset by an administrator at ${escapeHtml(companyName)}. Please click the link below to set a new password:</p>
-      <div style="text-align: center;">
-        ${createButton(setupUrl, 'Set New Password', branding.primaryColor)}
-      </div>
-      <p style="font-size: 14px; color: #666;">This link will expire in 7 days. If you did not expect this, please contact your letting agent.</p>
-    `;
+      const bodyContent = `
+        <h1>Reset Your Password</h1>
+        <p>Hi ${escapeHtml(user.first_name)},</p>
+        <p>Your password has been reset by an administrator at ${escapeHtml(companyName)}. Please click the link below to set a new password:</p>
+        <div style="text-align: center;">
+          ${createButton(setupUrl, 'Set New Password', branding.primaryColor)}
+        </div>
+        <p style="font-size: 14px; color: #666;">This link will expire in 7 days. If you did not expect this, please contact your letting agent.</p>
+      `;
 
-    const emailHtml = createEmailTemplate('Reset Your Password', bodyContent, branding);
+      const emailHtml = createEmailTemplate('Reset Your Password', bodyContent, branding);
 
-    const emailText = `Reset Your Password
+      const emailText = `Reset Your Password
 
 Hi ${user.first_name},
 
@@ -801,7 +802,6 @@ This link will expire in 7 days. If you did not expect this, please contact your
 
 ${companyName}`;
 
-    try {
       await queueEmail({
         to_email: user.email,
         to_name: user.first_name,

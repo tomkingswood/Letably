@@ -154,8 +154,8 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
   await db.query(
     `UPDATE tenancy_members
      SET key_status = $1, key_collection_date = $2, key_return_date = $3, updated_at = CURRENT_TIMESTAMP
-     WHERE id = $4 AND agency_id = $5`,
-    [key_status, effectiveCollectionDate, effectiveReturnDate, memberId, agencyId], agencyId
+     WHERE id = $4 AND agency_id = $5 AND tenancy_id = $6`,
+    [key_status, effectiveCollectionDate, effectiveReturnDate, memberId, agencyId, tenancyId], agencyId
   );
 
   // Check if all members have returned keys
