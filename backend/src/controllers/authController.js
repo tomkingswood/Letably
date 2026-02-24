@@ -801,14 +801,25 @@ This link will expire in 7 days. If you did not expect this, please contact your
 
 ${companyName}`;
 
-    queueEmail({
-      to_email: user.email,
-      to_name: user.first_name,
-      subject: `${companyName} - Reset Your Password`,
-      html_body: emailHtml,
-      text_body: emailText,
-      priority: 1,
-    }, agencyId);
+    try {
+      await queueEmail({
+        to_email: user.email,
+        to_name: user.first_name,
+        subject: `${companyName} - Reset Your Password`,
+        html_body: emailHtml,
+        text_body: emailText,
+        priority: 1,
+      }, agencyId);
+    } catch (emailErr) {
+      console.error('Failed to queue password reset email:', emailErr);
+      // Roll back the setup token so we don't leave orphaned tokens
+      await db.query(
+        `UPDATE users SET setup_token = NULL, setup_token_expires = NULL WHERE id = $1 AND agency_id = $2`,
+        [id, agencyId],
+        agencyId
+      );
+      return res.status(500).json({ error: 'Failed to send password reset email. Please try again.' });
+    }
   } else {
     // Generate temporary password
     temporaryPassword = generateReadablePassword();

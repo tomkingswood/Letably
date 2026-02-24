@@ -122,6 +122,25 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Invalid key_status. Must be one of: not_collected, collected, returned' });
   }
 
+  // Enforce date invariants based on status
+  let effectiveCollectionDate = key_collection_date || null;
+  let effectiveReturnDate = key_return_date || null;
+
+  if (key_status === 'not_collected') {
+    // Clear both dates when resetting to not_collected
+    effectiveCollectionDate = null;
+    effectiveReturnDate = null;
+  } else if (key_status === 'collected') {
+    if (!effectiveCollectionDate) {
+      return res.status(400).json({ error: 'key_collection_date is required when key_status is collected' });
+    }
+    effectiveReturnDate = null; // Cannot have return date without being returned
+  } else if (key_status === 'returned') {
+    if (!effectiveReturnDate) {
+      return res.status(400).json({ error: 'key_return_date is required when key_status is returned' });
+    }
+  }
+
   // Verify member belongs to this tenancy
   const memberResult = await db.query(
     `SELECT tm.id FROM tenancy_members tm WHERE tm.id = $1 AND tm.tenancy_id = $2 AND tm.agency_id = $3`,
@@ -136,7 +155,7 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
     `UPDATE tenancy_members
      SET key_status = $1, key_collection_date = $2, key_return_date = $3, updated_at = CURRENT_TIMESTAMP
      WHERE id = $4 AND agency_id = $5`,
-    [key_status, key_collection_date || null, key_return_date || null, memberId, agencyId], agencyId
+    [key_status, effectiveCollectionDate, effectiveReturnDate, memberId, agencyId], agencyId
   );
 
   // Check if all members have returned keys
