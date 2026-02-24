@@ -263,11 +263,59 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
     agency.id
   );
 
-  // Generate reset URL
+  // Generate reset URL and queue email
   const resetUrl = buildAgencyUrl(agency.slug, `reset-password?token=${token}`);
 
-  // TODO: Queue password reset email with agency branding
-  console.log(`Password reset URL for ${user.email}: ${resetUrl}`);
+  try {
+    const branding = await getAgencyBranding(agency.id);
+    const companyName = branding?.companyName || 'Letably';
+
+    const bodyContent = `
+      <h1>Reset Your Password</h1>
+      <p>Hi ${escapeHtml(user.first_name)},</p>
+      <p>We received a request to reset the password for your account at ${escapeHtml(companyName)}. Click the link below to set a new password:</p>
+      <div style="text-align: center;">
+        ${createButton(resetUrl, 'Reset Password', branding?.primaryColor)}
+      </div>
+      <p style="font-size: 14px; color: #666;">This link will expire in 1 hour. If you did not request this, you can safely ignore this email.</p>
+    `;
+
+    const emailHtml = createEmailTemplate('Reset Your Password', bodyContent, branding);
+
+    const emailText = `Reset Your Password
+
+Hi ${user.first_name},
+
+We received a request to reset the password for your account at ${companyName}. Visit the link below to set a new password:
+
+${resetUrl}
+
+This link will expire in 1 hour. If you did not request this, you can safely ignore this email.
+
+${companyName}`;
+
+    await queueEmail({
+      to_email: user.email,
+      to_name: user.first_name,
+      subject: `${companyName} - Reset Your Password`,
+      html_body: emailHtml,
+      text_body: emailText,
+      priority: 1,
+    }, agency.id);
+  } catch (emailErr) {
+    console.error('Failed to queue forgot password email:', emailErr);
+    // Roll back the reset token
+    try {
+      await db.query(
+        `UPDATE users SET password_reset_token = NULL, password_reset_expires = NULL WHERE id = $1 AND agency_id = $2`,
+        [user.id, agency.id],
+        agency.id
+      );
+    } catch (rollbackErr) {
+      console.error('Failed to roll back reset token after email failure:', rollbackErr);
+    }
+    // Still return success to not reveal if email exists
+  }
 
   res.json({ message: successMessage });
 }, 'process password reset request');
@@ -774,16 +822,16 @@ exports.adminResetPassword = asyncHandler(async (req, res) => {
 
     // Build and queue password reset email
     try {
-      const setupUrl = `${buildPublicUrl(`setup-password/${setupToken}`)}`;
+      const setupUrl = buildPublicUrl(`setup-password/${setupToken}`);
       const branding = await getAgencyBranding(agencyId);
-      const companyName = branding.companyName || 'Letably';
+      const companyName = branding?.companyName || 'Letably';
 
       const bodyContent = `
         <h1>Reset Your Password</h1>
         <p>Hi ${escapeHtml(user.first_name)},</p>
         <p>Your password has been reset by an administrator at ${escapeHtml(companyName)}. Please click the link below to set a new password:</p>
         <div style="text-align: center;">
-          ${createButton(setupUrl, 'Set New Password', branding.primaryColor)}
+          ${createButton(setupUrl, 'Set New Password', branding?.primaryColor)}
         </div>
         <p style="font-size: 14px; color: #666;">This link will expire in 7 days. If you did not expect this, please contact your letting agent.</p>
       `;
@@ -813,11 +861,15 @@ ${companyName}`;
     } catch (emailErr) {
       console.error('Failed to queue password reset email:', emailErr);
       // Roll back the setup token so we don't leave orphaned tokens
-      await db.query(
-        `UPDATE users SET setup_token = NULL, setup_token_expires = NULL WHERE id = $1 AND agency_id = $2`,
-        [id, agencyId],
-        agencyId
-      );
+      try {
+        await db.query(
+          `UPDATE users SET setup_token = NULL, setup_token_expires = NULL WHERE id = $1 AND agency_id = $2`,
+          [id, agencyId],
+          agencyId
+        );
+      } catch (rollbackErr) {
+        console.error('Failed to roll back setup token after email failure:', rollbackErr);
+      }
       return res.status(500).json({ error: 'Failed to send password reset email. Please try again.' });
     }
   } else {

@@ -585,8 +585,8 @@ exports.getLandlordTenancies = asyncHandler(async (req, res) => {
       p.address_line1,
       p.city,
       p.postcode,
-      (SELECT COUNT(*) FROM tenancy_communications WHERE tenancy_id = t.id) as message_count,
-      (SELECT MAX(created_at) FROM tenancy_communications WHERE tenancy_id = t.id) as last_message_at
+      (SELECT COUNT(*) FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $2) as message_count,
+      (SELECT MAX(created_at) FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $2) as last_message_at
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
     JOIN landlords l ON p.landlord_id = l.id
@@ -656,9 +656,9 @@ exports.getAllTenanciesWithCommunication = asyncHandler(async (req, res) => {
       p.city,
       p.postcode,
       l.name as landlord_name,
-      (SELECT COUNT(*) FROM tenancy_communications WHERE tenancy_id = t.id) as message_count,
-      (SELECT MAX(created_at) FROM tenancy_communications WHERE tenancy_id = t.id) as last_message_at,
-      (SELECT content FROM tenancy_communications WHERE tenancy_id = t.id ORDER BY created_at DESC LIMIT 1) as last_message_preview
+      (SELECT COUNT(*) FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $1) as message_count,
+      (SELECT MAX(created_at) FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $1) as last_message_at,
+      (SELECT content FROM tenancy_communications WHERE tenancy_id = t.id AND agency_id = $1 ORDER BY created_at DESC LIMIT 1) as last_message_preview
     FROM tenancies t
     JOIN properties p ON t.property_id = p.id
     LEFT JOIN landlords l ON p.landlord_id = l.id

@@ -136,6 +136,9 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
     }
     effectiveReturnDate = null; // Cannot have return date without being returned
   } else if (key_status === 'returned') {
+    if (!effectiveCollectionDate) {
+      return res.status(400).json({ error: 'key_collection_date is required when key_status is returned' });
+    }
     if (!effectiveReturnDate) {
       return res.status(400).json({ error: 'key_return_date is required when key_status is returned' });
     }
@@ -160,7 +163,7 @@ exports.updateMemberKeyTracking = asyncHandler(async (req, res) => {
 
   // Check if all members have returned keys
   const allMembersResult = await db.query(
-    `SELECT id, key_status FROM tenancy_members WHERE tenancy_id = $1 AND agency_id = $2`,
+    `SELECT key_status FROM tenancy_members WHERE tenancy_id = $1 AND agency_id = $2`,
     [tenancyId, agencyId], agencyId
   );
   const allMembersReturnedKeys = allMembersResult.rows.every(m => m.key_status === 'returned');
