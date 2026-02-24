@@ -148,14 +148,12 @@ export function KeyTracking({
             <div>
               <p className="text-sm text-gray-600 mb-1">Key Status</p>
               <p className="font-medium text-lg">
-                {selectedMember.key_status === 'not_collected' && (
-                  <span className="text-gray-500">Not Collected</span>
-                )}
-                {selectedMember.key_status === 'collected' && (
+                {selectedMember.key_status === 'collected' ? (
                   <span className="text-blue-600">✓ With Tenant</span>
-                )}
-                {selectedMember.key_status === 'returned' && (
+                ) : selectedMember.key_status === 'returned' ? (
                   <span className="text-green-600">✓ Returned</span>
+                ) : (
+                  <span className="text-gray-500">Not Collected</span>
                 )}
               </p>
             </div>
@@ -174,7 +172,7 @@ export function KeyTracking({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {selectedMember.key_status === 'not_collected' && (
+            {(!selectedMember.key_status || selectedMember.key_status === 'not_collected') && (
               <button
                 onClick={() => onEditKeyTracking('collected')}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"

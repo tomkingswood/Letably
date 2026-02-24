@@ -79,7 +79,7 @@ export {
  * Get upload URL for attachments
  */
 export const getAttachmentUrl = (filePath: string): string => {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
   // If filePath already includes 'uploads/', use as-is; otherwise prepend the communication uploads path
   if (filePath.startsWith('uploads/')) {
     return `${backendUrl}/${filePath}`;

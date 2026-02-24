@@ -497,6 +497,7 @@ export const tenancies = {
       ? api.get(`/tenancies/${tenancyId}/members/${memberId}/agreement`)
       : api.get(`/tenancies/${tenancyId}/agreement`),
   // Tenant signing endpoints
+  getMyPendingTenancies: () => api.get('/tenancies/my-pending-tenancies'),
   getPendingAgreements: () => api.get('/tenancies/my-pending-agreements'),
   getMyActiveTenancy: (tenancyId?: number) => api.get('/tenancies/my-tenancy', { params: tenancyId ? { tenancyId } : {} }),
   getMyStatus: () => api.get('/tenancies/my-status'),

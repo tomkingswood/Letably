@@ -1032,7 +1032,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
           Maintenance
         </Link>
         <Link
-          href={`/${agencySlug}/admin/tenancies/${id}/communication`}
+          href={`/${agencySlug}/admin?section=communications&action=view&id=${id}`}
           className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1050,6 +1050,24 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
       {/* Error/Success Messages */}
       <MessageAlert type="error" message={error} className="mb-6 whitespace-pre-wrap" />
       <MessageAlert type="success" message={success} className="mb-6" />
+
+      {/* Pending Status Action Banner */}
+      {tenancy?.status === 'pending' && (
+        <div className="mb-6 bg-amber-50 border border-amber-300 rounded-lg p-4">
+          <div className="flex gap-3">
+            <svg className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <h3 className="font-semibold text-amber-900">Action Required: Review before sending to tenants</h3>
+              <p className="text-sm text-amber-800 mt-1">
+                Please review the room assignments, rent amounts, and generated agreements for each tenant below.
+                Once everything looks correct, click <strong>Mark as Awaiting Signatures</strong> to email all tenants a direct link to log in and sign their agreement.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tenancy Overview */}
       <TenancyOverview

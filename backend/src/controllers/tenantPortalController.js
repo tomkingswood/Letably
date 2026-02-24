@@ -251,6 +251,118 @@ exports.getTenantAgreement = asyncHandler(async (req, res) => {
 }, 'fetch agreement');
 
 /**
+ * Get pending/in-progress tenancies for current user (not yet active/expired)
+ * Returns tenancies with member signing progress and guarantor agreement status
+ * GET /api/tenancies/my-pending-tenancies
+ */
+exports.getMyPendingTenancies = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const userId = req.user.id;
+
+  // Find all tenancies for this user that are pending or awaiting signatures
+  // Defense-in-depth: explicit agency_id filtering
+  const pendingTenanciesResult = await db.query(`
+    SELECT DISTINCT
+      t.id,
+      t.status,
+      t.start_date,
+      t.end_date,
+      t.created_at,
+      p.address_line1 as property_address,
+      p.location
+    FROM tenancy_members tm
+    LEFT JOIN applications a ON tm.application_id = a.id
+    INNER JOIN tenancies t ON tm.tenancy_id = t.id
+    LEFT JOIN properties p ON t.property_id = p.id
+    WHERE (tm.user_id = $1 OR a.user_id = $1)
+      AND t.status IN ('pending', 'awaiting_signatures', 'approval')
+      AND tm.agency_id = $2
+    ORDER BY t.created_at DESC
+  `, [userId, agencyId], agencyId);
+
+  const tenancyIds = pendingTenanciesResult.rows.map(t => t.id);
+
+  if (tenancyIds.length === 0) {
+    return res.json({ pendingTenancies: [] });
+  }
+
+  // Batch fetch all members for all pending tenancies
+  // Defense-in-depth: explicit agency_id filtering
+  const memberPlaceholders = tenancyIds.map((_, i) => `$${i + 1}`).join(',');
+  const allMembersResult = await db.query(`
+    SELECT
+      tm.id,
+      tm.tenancy_id,
+      COALESCE(tm.first_name, u.first_name) as first_name,
+      COALESCE(tm.surname, u.last_name) as last_name,
+      tm.is_signed,
+      tm.signed_at,
+      tm.guarantor_required,
+      COALESCE(tm.user_id, a.user_id) as user_id
+    FROM tenancy_members tm
+    LEFT JOIN applications a ON tm.application_id = a.id
+    LEFT JOIN users u ON COALESCE(tm.user_id, a.user_id) = u.id
+    WHERE tm.tenancy_id IN (${memberPlaceholders}) AND tm.agency_id = $${tenancyIds.length + 1}
+    ORDER BY tm.id
+  `, [...tenancyIds, agencyId], agencyId);
+
+  // Batch fetch all guarantor agreements for all pending tenancies
+  // Defense-in-depth: explicit agency_id filtering
+  const allGuarantorsResult = await db.query(`
+    SELECT
+      ga.tenancy_member_id,
+      ga.guarantor_name,
+      ga.is_signed,
+      ga.signed_at,
+      tm.tenancy_id
+    FROM guarantor_agreements ga
+    INNER JOIN tenancy_members tm ON ga.tenancy_member_id = tm.id
+    WHERE tm.tenancy_id IN (${memberPlaceholders}) AND ga.agency_id = $${tenancyIds.length + 1}
+    ORDER BY ga.id
+  `, [...tenancyIds, agencyId], agencyId);
+
+  // Group by tenancy_id
+  const membersByTenancy = {};
+  for (const m of allMembersResult.rows) {
+    if (!membersByTenancy[m.tenancy_id]) membersByTenancy[m.tenancy_id] = [];
+    membersByTenancy[m.tenancy_id].push(m);
+  }
+
+  const guarantorsByTenancy = {};
+  for (const g of allGuarantorsResult.rows) {
+    if (!guarantorsByTenancy[g.tenancy_id]) guarantorsByTenancy[g.tenancy_id] = [];
+    guarantorsByTenancy[g.tenancy_id].push(g);
+  }
+
+  const pendingTenancies = pendingTenanciesResult.rows.map(tenancy => ({
+    id: tenancy.id,
+    status: tenancy.status,
+    property_address: tenancy.property_address,
+    location: tenancy.location,
+    start_date: tenancy.start_date,
+    end_date: tenancy.end_date,
+    created_at: tenancy.created_at,
+    members: (membersByTenancy[tenancy.id] || []).map(m => ({
+      id: m.id,
+      first_name: m.first_name,
+      last_name: m.last_name,
+      is_signed: Boolean(m.is_signed),
+      signed_at: m.signed_at,
+      guarantor_required: Boolean(m.guarantor_required),
+      is_current_user: m.user_id === userId,
+    })),
+    guarantorAgreements: (guarantorsByTenancy[tenancy.id] || []).map(g => ({
+      tenancy_member_id: g.tenancy_member_id,
+      guarantor_name: g.guarantor_name,
+      is_signed: Boolean(g.is_signed),
+      signed_at: g.signed_at,
+    })),
+  }));
+
+  res.json({ pendingTenancies });
+}, 'fetch pending tenancies');
+
+/**
  * Get comprehensive tenant status - consolidates all pending actions and tenancy info
  * Used by /tenancy page to determine what to show/where to redirect
  * GET /api/tenancies/my-status
@@ -289,7 +401,7 @@ exports.getMyStatus = asyncHandler(async (req, res) => {
     JOIN properties p ON t.property_id = p.id
     LEFT JOIN applications a ON tm.application_id = a.id
     WHERE tm.user_id = $1
-      AND t.status IN ('pending', 'awaiting_signatures')
+      AND t.status = 'awaiting_signatures'
       AND (tm.is_signed = false OR tm.is_signed IS NULL)
       AND (tm.application_id IS NULL OR a.status IN ('approved', 'converted_to_tenancy'))
       AND tm.agency_id = $2

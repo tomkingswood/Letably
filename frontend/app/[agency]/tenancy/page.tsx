@@ -19,6 +19,7 @@ import { CommunicationCard } from '@/components/tenancy/CommunicationCard';
 import { DocumentsCard } from '@/components/tenancy/DocumentsCard';
 import { OtherTenantsCard } from '@/components/tenancy/OtherTenantsCard';
 import { AgreementModal } from '@/components/tenancy/AgreementModal';
+import { PendingTenanciesView } from '@/components/tenancy/PendingTenanciesView';
 import type { Tenancy, TenancyMember } from '@/components/tenancy/types';
 
 export default function TenancyPortalPage() {
@@ -38,6 +39,7 @@ export default function TenancyPortalPage() {
   const [propertyCertificates, setPropertyCertificates] = useState<any[]>([]);
   const [myDocuments, setMyDocuments] = useState<any[]>([]);
   const [maintenanceRequests, setMaintenanceRequests] = useState<any[]>([]);
+  const [pendingTenancies, setPendingTenancies] = useState<any[]>([]);
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
   const [newRequestForm, setNewRequestForm] = useState({
     title: '',
@@ -75,7 +77,17 @@ export default function TenancyPortalPage() {
       if (status.hasTenancies) {
         await fetchTenancy();
       } else {
-        setError('You do not have any tenancies at this time.');
+        // Check for pending tenancies before showing "no tenancies"
+        try {
+          const pendingResponse = await tenanciesApi.getMyPendingTenancies();
+          if (pendingResponse.data.pendingTenancies?.length > 0) {
+            setPendingTenancies(pendingResponse.data.pendingTenancies);
+          } else {
+            setError('You do not have any tenancies at this time.');
+          }
+        } catch {
+          setError('You do not have any tenancies at this time.');
+        }
         setLoading(false);
       }
     } catch (err: unknown) {
@@ -259,6 +271,10 @@ export default function TenancyPortalPage() {
         <LoadingSpinner size="lg" text="Loading..." />
       </div>
     );
+  }
+
+  if (!loading && pendingTenancies.length > 0 && !tenancy) {
+    return <PendingTenanciesView tenancies={pendingTenancies} currentUserId={user?.id} />;
   }
 
   if (error && !tenancy) {

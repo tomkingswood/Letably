@@ -427,14 +427,14 @@ export function PaymentScheduleGrid({
                                 <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 text-xs">
                                   <h5 className="font-semibold text-gray-900 mb-2">Calculation Breakdown</h5>
                                   <div className="space-y-1">
-                                    <p><span className="text-gray-600">Rent (PPPW):</span> £{breakdown.pppw.toFixed(2)}</p>
-                                    <p><span className="text-gray-600">Monthly Rate:</span> £{breakdown.monthlyRate.toFixed(2)}</p>
+                                    <p><span className="text-gray-600">Rent (PPPW):</span> £{Number(breakdown.pppw).toFixed(2)}</p>
+                                    <p><span className="text-gray-600">Monthly Rate:</span> £{Number(breakdown.monthlyRate).toFixed(2)}</p>
                                     <p><span className="text-gray-600">Period:</span> {breakdown.periodStart.toLocaleDateString('en-GB')} - {breakdown.periodEnd.toLocaleDateString('en-GB')}</p>
                                     {breakdown.isFullMonth ? (
-                                      <p className="font-medium text-purple-600">Full month = £{breakdown.calculatedAmount.toFixed(2)}</p>
+                                      <p className="font-medium text-purple-600">Full month = £{Number(breakdown.calculatedAmount).toFixed(2)}</p>
                                     ) : (
                                       <p className="font-medium text-purple-600">
-                                        {breakdown.days}/{breakdown.daysInMonth} days = £{breakdown.calculatedAmount.toFixed(2)}
+                                        {breakdown.days}/{breakdown.daysInMonth} days = £{Number(breakdown.calculatedAmount).toFixed(2)}
                                       </p>
                                     )}
                                   </div>

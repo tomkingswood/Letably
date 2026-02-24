@@ -11,6 +11,7 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 // Tenant routes (authenticated users)
 router.get('/my-status', authenticateToken, tenantPortalController.getMyStatus);
 router.get('/my-pending-agreements', authenticateToken, tenantPortalController.getPendingAgreements);
+router.get('/my-pending-tenancies', authenticateToken, tenantPortalController.getMyPendingTenancies);
 router.get('/my-tenancy', authenticateToken, tenantPortalController.getMyActiveTenancy);
 router.get('/:tenancyId/members/:memberId/sign', authenticateToken, tenantPortalController.getTenantAgreement);
 router.post('/:tenancyId/members/:memberId/sign', authenticateToken, tenancySigningController.signAgreement);
