@@ -752,7 +752,7 @@ export const maintenance = {
   getOptions: () => api.get('/maintenance/options'),
   // Admin - getAll alias for getAllRequests
   getAll: (params?: { status?: string; priority?: string; category?: string; property_id?: number }) =>
-    api.get('/maintenance/admin/requests', { params }),
+    api.get('/maintenance/admin', { params }),
 
   // Tenant routes
   getMyRequests: () => api.get('/maintenance/my-requests'),
