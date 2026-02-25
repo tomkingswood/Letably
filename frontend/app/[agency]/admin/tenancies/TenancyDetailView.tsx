@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAgency } from '@/lib/agency-context';
 import Link from 'next/link';
@@ -55,6 +55,16 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
     deposit_amount: 0,
   });
   const [rooms, setRooms] = useState<Bedroom[]>([]);
+  // Scroll restore: toggling editingMember shrinks the DOM (tall display → short form),
+  // causing the browser to jump scroll. We save scrollY before the state change and
+  // restore it in useLayoutEffect (runs before paint, so no flicker).
+  const pendingScrollRestore = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (pendingScrollRestore.current !== null) {
+      window.scrollTo(0, pendingScrollRestore.current);
+      pendingScrollRestore.current = null;
+    }
+  });
 
   // Key tracking state
   const [editingKeyTracking, setEditingKeyTracking] = useState(false);
@@ -475,6 +485,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
       console.error('Error fetching bedrooms:', err);
     }
 
+    pendingScrollRestore.current = window.scrollY;
     setEditingMember(true);
   };
 
