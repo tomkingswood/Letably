@@ -353,6 +353,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
   };
 
   const handleMarkAsAwaitingSignatures = async () => {
+    if (markingAwaiting) return;
     setError('');
     setSuccess('');
     setMarkingAwaiting(true);
