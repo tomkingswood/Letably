@@ -139,11 +139,11 @@ const updateSettings = asyncHandler(async (req, res) => {
     await updateSetting(redress_scheme_name, 'redress_scheme_name');
     await updateSetting(redress_scheme_number, 'redress_scheme_number');
     await updateSetting(redress_scheme_url || '', 'redress_scheme_url');
-    await updateSetting(cmp_certificate_filename || 'Updated-CMP-cert.jpg', 'cmp_certificate_filename');
-    await updateSetting(prs_certificate_filename || 'Updated-PRS-Certificate.jpg', 'prs_certificate_filename');
+    if (cmp_certificate_filename) await updateSetting(cmp_certificate_filename, 'cmp_certificate_filename');
+    if (prs_certificate_filename) await updateSetting(prs_certificate_filename, 'prs_certificate_filename');
+    if (ico_certificate_filename) await updateSetting(ico_certificate_filename, 'ico_certificate_filename');
     await updateSetting(cmp_certificate_expiry || '', 'cmp_certificate_expiry');
     await updateSetting(prs_certificate_expiry || '', 'prs_certificate_expiry');
-    await updateSetting(ico_certificate_filename || '', 'ico_certificate_filename');
     await updateSetting(ico_certificate_expiry || '', 'ico_certificate_expiry');
 
     // Viewing settings
