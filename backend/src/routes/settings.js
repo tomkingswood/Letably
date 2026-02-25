@@ -10,27 +10,28 @@ const {
   uploadIcoCertificate
 } = require('../controllers/settingsController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { agencyContext, requireAgency } = require('../middleware/agencyContext');
 const { legalDocumentUpload } = require('../middleware/uploadFactory');
 
 // Authenticated - get all settings (needs agency context)
-router.get('/', authenticateToken, getAllSettings);
+router.get('/', agencyContext, requireAgency, authenticateToken, getAllSettings);
 
 // Authenticated - get viewing settings only (needs agency context)
-router.get('/viewing', authenticateToken, getViewingSettings);
+router.get('/viewing', agencyContext, requireAgency, authenticateToken, getViewingSettings);
 
 // Admin only - update settings
-router.put('/', authenticateToken, requireAdmin, updateSettings);
+router.put('/', agencyContext, requireAgency, authenticateToken, requireAdmin, updateSettings);
 
 // Admin only - upload CMP certificate
-router.post('/upload-cmp-certificate', authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadCmpCertificate);
+router.post('/upload-cmp-certificate', agencyContext, requireAgency, authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadCmpCertificate);
 
 // Admin only - upload PRS certificate
-router.post('/upload-prs-certificate', authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadPrsCertificate);
+router.post('/upload-prs-certificate', agencyContext, requireAgency, authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadPrsCertificate);
 
 // Admin only - upload privacy policy
-router.post('/upload-privacy-policy', authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadPrivacyPolicy);
+router.post('/upload-privacy-policy', agencyContext, requireAgency, authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadPrivacyPolicy);
 
 // Admin only - upload ICO certificate
-router.post('/upload-ico-certificate', authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadIcoCertificate);
+router.post('/upload-ico-certificate', agencyContext, requireAgency, authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadIcoCertificate);
 
 module.exports = router;

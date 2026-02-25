@@ -43,13 +43,11 @@ async function sendCommunicationNotifications(tenancyId, actingUser, messageCont
 
     if (!tenancy) return;
 
-    // Get admin email from settings
-    const settingsResult = await db.query(
-      'SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2',
-      ['email_address', agencyId],
-      agencyId
+    // Get admin email from agencies table
+    const agencyResult = await db.query(
+      'SELECT email FROM agencies WHERE id = $1', [agencyId], agencyId
     );
-    const adminEmail = settingsResult.rows[0]?.setting_value || 'support@letably.com';
+    const adminEmail = agencyResult.rows[0]?.email || 'support@letably.com';
 
     // Get all tenants in this tenancy
     // Defense-in-depth: explicit agency_id filtering

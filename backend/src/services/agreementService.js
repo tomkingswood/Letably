@@ -193,12 +193,18 @@ async function saveSignedDocument({ documentType, referenceId, userId, memberId,
  */
 exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
   try {
-    // Get site settings (company address, contact info, etc.)
+    // Get site settings (company address, etc.)
     const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings', [], agencyId);
     const settings = {};
     siteSettingsResult.rows.forEach(setting => {
       settings[setting.setting_key] = setting.setting_value;
     });
+
+    // Get agency identity fields (single source of truth for name/email/phone)
+    const agencyResult = await db.query(
+      'SELECT name, email, phone FROM agencies WHERE id = $1', [agencyId], agencyId
+    );
+    const agency = agencyResult.rows[0] || {};
 
     // Get tenancy data
     const tenancyResult = await db.query(`
@@ -280,7 +286,7 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
     const landlordAddress = landlordAddressParts.join(', ');
 
     // Build landlord display name (fallback to company name if no landlord)
-    const landlordDisplayName = tenancy.agreement_display_format || tenancy.landlord_name || settings.company_name || 'Letably';
+    const landlordDisplayName = tenancy.agreement_display_format || tenancy.landlord_name || agency.name || 'Letably';
 
     // Build tenant names list (all tenants)
     const tenantNamesList = members.map(m => {
@@ -344,14 +350,14 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
     // Prepare template data
     const templateData = {
       // Company info
-      company_name: settings.company_name || 'Letably',
+      company_name: agency.name || 'Letably',
       company_address: companyAddress,
       company_address_line1: settings.address_line1 || '',
       company_address_line2: settings.address_line2 || '',
       company_city: settings.city || '',
       company_postcode: settings.postcode || '',
-      company_email: settings.email_address || '',
-      company_phone: settings.phone_number || '',
+      company_email: agency.email || '',
+      company_phone: agency.phone || '',
 
       // Landlord info
       landlord_display_name: landlordDisplayName,
@@ -476,7 +482,7 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
     }));
 
     return {
-      company_name: settings.company_name || 'Letably',
+      company_name: agency.name || 'Letably',
       is_rolling_monthly: !!tenancy.is_rolling_monthly,
       tenancy: {
         id: tenancy.id,

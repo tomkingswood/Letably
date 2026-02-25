@@ -352,16 +352,17 @@ exports.getAllReminders = asyncHandler(async (req, res) => {
   });
 
   // Add email notification status to each reminder
-  // Defense-in-depth: explicit agency_id filtering
-  const recipientEmailResult = await db.query('SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2', ['email_address', agencyId], agencyId);
-  const recipientEmail = recipientEmailResult.rows[0];
-  if (recipientEmail && recipientEmail.setting_value) {
+  const recipientEmailResult = await db.query(
+    'SELECT email FROM agencies WHERE id = $1', [agencyId], agencyId
+  );
+  const recipientEmail = recipientEmailResult.rows[0]?.email;
+  if (recipientEmail) {
     // Defense-in-depth: explicit agency_id filtering
     const notificationsResult = await db.query(`
       SELECT reminder_identifier, severity, last_emailed_at
       FROM reminder_email_notifications
       WHERE recipient_email = $1 AND agency_id = $2
-    `, [recipientEmail.setting_value, agencyId], agencyId);
+    `, [recipientEmail, agencyId], agencyId);
     const notifications = notificationsResult.rows;
 
     // Create a map for quick lookup

@@ -17,6 +17,17 @@ const getAllSettings = asyncHandler(async (req, res) => {
     settingsObject[setting.setting_key] = setting.setting_value;
   });
 
+  // Merge identity fields from agencies table (single source of truth)
+  const agencyResult = await db.query(
+    'SELECT name, email, phone FROM agencies WHERE id = $1', [agencyId], agencyId
+  );
+  const agency = agencyResult.rows[0];
+  if (agency) {
+    settingsObject.company_name = agency.name || '';
+    settingsObject.email_address = agency.email || '';
+    settingsObject.phone_number = agency.phone || '';
+  }
+
   res.json(settingsObject);
 }, 'fetch settings');
 
@@ -101,43 +112,48 @@ const updateSettings = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Invalid redress scheme URL format' });
   }
 
-  const updateSetting = async (value, key) => {
-    // Defense-in-depth: explicit agency_id filtering
-    await db.query(
-      `UPDATE site_settings SET setting_value = $1 WHERE setting_key = $2 AND agency_id = $3`,
-      [value, key, agencyId],
-      agencyId
+  await db.transaction(async (client) => {
+    const updateSetting = async (value, key) => {
+      // Defense-in-depth: explicit agency_id filtering
+      await client.query(
+        `UPDATE site_settings SET setting_value = $1 WHERE setting_key = $2 AND agency_id = $3`,
+        [value, key, agencyId]
+      );
+    };
+
+    // Update agency identity fields (single source of truth: agencies table)
+    await client.query(
+      `UPDATE agencies SET name = $1, email = $2, phone = $3, updated_at = NOW()
+       WHERE id = $4`,
+      [company_name, email_address, phone_number || '', agencyId]
     );
-  };
 
-  // Update all settings
-  await updateSetting(phone_number, 'phone_number');
-  await updateSetting(email_address, 'email_address');
-  await updateSetting(address_line1 || '', 'address_line1');
-  await updateSetting(address_line2 || '', 'address_line2');
-  await updateSetting(city || '', 'city');
-  await updateSetting(postcode || '', 'postcode');
-  await updateSetting(facebook_url || '', 'facebook_url');
-  await updateSetting(twitter_url || '', 'twitter_url');
-  await updateSetting(instagram_url || '', 'instagram_url');
-  await updateSetting(company_name, 'company_name');
-  await updateSetting(redress_scheme_name, 'redress_scheme_name');
-  await updateSetting(redress_scheme_number, 'redress_scheme_number');
-  await updateSetting(redress_scheme_url || '', 'redress_scheme_url');
-  await updateSetting(cmp_certificate_filename || 'Updated-CMP-cert.jpg', 'cmp_certificate_filename');
-  await updateSetting(prs_certificate_filename || 'Updated-PRS-Certificate.jpg', 'prs_certificate_filename');
-  await updateSetting(cmp_certificate_expiry || '', 'cmp_certificate_expiry');
-  await updateSetting(prs_certificate_expiry || '', 'prs_certificate_expiry');
-  await updateSetting(ico_certificate_filename || '', 'ico_certificate_filename');
-  await updateSetting(ico_certificate_expiry || '', 'ico_certificate_expiry');
+    // Update remaining settings in site_settings
+    await updateSetting(address_line1 || '', 'address_line1');
+    await updateSetting(address_line2 || '', 'address_line2');
+    await updateSetting(city || '', 'city');
+    await updateSetting(postcode || '', 'postcode');
+    await updateSetting(facebook_url || '', 'facebook_url');
+    await updateSetting(twitter_url || '', 'twitter_url');
+    await updateSetting(instagram_url || '', 'instagram_url');
+    await updateSetting(redress_scheme_name, 'redress_scheme_name');
+    await updateSetting(redress_scheme_number, 'redress_scheme_number');
+    await updateSetting(redress_scheme_url || '', 'redress_scheme_url');
+    if (cmp_certificate_filename) await updateSetting(cmp_certificate_filename, 'cmp_certificate_filename');
+    if (prs_certificate_filename) await updateSetting(prs_certificate_filename, 'prs_certificate_filename');
+    if (ico_certificate_filename) await updateSetting(ico_certificate_filename, 'ico_certificate_filename');
+    await updateSetting(cmp_certificate_expiry || '', 'cmp_certificate_expiry');
+    await updateSetting(prs_certificate_expiry || '', 'prs_certificate_expiry');
+    await updateSetting(ico_certificate_expiry || '', 'ico_certificate_expiry');
 
-  // Viewing settings
-  if (viewing_min_days_advance !== undefined) {
-    const minDays = parseInt(viewing_min_days_advance, 10);
-    if (!isNaN(minDays) && minDays >= 0) {
-      await updateSetting(minDays.toString(), 'viewing_min_days_advance');
+    // Viewing settings
+    if (viewing_min_days_advance !== undefined) {
+      const minDays = parseInt(viewing_min_days_advance, 10);
+      if (!isNaN(minDays) && minDays >= 0) {
+        await updateSetting(minDays.toString(), 'viewing_min_days_advance');
+      }
     }
-  }
+  }, agencyId);
 
   res.json({ message: 'Settings updated successfully' });
 }, 'update settings');

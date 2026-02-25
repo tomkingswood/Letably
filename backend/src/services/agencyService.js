@@ -68,8 +68,6 @@ async function registerAgency(data) {
 
     // Create default site settings for the agency
     const defaultSettings = [
-      ['email_address', agency_email || ''],
-      ['company_name', agency_name],
       ['payment_reminder_days_before', '7'],
       ['overdue_reminder_frequency', '3'],
       ['certificate_reminder_days', '30'],

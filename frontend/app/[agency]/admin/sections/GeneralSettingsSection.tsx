@@ -92,6 +92,7 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
     try {
       await settings.update(formData);
       setMessage({ type: 'success', text: 'Settings updated successfully!' });
+      try { await refreshAgency(); } catch { /* settings saved; context refresh is best-effort */ }
     } catch (error: any) {
       setMessage({
         type: 'error',
