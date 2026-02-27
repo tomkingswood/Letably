@@ -16,6 +16,7 @@ import { RecordPaymentModal, CreateManualPaymentModal, EditPaymentScheduleModal,
 import { SignedAgreementModal } from '@/components/admin/tenancy-detail/SignedAgreementModal';
 import { PreviewAgreementModal } from '@/components/admin/tenancy-detail/PreviewAgreementModal';
 import { ExpireConfirmationModal } from '@/components/admin/tenancy-detail/ExpireConfirmationModal';
+import { AwaitingSignaturesModal } from '@/components/admin/tenancy-detail/AwaitingSignaturesModal';
 import { CreateRollingTenancyModal } from '@/components/admin/tenancy-detail/CreateRollingTenancyModal';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 
@@ -159,6 +160,10 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
     selectedMembers: {},
     memberDetails: {},
   });
+
+  // Mark as Awaiting Signatures modal state
+  const [showAwaitingModal, setShowAwaitingModal] = useState(false);
+  const [markingAwaiting, setMarkingAwaiting] = useState(false);
 
   // Mark as Expired modal state
   const [showExpireModal, setShowExpireModal] = useState(false);
@@ -348,22 +353,10 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
   };
 
   const handleMarkAsAwaitingSignatures = async () => {
-    // Confirmation prompt
-    const confirmed = confirm(
-      'Please confirm:\n\n' +
-      '✓ You have reviewed the generated agreements for ALL tenants in this tenancy\n' +
-      '✓ All agreement details are correct\n\n' +
-      '⚠️ WARNING: After marking as awaiting signatures, tenancy details CANNOT be modified.\n' +
-      'The only way to make changes after this point is to delete the tenancy and start again.\n\n' +
-      'Do you want to continue?'
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
+    if (markingAwaiting) return;
     setError('');
     setSuccess('');
+    setMarkingAwaiting(true);
 
     try {
       await tenanciesApi.update(id, {
@@ -372,9 +365,12 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
         status: 'awaiting_signatures',
       });
       setSuccess('Tenancy marked as awaiting signatures. All tenants have been emailed with a direct link to log in and sign their agreement.');
+      setShowAwaitingModal(false);
       fetchTenancy();
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to mark as awaiting signatures'));
+    } finally {
+      setMarkingAwaiting(false);
     }
   };
 
@@ -919,7 +915,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
   };
 
   const handleCopyGuarantorLink = (token: string, guarantorName: string) => {
-    const link = `${window.location.origin}/guarantor/sign/${token}`;
+    const link = `${window.location.origin}/${agencySlug}/guarantor/sign/${token}`;
     navigator.clipboard.writeText(link);
     setSuccess(`Guarantor agreement link for ${guarantorName} copied to clipboard!`);
     setTimeout(() => setSuccess(''), 3000);
@@ -1095,7 +1091,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
           onFormDataChange: setTenancyFormData,
         }}
         statusHandlers={{
-          onMarkAsAwaitingSignatures: handleMarkAsAwaitingSignatures,
+          onMarkAsAwaitingSignatures: () => setShowAwaitingModal(true),
           onMarkAsActive: handleMarkAsActive,
           onShowExpireModal: () => setShowExpireModal(true),
           onUpdateStatus: handleUpdateTenancyStatus,
@@ -1306,6 +1302,13 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
         selectedMemberName={selectedMemberName}
         loadingPreview={loadingPreview}
         previewAgreement={previewAgreement}
+      />
+
+      <AwaitingSignaturesModal
+        isOpen={showAwaitingModal}
+        onClose={() => setShowAwaitingModal(false)}
+        onConfirm={handleMarkAsAwaitingSignatures}
+        submitting={markingAwaiting}
       />
 
       <ExpireConfirmationModal
