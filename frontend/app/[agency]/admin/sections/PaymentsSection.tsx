@@ -6,7 +6,14 @@ import { useAgency } from '@/lib/agency-context';
 import { getErrorMessage } from '@/lib/types';
 import { RecordPaymentModal, EditPaymentScheduleModal } from '@/components/admin/tenancy-detail/PaymentModals';
 import { MessageAlert } from '@/components/ui/MessageAlert';
+import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { SectionProps } from './index';
+
+/** Parse a YYYY-MM-DD string as local midnight (avoids UTC timezone shift). */
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('T')[0].split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
 
 interface PaymentSchedule {
   id: number;
@@ -71,6 +78,9 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
     payment_type: 'rent',
     description: '',
   });
+
+  // Delete confirmation modal state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Feedback messages
   const [successMsg, setSuccessMsg] = useState('');
@@ -164,14 +174,19 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
     }
   };
 
-  const handleDeletePaymentSchedule = async () => {
+  const handleDeletePaymentSchedule = () => {
     if (!selectedPayment) return;
-    if (!confirm('Are you sure you want to delete this payment schedule? This action cannot be undone.')) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeletePaymentSchedule = async () => {
+    if (!selectedPayment) return;
     setDeletingPayment(true);
     setErrorMsg('');
     try {
       await paymentsApi.deletePaymentSchedule(selectedPayment.id);
       setSuccessMsg('Payment schedule deleted successfully');
+      setShowDeleteConfirm(false);
       setShowEditPaymentModal(false);
       fetchPayments();
     } catch (err: unknown) {
@@ -189,7 +204,7 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
   const paymentsByDay = useMemo(() => {
     const map = new Map<number, PaymentSchedule[]>();
     filteredSchedules.forEach(s => {
-      const day = new Date(s.due_date).getDate();
+      const day = parseLocalDate(s.due_date).getDate();
       const existing = map.get(day) || [];
       existing.push(s);
       map.set(day, existing);
@@ -287,9 +302,10 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigateMonth(-1)}
+                aria-label="Previous month"
                 className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
               >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
@@ -298,9 +314,10 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
               </span>
               <button
                 onClick={() => navigateMonth(1)}
+                aria-label="Next month"
                 className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
               >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -451,9 +468,10 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
                 </h3>
                 <button
                   onClick={() => setSelectedDay(null)}
+                  aria-label="Close day detail"
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -564,7 +582,7 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
                           )}
                         </td>
                         <td className="py-3 px-4">
-                          {new Date(schedule.due_date).toLocaleDateString('en-GB')}
+                          {parseLocalDate(schedule.due_date).toLocaleDateString('en-GB')}
                         </td>
                         <td className="py-3 px-4 font-medium">£{parseFloat(schedule.amount_due as unknown as string)?.toFixed(2)}</td>
                         <td className="py-3 px-4">
@@ -619,6 +637,23 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
         editPaymentFormData={editPaymentFormData}
         onEditPaymentFormDataChange={setEditPaymentFormData}
       />
+
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Payment Schedule"
+      >
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to delete this payment schedule? This action cannot be undone.
+        </p>
+        <ModalFooter
+          onCancel={() => setShowDeleteConfirm(false)}
+          onConfirm={confirmDeletePaymentSchedule}
+          confirmText={deletingPayment ? 'Deleting...' : 'Delete'}
+          confirmColor="red"
+          isLoading={deletingPayment}
+        />
+      </Modal>
     </div>
   );
 }
