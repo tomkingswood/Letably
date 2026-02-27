@@ -915,7 +915,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
   };
 
   const handleCopyGuarantorLink = (token: string, guarantorName: string) => {
-    const link = `${window.location.origin}/guarantor/sign/${token}`;
+    const link = `${window.location.origin}/${agencySlug}/guarantor/sign/${token}`;
     navigator.clipboard.writeText(link);
     setSuccess(`Guarantor agreement link for ${guarantorName} copied to clipboard!`);
     setTimeout(() => setSuccess(''), 3000);
