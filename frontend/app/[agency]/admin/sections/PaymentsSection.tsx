@@ -15,6 +15,12 @@ function parseLocalDate(dateStr: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** Format today's date as YYYY-MM-DD using local timezone. */
+function todayLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 interface PaymentSchedule {
   id: number;
   tenant_name?: string;
@@ -64,7 +70,7 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
   const [selectedPayment, setSelectedPayment] = useState<PaymentSchedule | null>(null);
   const [paymentFormData, setPaymentFormData] = useState({
     amount_paid: 0,
-    paid_date: new Date().toISOString().split('T')[0],
+    paid_date: todayLocal(),
     payment_reference: '',
   });
 
@@ -124,7 +130,7 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
     setSelectedPayment(payment);
     setPaymentFormData({
       amount_paid: parseFloat(payment.amount_due as unknown as string) || 0,
-      paid_date: new Date().toISOString().split('T')[0],
+      paid_date: todayLocal(),
       payment_reference: '',
     });
     setShowRecordPaymentModal(true);
