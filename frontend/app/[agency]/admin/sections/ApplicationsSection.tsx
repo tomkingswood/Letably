@@ -42,6 +42,8 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     application_type: 'student' as 'student' | 'professional',
     guarantor_required: true,
   });
+  const [showConverted, setShowConverted] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const isCreateMode = action === 'new';
   const isViewMode = action === 'view' && !!itemId;
@@ -286,9 +288,6 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     );
   }
 
-  const [showConverted, setShowConverted] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-
   const convertedCount = applications.filter(a => a.status === 'converted_to_tenancy').length;
   const activeApplications = applications.filter(a => a.status !== 'converted_to_tenancy');
 
@@ -457,6 +456,7 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
                         >
                           View
                         </button>
+                        {/* Intentionally stricter than detail view: exclude submitted/awaiting_guarantor from list delete to prevent accidental deletion of in-progress applications */}
                         {['pending', 'approved', 'rejected'].includes(app.status) && (
                           <button
                             onClick={() => handleDeleteFromList(app.id)}
