@@ -169,6 +169,32 @@ exports.signAgreement = asyncHandler(async (req, res) => {
 
       const paymentResult = await generatePaymentSchedulesForTenancy(tenancyId, agencyId);
       console.log(`Auto-approval: All tenants + guarantors signed. Generated payment schedules for tenancy ${tenancyId}:`, paymentResult);
+
+      // Apply holding deposit reductions to first rent schedules
+      const heldDeposits = await db.query(
+        `SELECT hd.*, tm.id as member_id
+         FROM holding_deposits hd
+         JOIN tenancy_members tm ON hd.application_id = tm.application_id AND tm.tenancy_id = $1
+         WHERE hd.applied_to_tenancy_id = $1 AND hd.agency_id = $2 AND hd.status = 'applied_to_rent'`,
+        [tenancyId, agencyId], agencyId
+      );
+      for (const hd of heldDeposits.rows) {
+        const firstRentSchedule = await db.query(
+          `SELECT id, amount_due FROM payment_schedules
+           WHERE tenancy_id = $1 AND member_id = $2 AND payment_type = 'rent' AND agency_id = $3
+           ORDER BY due_date ASC LIMIT 1`,
+          [tenancyId, hd.member_id, agencyId], agencyId
+        );
+        if (firstRentSchedule.rows[0]) {
+          const currentAmount = parseFloat(firstRentSchedule.rows[0].amount_due);
+          const newAmount = Math.max(0, currentAmount - parseFloat(hd.amount));
+          await db.query(
+            'UPDATE payment_schedules SET amount_due = $1 WHERE id = $2 AND agency_id = $3',
+            [newAmount, firstRentSchedule.rows[0].id, agencyId], agencyId
+          );
+          console.log(`Holding deposit: Reduced first rent for member ${hd.member_id} by £${hd.amount} (${currentAmount} -> ${newAmount})`);
+        }
+      }
     }
   } catch (error) {
     console.error('Error in post-signing process:', error);

@@ -63,10 +63,10 @@ export function AgencyProvider({
   /**
    * Fetch agency data from the API
    */
-  const fetchAgency = async (slug: string) => {
+  const fetchAgency = async (slug: string, isRefresh = false) => {
     if (!slug) return;
 
-    setIsLoading(true);
+    if (!isRefresh) setIsLoading(true);
     setError(null);
 
     try {
@@ -95,16 +95,16 @@ export function AgencyProvider({
       setError('Failed to load agency');
       setAgency(null);
     } finally {
-      setIsLoading(false);
+      if (!isRefresh) setIsLoading(false);
     }
   };
 
   /**
-   * Refresh agency data
+   * Refresh agency data without showing loading spinner
    */
   const refreshAgency = async () => {
     if (agencySlug) {
-      await fetchAgency(agencySlug);
+      await fetchAgency(agencySlug, true);
     }
   };
 

@@ -7,6 +7,7 @@ const asyncHandler = require('../utils/asyncHandler');
 // Import refactored modules
 const {
   checkBedroomConflicts,
+  checkBedroomReservationConflicts,
   formatBedroomConflictError,
   validateNoDuplicateBedrooms
 } = require('../validators/tenancyValidator');
@@ -15,6 +16,8 @@ const {
   getBaseUrl,
   getTenancyMembersForEmail
 } = require('../repositories/tenancyRepository');
+
+const holdingDepositRepo = require('../repositories/holdingDepositRepository');
 
 const { buildSigningNotificationEmail } = require('../utils/tenancyEmailBuilder');
 
@@ -338,10 +341,19 @@ exports.createTenancy = asyncHandler(async (req, res) => {
     });
   }
 
-  const bedroomConflicts = checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null);
+  const bedroomConflicts = await checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, agencyId);
   if (bedroomConflicts.length > 0) {
     const conflictError = formatBedroomConflictError(bedroomConflicts);
     return res.status(409).json({ error: conflictError.error });
+  }
+
+  // Check for holding deposit reservation conflicts
+  const bedroomIdsToCheck = members.map(m => m.bedroom_id).filter(Boolean);
+  const memberApplicationIds = members.map(m => m.application_id);
+  const reservationConflicts = await checkBedroomReservationConflicts(bedroomIdsToCheck, memberApplicationIds, agencyId);
+  if (reservationConflicts.length > 0) {
+    const messages = reservationConflicts.map(c => c.message).join('; ');
+    return res.status(409).json({ error: 'Bedroom reservation conflict', message: messages, conflicts: reservationConflicts });
   }
 
   // Use transaction for creating tenancy
@@ -398,8 +410,8 @@ exports.createTenancy = asyncHandler(async (req, res) => {
                COALESCE(form_data->>'guarantor_relationship', guarantor_relationship) as guarantor_relationship,
                COALESCE(form_data->>'guarantor_id_type', guarantor_id_type) as guarantor_id_type
         FROM applications
-        WHERE id = $1
-      `, [member.application_id]);
+        WHERE id = $1 AND agency_id = $2
+      `, [member.application_id, agencyId]);
       const appData = appDataResult.rows[0];
 
       // Map application payment_plan to payment_option and pre-populate as default
@@ -440,7 +452,39 @@ exports.createTenancy = asyncHandler(async (req, res) => {
       ]);
 
       // Update application status to converted_to_tenancy
-      await client.query('UPDATE applications SET status = $1 WHERE id = $2', ['converted_to_tenancy', member.application_id]);
+      await client.query('UPDATE applications SET status = $1 WHERE id = $2 AND agency_id = $3', ['converted_to_tenancy', member.application_id, agencyId]);
+
+      // Apply holding deposit if specified
+      if (member.holding_deposit_id && member.holding_deposit_apply_to) {
+        const deposit = await client.query(
+          'SELECT * FROM holding_deposits WHERE id = $1 AND agency_id = $2 AND status = $3',
+          [member.holding_deposit_id, agencyId, 'held']
+        );
+
+        if (deposit.rows[0]) {
+          const depositAmount = parseFloat(deposit.rows[0].amount);
+          const applyTo = member.holding_deposit_apply_to;
+
+          if (applyTo === 'tenancy_deposit') {
+            // Reduce the member's deposit_amount, cap at 0
+            const currentDeposit = parseFloat(member.deposit_amount) || 0;
+            const newDeposit = Math.max(0, currentDeposit - depositAmount);
+            await client.query(
+              'UPDATE tenancy_members SET deposit_amount = $1 WHERE tenancy_id = $2 AND application_id = $3 AND agency_id = $4',
+              [newDeposit, tenancyId, member.application_id, agencyId]
+            );
+          }
+          // Note: 'first_rent' is handled after payment schedule generation (below)
+
+          const depositStatus = applyTo === 'first_rent' ? 'applied_to_rent' : 'applied_to_deposit';
+          await client.query(
+            `UPDATE holding_deposits SET status = $1, applied_to_tenancy_id = $2,
+             status_changed_at = NOW(), status_changed_by = $3, updated_at = NOW()
+             WHERE id = $4 AND agency_id = $5`,
+            [depositStatus, tenancyId, req.user?.id || null, member.holding_deposit_id, agencyId]
+          );
+        }
+      }
     }
 
     return tenancyId;

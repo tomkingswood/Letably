@@ -454,11 +454,64 @@ async function validateApplicationForTenancy(applicationId, agencyId) {
   }
 }
 
+/**
+ * Check for bedroom reservation conflicts from holding deposits
+ * @param {number[]} bedroomIds - Bedroom IDs to check
+ * @param {number[]} excludeApplicationIds - Application IDs whose reservations to exclude
+ * @param {number} agencyId - Agency ID
+ * @returns {Promise<Array<Object>>} Array of conflict objects
+ */
+async function checkBedroomReservationConflicts(bedroomIds, excludeApplicationIds = [], agencyId) {
+  const conflicts = [];
+  const validIds = bedroomIds.filter(id => id != null && id !== '');
+
+  if (validIds.length === 0) return conflicts;
+
+  for (const bedroomId of validIds) {
+    let query = `
+      SELECT hd.*, a.first_name, a.surname, b.bedroom_name,
+        p.address_line1 as property_address
+      FROM holding_deposits hd
+      LEFT JOIN applications a ON hd.application_id = a.id
+      LEFT JOIN bedrooms b ON hd.bedroom_id = b.id
+      LEFT JOIN properties p ON hd.property_id = p.id
+      WHERE hd.bedroom_id = $1
+        AND hd.agency_id = $2
+        AND hd.status = 'held'
+        AND hd.reservation_released = FALSE
+        AND hd.reservation_expires_at > NOW()
+    `;
+    const params = [bedroomId, agencyId];
+
+    if (excludeApplicationIds.length > 0) {
+      const placeholders = excludeApplicationIds.map((_, i) => `$${params.length + i + 1}`).join(', ');
+      query += ` AND hd.application_id NOT IN (${placeholders})`;
+      params.push(...excludeApplicationIds);
+    }
+
+    const result = await db.query(query, params, agencyId);
+
+    for (const reservation of result.rows) {
+      conflicts.push({
+        bedroom_id: bedroomId,
+        bedroom_name: reservation.bedroom_name,
+        reserved_by: `${reservation.first_name} ${reservation.surname}`,
+        application_id: reservation.application_id,
+        expires_at: reservation.reservation_expires_at,
+        message: `Bedroom "${reservation.bedroom_name}" is reserved by ${reservation.first_name} ${reservation.surname} (holding deposit) until ${new Date(reservation.reservation_expires_at).toLocaleDateString('en-GB')}`
+      });
+    }
+  }
+
+  return conflicts;
+}
+
 module.exports = {
   validateDates,
   validateNoDuplicateBedrooms,
   validateBedroomBelongsToProperty,
   checkBedroomConflicts,
+  checkBedroomReservationConflicts,
   formatBedroomConflictError,
   validateTenancyType,
   validateTenancyStatus,

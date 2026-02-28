@@ -516,3 +516,42 @@ export interface AgreementMemberData {
   is_signed?: boolean;
   property_address?: string;
 }
+
+export interface HoldingDeposit {
+  id: number;
+  agency_id: number;
+  application_id: number;
+  amount: number;
+  payment_reference?: string;
+  date_received: string;
+  bedroom_id?: number;
+  property_id?: number;
+  reservation_days?: number;
+  reservation_expires_at?: string;
+  reservation_released: boolean;
+  status: 'held' | 'applied_to_rent' | 'applied_to_deposit' | 'refunded' | 'forfeited';
+  applied_to_tenancy_id?: number;
+  status_changed_at?: string;
+  status_changed_by?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  applicant_first_name?: string;
+  applicant_surname?: string;
+  applicant_email?: string;
+  bedroom_name?: string;
+  property_address?: string;
+  changed_by_first_name?: string;
+  changed_by_last_name?: string;
+}
+
+export interface HoldingDepositFormData {
+  application_id: number;
+  amount: number;
+  payment_reference?: string;
+  date_received: string;
+  bedroom_id?: number;
+  property_id?: number;
+  reservation_days?: number;
+}

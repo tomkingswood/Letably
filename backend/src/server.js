@@ -152,6 +152,7 @@ const adminReportsRoutes = require('./routes/adminReports');
 const tenancyCommunicationRoutes = require('./routes/tenancyCommunication');
 const idDocumentsRoutes = require('./routes/idDocuments');
 const dataExportRoutes = require('./routes/dataExport');
+const holdingDepositsRoutes = require('./routes/holdingDeposits');
 
 // Health check (no auth required)
 app.get('/api/health', (req, res) => {
@@ -198,6 +199,7 @@ app.use('/api/email-queue', emailQueueRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/data-export', dataExportRoutes);
+app.use('/api/holding-deposits', holdingDepositsRoutes);
 
 // Public/external
 app.use('/api/guarantor', guarantorRoutes);
@@ -223,6 +225,7 @@ process.on('SIGINT', () => {
 
 // Import services for scheduled jobs
 const { processQueue: processExportQueue, cleanupOldExports } = require('./services/dataExportService');
+const holdingDepositRepo = require('./repositories/holdingDepositRepository');
 
 // Start server
 app.listen(PORT, () => {
@@ -258,7 +261,26 @@ app.listen(PORT, () => {
     }
   });
 
+  // Release expired holding deposit reservations daily at 2 AM
+  cron.schedule('0 2 * * *', async () => {
+    try {
+      // Query all agencies and release expired reservations for each
+      const agenciesResult = await require('./db').systemQuery('SELECT id FROM agencies');
+      let totalReleased = 0;
+      for (const agency of agenciesResult.rows) {
+        const released = await holdingDepositRepo.releaseExpiredReservations(agency.id);
+        totalReleased += released;
+      }
+      if (totalReleased > 0) {
+        console.log(`[Holding Deposits] Released ${totalReleased} expired reservations`);
+      }
+    } catch (error) {
+      console.error('[Holding Deposits] Reservation release error:', error);
+    }
+  });
+
   console.log('[Scheduled Jobs] Data export queue processor started');
+  console.log('[Scheduled Jobs] Holding deposit reservation release started');
 
   // TODO: Initialize additional scheduled jobs
   // - Email queue processor

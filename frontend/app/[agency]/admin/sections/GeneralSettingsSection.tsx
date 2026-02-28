@@ -17,6 +17,9 @@ interface SettingsData {
   redress_scheme_number: string;
   redress_scheme_url: string;
   viewing_min_days_advance: string;
+  holding_deposit_enabled: string;
+  holding_deposit_type: string;
+  holding_deposit_amount: string;
 }
 
 const defaultSettings: SettingsData = {
@@ -30,6 +33,9 @@ const defaultSettings: SettingsData = {
   redress_scheme_number: '',
   redress_scheme_url: '',
   viewing_min_days_advance: '2',
+  holding_deposit_enabled: 'false',
+  holding_deposit_type: '1_week_pppw',
+  holding_deposit_amount: '100',
 };
 
 interface BrandingData {
@@ -52,7 +58,6 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
   const [branding, setBranding] = useState<BrandingData>(defaultBranding);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingBranding, setSavingBranding] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -90,8 +95,12 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
     setMessage(null);
 
     try {
-      await settings.update(formData);
+      await Promise.all([
+        settings.update(formData),
+        agencies.updateBranding({ ...branding, show_powered_by: true }),
+      ]);
       setMessage({ type: 'success', text: 'Settings updated successfully!' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       try { await refreshAgency(); } catch { /* settings saved; context refresh is best-effort */ }
     } catch (error: any) {
       setMessage({
@@ -113,28 +122,6 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
     setBranding({ ...branding, [name]: type === 'checkbox' ? checked : value });
   };
 
-  const handleSaveBranding = async () => {
-    setSavingBranding(true);
-    setMessage(null);
-
-    try {
-      // Always force show_powered_by to true (white-label is a paid feature)
-      await agencies.updateBranding({ ...branding, show_powered_by: true });
-      await refreshAgency();
-      setMessage({
-        type: 'success',
-        text: 'Branding updated successfully!',
-      });
-    } catch (error: any) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || 'Failed to update branding',
-      });
-    } finally {
-      setSavingBranding(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -146,21 +133,35 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
   return (
     <div>
       {/* Section Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">General Settings</h2>
-        <p className="text-gray-600">Configure your agency's company information and branding</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">General Settings</h2>
+          <p className="text-gray-600">Configure your agency's company information and branding</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const form = document.getElementById('settings-form') as HTMLFormElement;
+            form?.requestSubmit();
+          }}
+          disabled={saving}
+          className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {saving ? 'Saving...' : 'Save Settings'}
+        </button>
       </div>
 
       {message && (
         <MessageAlert type={message.type} message={message.text} className="mb-6" />
       )}
 
-      {/* Branding Settings */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">Branding</h3>
-        <p className="text-gray-600 text-sm mb-4">Customise your agency's colours and logo</p>
+      <form id="settings-form" onSubmit={handleSubmit} className="space-y-6">
+        {/* Branding Settings */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">Branding</h3>
+          <p className="text-gray-600 text-sm mb-4">Customise your agency's colours and logo</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="primary_color" className="block text-sm font-medium text-gray-700 mb-2">
               Primary Colour
@@ -249,19 +250,8 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
           </div>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={handleSaveBranding}
-            disabled={savingBranding}
-            className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {savingBranding ? 'Saving...' : 'Save Branding'}
-          </button>
         </div>
-      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Company Information */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900">Company Information</h3>
@@ -426,6 +416,81 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
               className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
             />
             <p className="mt-1 text-sm text-gray-500">How many days in advance must viewings be booked (1-14 days)</p>
+          </div>
+        </div>
+
+        {/* Holding Deposit Settings */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">Holding Deposits</h3>
+          <p className="text-gray-600 text-sm mb-4">
+            Configure whether a holding deposit is required before approving applications
+          </p>
+
+          <div className="space-y-4">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={formData.holding_deposit_enabled === 'true'}
+                onChange={(e) => setFormData({ ...formData, holding_deposit_enabled: e.target.checked ? 'true' : 'false' })}
+                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Require holding deposit for application approval
+              </span>
+            </label>
+
+            {formData.holding_deposit_enabled === 'true' && (
+              <div className="ml-7 space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Deposit Amount Type</p>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="holding_deposit_type"
+                        value="1_week_pppw"
+                        checked={formData.holding_deposit_type === '1_week_pppw'}
+                        onChange={(e) => setFormData({ ...formData, holding_deposit_type: e.target.value })}
+                        className="text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-gray-700">1 week&apos;s rent (PPPW from bedroom)</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="holding_deposit_type"
+                        value="fixed_amount"
+                        checked={formData.holding_deposit_type === 'fixed_amount'}
+                        onChange={(e) => setFormData({ ...formData, holding_deposit_type: e.target.value })}
+                        className="text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-gray-700">Fixed amount</span>
+                    </label>
+                  </div>
+                </div>
+
+                {formData.holding_deposit_type === 'fixed_amount' && (
+                  <div>
+                    <label htmlFor="holding_deposit_amount" className="block text-sm font-medium text-gray-700 mb-2">
+                      Fixed Amount
+                    </label>
+                    <div className="relative w-40">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">&pound;</span>
+                      <input
+                        type="number"
+                        id="holding_deposit_amount"
+                        name="holding_deposit_amount"
+                        value={formData.holding_deposit_amount}
+                        onChange={handleChange}
+                        min="0"
+                        step="0.01"
+                        className="w-full pl-7 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

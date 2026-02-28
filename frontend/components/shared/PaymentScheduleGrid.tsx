@@ -297,7 +297,7 @@ export function PaymentScheduleGrid({
 
                   <div className="space-y-3">
                     {group.payments.map(payment => {
-                      const balance = payment.amount_due - (payment.amount_paid || 0);
+                      const balance = Number(payment.amount_due) - (Number(payment.amount_paid) || 0);
                       const isNegative = payment.amount_due < 0;
                       const dueDate = new Date(payment.due_date);
                       const isPast = dueDate < new Date() && payment.status !== 'paid';
@@ -343,7 +343,7 @@ export function PaymentScheduleGrid({
                                   </div>
                                   <div>
                                     <span className="text-gray-600">Paid:</span>
-                                    <span className="ml-1 font-bold text-green-600">£{(payment.amount_paid || 0).toFixed(2)}</span>
+                                    <span className="ml-1 font-bold text-green-600">£{(Number(payment.amount_paid) || 0).toFixed(2)}</span>
                                   </div>
                                   <div>
                                     <span className="text-gray-600">Balance:</span>

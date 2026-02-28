@@ -15,7 +15,10 @@ const DEFAULTS = {
   overdue_reminder_frequency: '3',
   certificate_reminder_days: '30',
   default_tenancy_agreement_id: null,
-  public_site_enabled: 'true'
+  public_site_enabled: 'true',
+  holding_deposit_enabled: 'false',
+  holding_deposit_type: '1_week_pppw',
+  holding_deposit_amount: '100'
 };
 
 /**
@@ -42,7 +45,10 @@ async function get(agencyId) {
     overdue_reminder_frequency: parseInt(settings.overdue_reminder_frequency, 10) || 3,
     certificate_reminder_days: parseInt(settings.certificate_reminder_days, 10) || 30,
     default_tenancy_agreement_id: settings.default_tenancy_agreement_id ? parseInt(settings.default_tenancy_agreement_id, 10) : null,
-    public_site_enabled: settings.public_site_enabled === 'true'
+    public_site_enabled: settings.public_site_enabled === 'true',
+    holding_deposit_enabled: settings.holding_deposit_enabled === 'true',
+    holding_deposit_type: settings.holding_deposit_type || '1_week_pppw',
+    holding_deposit_amount: parseFloat(settings.holding_deposit_amount) || 100
   };
 }
 
@@ -99,7 +105,10 @@ async function update(agencyId, data) {
     'overdue_reminder_frequency',
     'certificate_reminder_days',
     'default_tenancy_agreement_id',
-    'public_site_enabled'
+    'public_site_enabled',
+    'holding_deposit_enabled',
+    'holding_deposit_type',
+    'holding_deposit_amount'
   ];
 
   for (const [key, value] of Object.entries(data)) {
