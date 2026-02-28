@@ -17,8 +17,6 @@ const {
   getTenancyMembersForEmail
 } = require('../repositories/tenancyRepository');
 
-const holdingDepositRepo = require('../repositories/holdingDepositRepository');
-
 const { buildSigningNotificationEmail } = require('../utils/tenancyEmailBuilder');
 
 /**

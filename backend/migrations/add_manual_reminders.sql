@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS reminder_email_notifications (
   severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'critical')),
   recipient_email VARCHAR(255) NOT NULL,
   last_emailed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(reminder_identifier, recipient_email)
+  UNIQUE(agency_id, reminder_identifier, recipient_email)
 );
 
 CREATE INDEX IF NOT EXISTS idx_reminder_email_notif_agency ON reminder_email_notifications(agency_id);

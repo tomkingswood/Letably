@@ -143,14 +143,14 @@ const recordRemindersEmailed = async (reminders, recipientEmail, agencyId) => {
     for (const reminder of reminders) {
       console.log(`    - Recording: ${reminder.id} (${reminder.severity})`);
       const result = await db.query(`
-        INSERT INTO reminder_email_notifications (reminder_identifier, severity, recipient_email, last_emailed_at)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT(reminder_identifier, recipient_email)
+        INSERT INTO reminder_email_notifications (agency_id, reminder_identifier, severity, recipient_email, last_emailed_at)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT(agency_id, reminder_identifier, recipient_email)
         DO UPDATE SET
           severity = EXCLUDED.severity,
           last_emailed_at = EXCLUDED.last_emailed_at
         RETURNING *
-      `, [reminder.id, reminder.severity, recipientEmail, now], agencyId);
+      `, [agencyId, reminder.id, reminder.severity, recipientEmail, now], agencyId);
       console.log(`      Row count: ${result.rowCount}`);
     }
 
