@@ -20,6 +20,9 @@ interface SettingsData {
   holding_deposit_enabled: string;
   holding_deposit_type: string;
   holding_deposit_amount: string;
+  bank_name: string;
+  sort_code: string;
+  account_number: string;
 }
 
 const defaultSettings: SettingsData = {
@@ -36,6 +39,9 @@ const defaultSettings: SettingsData = {
   holding_deposit_enabled: 'false',
   holding_deposit_type: '1_week_pppw',
   holding_deposit_amount: '100',
+  bank_name: '',
+  sort_code: '',
+  account_number: '',
 };
 
 interface BrandingData {
@@ -489,6 +495,49 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
                     </div>
                   </div>
                 )}
+
+                {/* Bank Payment Details */}
+                <div className="border-t pt-4 mt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Payment Details (shown to tenants)</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor="bank_name" className="block text-sm text-gray-600 mb-1">Bank Name</label>
+                      <input
+                        type="text"
+                        id="bank_name"
+                        name="bank_name"
+                        value={formData.bank_name}
+                        onChange={handleChange}
+                        placeholder="e.g. Barclays"
+                        className="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="sort_code" className="block text-sm text-gray-600 mb-1">Sort Code</label>
+                      <input
+                        type="text"
+                        id="sort_code"
+                        name="sort_code"
+                        value={formData.sort_code}
+                        onChange={handleChange}
+                        placeholder="e.g. 20-00-00"
+                        className="w-40 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="account_number" className="block text-sm text-gray-600 mb-1">Account Number</label>
+                      <input
+                        type="text"
+                        id="account_number"
+                        name="account_number"
+                        value={formData.account_number}
+                        onChange={handleChange}
+                        placeholder="e.g. 12345678"
+                        className="w-48 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

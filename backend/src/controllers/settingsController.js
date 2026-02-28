@@ -71,7 +71,10 @@ const updateSettings = asyncHandler(async (req, res) => {
     viewing_min_days_advance,
     holding_deposit_enabled,
     holding_deposit_type,
-    holding_deposit_amount
+    holding_deposit_amount,
+    bank_name,
+    sort_code,
+    account_number
   } = req.body;
 
   // Validate required fields
@@ -164,6 +167,17 @@ const updateSettings = asyncHandler(async (req, res) => {
       if (!isNaN(amount) && amount >= 0) {
         await updateSetting(amount.toString(), 'holding_deposit_amount');
       }
+    }
+
+    // Bank details for holding deposits
+    if (bank_name !== undefined) {
+      await updateSetting(bank_name || '', 'bank_name');
+    }
+    if (sort_code !== undefined) {
+      await updateSetting(sort_code || '', 'sort_code');
+    }
+    if (account_number !== undefined) {
+      await updateSetting(account_number || '', 'account_number');
     }
   }, agencyId);
 

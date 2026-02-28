@@ -18,7 +18,10 @@ const DEFAULTS = {
   public_site_enabled: 'true',
   holding_deposit_enabled: 'false',
   holding_deposit_type: '1_week_pppw',
-  holding_deposit_amount: '100'
+  holding_deposit_amount: '100',
+  bank_name: null,
+  sort_code: null,
+  account_number: null
 };
 
 /**
@@ -48,7 +51,10 @@ async function get(agencyId) {
     public_site_enabled: settings.public_site_enabled === 'true',
     holding_deposit_enabled: settings.holding_deposit_enabled === 'true',
     holding_deposit_type: settings.holding_deposit_type || '1_week_pppw',
-    holding_deposit_amount: Number.isFinite(parseFloat(settings.holding_deposit_amount)) ? parseFloat(settings.holding_deposit_amount) : 100
+    holding_deposit_amount: Number.isFinite(parseFloat(settings.holding_deposit_amount)) ? parseFloat(settings.holding_deposit_amount) : 100,
+    bank_name: settings.bank_name || null,
+    sort_code: settings.sort_code || null,
+    account_number: settings.account_number || null
   };
 }
 
@@ -108,7 +114,10 @@ async function update(agencyId, data) {
     'public_site_enabled',
     'holding_deposit_enabled',
     'holding_deposit_type',
-    'holding_deposit_amount'
+    'holding_deposit_amount',
+    'bank_name',
+    'sort_code',
+    'account_number'
   ];
 
   for (const [key, value] of Object.entries(data)) {

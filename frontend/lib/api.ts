@@ -395,6 +395,10 @@ export const applications = {
     phone?: string;
     is_new_user?: boolean;
     send_welcome_email?: boolean;
+    // Holding deposit fields
+    property_id?: number;
+    bedroom_id?: number;
+    reservation_days?: number;
   }) => api.post('/applications', data),
   getAll: (params?: { status?: string; application_type?: string }) =>
     api.get('/applications/all', { params }),
@@ -916,8 +920,9 @@ export const dataExport = {
   processQueue: (limit?: number) => api.post('/data-export/process', null, { params: { limit } }),
 };
 
-// Holding Deposits API (Admin only)
+// Holding Deposits API
 export const holdingDeposits = {
+  // Admin routes
   create: (data: HoldingDepositFormData) =>
     api.post('/holding-deposits', data),
   getAll: (params?: { status?: string }) =>
@@ -928,4 +933,11 @@ export const holdingDeposits = {
     api.get(`/holding-deposits/${id}`),
   updateStatus: (id: string | number, data: { status: 'refunded' | 'forfeited'; notes?: string }) =>
     api.patch(`/holding-deposits/${id}/status`, data),
+  recordPayment: (id: string | number, data: { payment_reference?: string; date_received: string }) =>
+    api.patch(`/holding-deposits/${id}/record-payment`, data),
+  undoPayment: (id: string | number) =>
+    api.patch(`/holding-deposits/${id}/undo-payment`),
+  // Tenant route
+  getByApplicationForTenant: (applicationId: string | number) =>
+    api.get(`/holding-deposits/my-application/${applicationId}`),
 };

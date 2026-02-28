@@ -264,6 +264,10 @@ const STATUS_CONFIGS: Record<StatusType, Record<string, StatusConfig>> = {
   },
 
   holdingDeposit: {
+    awaiting_payment: {
+      badge: 'bg-amber-500 text-white',
+      label: 'Awaiting Payment'
+    },
     held: {
       badge: 'bg-blue-600 text-white',
       label: 'Held'

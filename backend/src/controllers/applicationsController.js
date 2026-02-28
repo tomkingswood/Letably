@@ -9,6 +9,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { parseJsonField, parseJsonFields } = require('../utils/parseJsonField');
 const { buildAgencyUrl, buildPublicUrl } = require('../utils/urlBuilder');
 const agencySettings = require('../models/agencySettings');
+const holdingDepositRepo = require('../repositories/holdingDepositRepository');
 
 // Helper function to generate guarantor token
 function generateGuarantorToken() {
@@ -26,7 +27,10 @@ exports.createApplication = asyncHandler(async (req, res) => {
     phone,
     is_new_user,
     application_type,
-    guarantor_required
+    guarantor_required,
+    property_id,
+    bedroom_id,
+    reservation_days
   } = req.body;
 
   // Validation
@@ -97,6 +101,58 @@ exports.createApplication = asyncHandler(async (req, res) => {
   });
 
   const applicationId = newApplication.id;
+
+  // Create holding deposit if enabled and property/bedroom specified
+  let holdingDeposit = null;
+  const settings = await agencySettings.get(agencyId);
+  if (settings.holding_deposit_enabled && (property_id || bedroom_id)) {
+    // Calculate deposit amount
+    let depositAmount = settings.holding_deposit_amount || 100;
+
+    if (settings.holding_deposit_type === '1_week_pppw' && bedroom_id) {
+      // Get bedroom PPPW
+      const bedroomResult = await db.query(
+        'SELECT price_pppw FROM bedrooms WHERE id = $1 AND agency_id = $2',
+        [bedroom_id, agencyId], agencyId
+      );
+      if (bedroomResult.rows[0]?.price_pppw) {
+        depositAmount = parseFloat(bedroomResult.rows[0].price_pppw);
+      }
+    }
+
+    // Validate bedroom belongs to property if both provided
+    if (bedroom_id && property_id) {
+      const bedroomCheck = await db.query(
+        'SELECT id FROM bedrooms WHERE id = $1 AND property_id = $2 AND agency_id = $3',
+        [bedroom_id, property_id, agencyId], agencyId
+      );
+      if (bedroomCheck.rows.length === 0) {
+        return res.status(400).json({ error: 'Bedroom not found in the specified property' });
+      }
+    }
+
+    // Check for reservation conflicts
+    if (bedroom_id) {
+      const activeReservation = await holdingDepositRepo.getActiveReservationForBedroom(bedroom_id, agencyId);
+      if (activeReservation) {
+        return res.status(409).json({ error: `Bedroom is already reserved until ${new Date(activeReservation.reservation_expires_at).toLocaleDateString('en-GB')}` });
+      }
+    }
+
+    // Store reservation_days but don't calculate expiry yet —
+    // reservation starts when deposit is paid, not when created
+    const parsedDays = reservation_days ? parseInt(reservation_days) : null;
+
+    holdingDeposit = await holdingDepositRepo.createAwaitingPayment({
+      agencyId,
+      applicationId,
+      amount: depositAmount,
+      bedroomId: bedroom_id || null,
+      propertyId: property_id || null,
+      reservationDays: parsedDays,
+      reservationExpiresAt: null
+    });
+  }
 
   // Get site settings for email
   // Get branding for email
@@ -233,6 +289,7 @@ If you have any questions, please contact us at ${contactEmail}.
     message: 'Application created successfully',
     application_id: applicationId,
     user_created: is_new_user,
+    holding_deposit: holdingDeposit || undefined,
   };
 
   res.status(201).json(response);
@@ -831,11 +888,20 @@ exports.approveApplication = asyncHandler(async (req, res) => {
   // Check if holding deposit is required
   const settings = await agencySettings.get(agencyId);
   if (settings.holding_deposit_enabled) {
-    return res.status(400).json({
-      error: 'Holding deposit required',
-      message: 'This agency requires a holding deposit before approving applications. Please use the holding deposit flow instead.',
-      holding_deposit_required: true
-    });
+    const deposit = await holdingDepositRepo.getByApplicationId(id, agencyId);
+    if (!deposit) {
+      return res.status(400).json({
+        error: 'No holding deposit found for this application. A deposit must be created and paid before approval.',
+        holding_deposit_required: true
+      });
+    }
+    if (deposit.status === 'awaiting_payment') {
+      return res.status(400).json({
+        error: 'The holding deposit must be paid before the application can be approved.',
+        deposit_awaiting_payment: true
+      });
+    }
+    // deposit.status === 'held' — proceed with approval
   }
 
   // Update status to approved

@@ -5,8 +5,18 @@ import { holdingDeposits, properties, bedrooms as bedroomsApi, agencies } from '
 import { getErrorMessage } from '@/lib/types';
 import type { HoldingDepositFormData } from '@/lib/types';
 
+interface ExistingDeposit {
+  id: number;
+  amount: number;
+  status: string;
+  bedroom_name?: string;
+  property_address?: string;
+  reservation_days?: number;
+}
+
 interface HoldingDepositApprovalModalProps {
   applicationId: number;
+  existingDeposit?: ExistingDeposit | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -25,9 +35,11 @@ interface BedroomOption {
 
 export default function HoldingDepositApprovalModal({
   applicationId,
+  existingDeposit,
   onClose,
   onSuccess,
 }: HoldingDepositApprovalModalProps) {
+  const hasExisting = existingDeposit && existingDeposit.status === 'awaiting_payment';
   const [amount, setAmount] = useState('');
   const [paymentReference, setPaymentReference] = useState('');
   const [dateReceived, setDateReceived] = useState(new Date().toISOString().split('T')[0]);
@@ -105,7 +117,7 @@ export default function HoldingDepositApprovalModal({
     if (depositType === '1_week_pppw' && bedroomId) {
       const selectedBedroom = bedroomOptions.find(b => b.id === bedroomId);
       if (selectedBedroom?.price_pppw) {
-        setAmount(selectedBedroom.price_pppw.toString());
+        setAmount(parseFloat(String(selectedBedroom.price_pppw)).toString());
       }
     }
   }, [bedroomId, depositType, bedroomOptions]);
@@ -114,33 +126,43 @@ export default function HoldingDepositApprovalModal({
     e.preventDefault();
     setError(null);
 
-    if (!amount || parseFloat(amount) <= 0) {
-      setError('Please enter a valid amount');
+    if (!dateReceived) {
+      setError('Please enter the date received');
       return;
     }
 
-    if (!dateReceived) {
-      setError('Please enter the date received');
+    // For new deposits, validate amount
+    if (!hasExisting && (!amount || parseFloat(amount) <= 0)) {
+      setError('Please enter a valid amount');
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const data: HoldingDepositFormData = {
-        application_id: applicationId,
-        amount: parseFloat(amount),
-        date_received: dateReceived,
-      };
+      if (hasExisting) {
+        // Record payment for existing awaiting_payment deposit
+        await holdingDeposits.recordPayment(existingDeposit!.id, {
+          payment_reference: paymentReference || undefined,
+          date_received: dateReceived,
+        });
+      } else {
+        // Create new deposit (original flow)
+        const data: HoldingDepositFormData = {
+          application_id: applicationId,
+          amount: parseFloat(amount),
+          date_received: dateReceived,
+        };
 
-      if (paymentReference) data.payment_reference = paymentReference;
-      if (bedroomId) data.bedroom_id = bedroomId as number;
-      if (propertyId) data.property_id = propertyId as number;
-      if (showReservation && reservationDays && parseInt(reservationDays) > 0) {
-        data.reservation_days = parseInt(reservationDays);
+        if (paymentReference) data.payment_reference = paymentReference;
+        if (bedroomId) data.bedroom_id = bedroomId as number;
+        if (propertyId) data.property_id = propertyId as number;
+        if (showReservation && reservationDays && parseInt(reservationDays) > 0) {
+          data.reservation_days = parseInt(reservationDays);
+        }
+
+        await holdingDeposits.create(data);
       }
-
-      await holdingDeposits.create(data);
       onSuccess();
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to record holding deposit'));
@@ -154,7 +176,9 @@ export default function HoldingDepositApprovalModal({
       <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Record Holding Deposit</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {hasExisting ? 'Record Deposit Payment' : 'Record Holding Deposit'}
+            </h2>
             <button
               onClick={onClose}
               aria-label="Close"
@@ -167,8 +191,28 @@ export default function HoldingDepositApprovalModal({
           </div>
 
           <p className="text-sm text-gray-600 mb-6">
-            Record the holding deposit payment to approve this application. The application will be approved automatically.
+            {hasExisting
+              ? 'Record the payment received for this holding deposit. You can then approve the application separately.'
+              : 'Record the holding deposit payment to approve this application. The application will be approved automatically.'}
           </p>
+
+          {/* Existing deposit info */}
+          {hasExisting && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <div className="text-sm space-y-1">
+                <p><strong>Amount:</strong> &pound;{Number(existingDeposit!.amount).toFixed(2)}</p>
+                {existingDeposit!.property_address && (
+                  <p><strong>Property:</strong> {existingDeposit!.property_address}</p>
+                )}
+                {existingDeposit!.bedroom_name && (
+                  <p><strong>Room:</strong> {existingDeposit!.bedroom_name}</p>
+                )}
+                {existingDeposit!.reservation_days && (
+                  <p><strong>Reservation:</strong> {existingDeposit!.reservation_days} days</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
@@ -177,30 +221,32 @@ export default function HoldingDepositApprovalModal({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Amount */}
-            <div>
-              <label htmlFor="hd-amount" className="block text-sm font-medium text-gray-700 mb-1">
-                Amount <span className="text-red-500">*</span>
-              </label>
-              <div className="relative w-48">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">&pound;</span>
-                <input
-                  type="number"
-                  id="hd-amount"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  min="0.01"
-                  step="0.01"
-                  required
-                  className="w-full pl-7 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
+            {/* Amount - hidden when existing deposit */}
+            {!hasExisting && (
+              <div>
+                <label htmlFor="hd-amount" className="block text-sm font-medium text-gray-700 mb-1">
+                  Amount <span className="text-red-500">*</span>
+                </label>
+                <div className="relative w-48">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">&pound;</span>
+                  <input
+                    type="number"
+                    id="hd-amount"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    min="0.01"
+                    step="0.01"
+                    required
+                    className="w-full pl-7 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                {depositType === '1_week_pppw' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto-calculated from bedroom PPPW (1 week). You can adjust if needed.
+                  </p>
+                )}
               </div>
-              {depositType === '1_week_pppw' && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Auto-calculated from bedroom PPPW (1 week). You can adjust if needed.
-                </p>
-              )}
-            </div>
+            )}
 
             {/* Payment Reference */}
             <div>
@@ -232,8 +278,8 @@ export default function HoldingDepositApprovalModal({
               />
             </div>
 
-            {/* Room Reservation toggle */}
-            <div className="border-t pt-4">
+            {/* Room Reservation toggle - hidden when existing deposit */}
+            {!hasExisting && <div className="border-t pt-4">
               <button
                 type="button"
                 onClick={() => setShowReservation(!showReservation)}
@@ -317,7 +363,7 @@ export default function HoldingDepositApprovalModal({
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-4 border-t">
@@ -333,7 +379,7 @@ export default function HoldingDepositApprovalModal({
                 disabled={submitting}
                 className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {submitting ? 'Recording...' : 'Record Deposit & Approve'}
+                {submitting ? 'Recording...' : hasExisting ? 'Record Payment' : 'Record Deposit & Approve'}
               </button>
             </div>
           </form>

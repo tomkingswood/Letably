@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { applications as applicationsApi } from '@/lib/api';
+import { applications as applicationsApi, agencies, properties as propertiesApi, bedrooms as bedroomsApi } from '@/lib/api';
 import { Application, getErrorMessage } from '@/lib/types';
 import { getStatusBadge, getStatusLabel } from '@/lib/statusBadges';
 import ApplicationDetailView from '../applications/ApplicationDetailView';
@@ -24,6 +24,19 @@ interface SuccessData {
   isNewUser: boolean;
   userEmail: string;
   userName: string;
+  holdingDeposit?: { amount: number };
+}
+
+interface PropertyOption {
+  id: number;
+  address_line1: string;
+  city?: string;
+}
+
+interface BedroomOption {
+  id: number;
+  bedroom_name: string;
+  price_pppw?: number;
 }
 
 export default function ApplicationsSection({ onNavigate, action, itemId, onBack }: SectionProps) {
@@ -45,12 +58,80 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
   const [showConverted, setShowConverted] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Holding deposit state for create form
+  const [holdingDepositEnabled, setHoldingDepositEnabled] = useState(false);
+  const [depositType, setDepositType] = useState<string>('1_week_pppw');
+  const [fixedAmount, setFixedAmount] = useState<number>(100);
+  const [propertyOptions, setPropertyOptions] = useState<PropertyOption[]>([]);
+  const [bedroomOptions, setBedroomOptions] = useState<BedroomOption[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | ''>('');
+  const [selectedBedroomId, setSelectedBedroomId] = useState<number | ''>('');
+  const [reservationDays, setReservationDays] = useState('');
+  const [calculatedAmount, setCalculatedAmount] = useState<number | null>(null);
+
   const isCreateMode = action === 'new';
   const isViewMode = action === 'view' && !!itemId;
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Load settings and properties when entering create mode
+  useEffect(() => {
+    if (!isCreateMode) return;
+    const loadCreateData = async () => {
+      try {
+        const [settingsRes, propsRes] = await Promise.all([
+          agencies.getSettings(),
+          propertiesApi.getAll(),
+        ]);
+        const s = settingsRes.data.settings || settingsRes.data;
+        const enabled = s.holding_deposit_enabled === true || s.holding_deposit_enabled === 'true';
+        setHoldingDepositEnabled(enabled);
+        setDepositType(s.holding_deposit_type || '1_week_pppw');
+        setFixedAmount(parseFloat(s.holding_deposit_amount) || 100);
+        setPropertyOptions(propsRes.data.properties || []);
+      } catch {
+        // Non-critical, deposit section just won't show
+      }
+    };
+    loadCreateData();
+  }, [isCreateMode]);
+
+  // Load bedrooms when property changes
+  useEffect(() => {
+    if (!selectedPropertyId) {
+      setBedroomOptions([]);
+      setSelectedBedroomId('');
+      setCalculatedAmount(null);
+      return;
+    }
+    const loadBedrooms = async () => {
+      try {
+        const res = await bedroomsApi.getByProperty(selectedPropertyId);
+        setBedroomOptions(res.data.bedrooms || []);
+      } catch {
+        setBedroomOptions([]);
+      }
+    };
+    loadBedrooms();
+  }, [selectedPropertyId]);
+
+  // Auto-calculate amount when bedroom changes
+  useEffect(() => {
+    if (depositType === '1_week_pppw' && selectedBedroomId) {
+      const bed = bedroomOptions.find(b => b.id === selectedBedroomId);
+      if (bed?.price_pppw) {
+        setCalculatedAmount(parseFloat(String(bed.price_pppw)));
+        return;
+      }
+    }
+    if (depositType === 'fixed_amount') {
+      setCalculatedAmount(parseFloat(String(fixedAmount)));
+      return;
+    }
+    setCalculatedAmount(null);
+  }, [selectedBedroomId, depositType, bedroomOptions, fixedAmount]);
 
   // Re-fetch when navigating back from detail view or create mode
   const wasViewMode = useRef(false);
@@ -90,6 +171,10 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     setCreateError(null);
     setSuccessData(null);
     setCreating(false);
+    setSelectedPropertyId('');
+    setSelectedBedroomId('');
+    setReservationDays('');
+    setCalculatedAmount(null);
   };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -110,7 +195,7 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
         return;
       }
 
-      const data = {
+      const data: Parameters<typeof applicationsApi.create>[0] = {
         user_id: userData.userId,
         email: userData.email,
         first_name: userData.firstName,
@@ -121,6 +206,15 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
         guarantor_required: createFormData.guarantor_required,
       };
 
+      // Add holding deposit fields if enabled
+      if (holdingDepositEnabled && selectedPropertyId) {
+        data.property_id = selectedPropertyId as number;
+        if (selectedBedroomId) data.bedroom_id = selectedBedroomId as number;
+        if (reservationDays && parseInt(reservationDays) > 0) {
+          data.reservation_days = parseInt(reservationDays);
+        }
+      }
+
       const response = await applicationsApi.create(data);
 
       setSuccessData({
@@ -128,6 +222,7 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
         isNewUser: userData.isNewUser,
         userEmail: userData.email,
         userName: `${userData.firstName} ${userData.lastName}`,
+        holdingDeposit: response.data.holding_deposit ? { amount: response.data.holding_deposit.amount } : undefined,
       });
     } catch (err: unknown) {
       setCreateError(getErrorMessage(err, 'Failed to create application'));
@@ -181,6 +276,14 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
                 <p className="text-sm text-gray-500">Application ID</p>
                 <p className="text-lg font-semibold text-gray-900">#{successData.applicationId}</p>
               </div>
+
+              {successData.holdingDeposit && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+                  <p className="text-sm text-amber-800">
+                    A holding deposit of <strong>&pound;{Number(successData.holdingDeposit.amount).toFixed(2)}</strong> has been created as &quot;awaiting payment&quot;. The tenant will see payment instructions on their application page.
+                  </p>
+                </div>
+              )}
 
               <Button
                 onClick={() => {
@@ -263,6 +366,93 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
                 </span>
               </label>
             </div>
+
+            {/* Holding Deposit Section */}
+            {holdingDepositEnabled && (
+              <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-900 mb-1">Holding Deposit</h3>
+                  <p className="text-xs text-amber-700">
+                    Select a property and bedroom to create a holding deposit. The tenant will see payment details on their application page.
+                  </p>
+                </div>
+
+                {/* Property */}
+                <div>
+                  <label htmlFor="create-property" className="block text-sm font-medium text-gray-700 mb-1">
+                    Property
+                  </label>
+                  <select
+                    id="create-property"
+                    value={selectedPropertyId}
+                    onChange={(e) => {
+                      setSelectedPropertyId(e.target.value ? parseInt(e.target.value) : '');
+                      setSelectedBedroomId('');
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="">Select property...</option>
+                    {propertyOptions.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.address_line1}{p.city ? `, ${p.city}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Bedroom */}
+                {selectedPropertyId && (
+                  <div>
+                    <label htmlFor="create-bedroom" className="block text-sm font-medium text-gray-700 mb-1">
+                      Bedroom
+                    </label>
+                    <select
+                      id="create-bedroom"
+                      value={selectedBedroomId}
+                      onChange={(e) => setSelectedBedroomId(e.target.value ? parseInt(e.target.value) : '')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                      <option value="">Select bedroom...</option>
+                      {bedroomOptions.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.bedroom_name}{b.price_pppw ? ` - \u00A3${b.price_pppw}/pw` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Calculated Amount */}
+                {calculatedAmount !== null && (
+                  <div className="bg-white rounded-lg p-3 border border-amber-300">
+                    <p className="text-sm text-gray-600">Deposit Amount</p>
+                    <p className="text-xl font-bold text-gray-900">&pound;{Number(calculatedAmount).toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {depositType === '1_week_pppw' ? 'Based on 1 week PPPW' : 'Fixed amount'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Reservation Days */}
+                <div>
+                  <label htmlFor="create-reservation-days" className="block text-sm font-medium text-gray-700 mb-1">
+                    Reservation Duration (days)
+                  </label>
+                  <input
+                    type="number"
+                    id="create-reservation-days"
+                    value={reservationDays}
+                    onChange={(e) => setReservationDays(e.target.value)}
+                    min="1"
+                    placeholder="e.g. 14"
+                    className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    How many days to reserve the room from when the deposit is paid
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Info Box */}
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4">

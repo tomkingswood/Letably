@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { applications, agencies, getAuthToken } from '@/lib/api';
-import type { ApplicationFormData } from '@/lib/types';
+import { applications, agencies, holdingDeposits, getAuthToken } from '@/lib/api';
+import type { ApplicationFormData, HoldingDeposit } from '@/lib/types';
 import { useAgency } from '@/lib/agency-context';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import HoldingDepositApprovalModal from '@/components/admin/HoldingDepositApprovalModal';
@@ -26,6 +26,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   const [guarantorIdUploaded, setGuarantorIdUploaded] = useState(false);
   const [holdingDepositEnabled, setHoldingDepositEnabled] = useState(false);
   const [showHoldingDepositModal, setShowHoldingDepositModal] = useState(false);
+  const [existingDeposit, setExistingDeposit] = useState<HoldingDeposit | null>(null);
 
   useEffect(() => {
     fetchApplication();
@@ -33,6 +34,10 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
     agencies.getSettings().then(res => {
       const settings = res.data.settings || res.data;
       setHoldingDepositEnabled(settings.holding_deposit_enabled === true || settings.holding_deposit_enabled === 'true');
+    }).catch(() => {});
+    // Fetch existing holding deposit for this application
+    holdingDeposits.getByApplication(id).then(res => {
+      setExistingDeposit(res.data.deposit || null);
     }).catch(() => {});
   }, [id]);
 
@@ -93,12 +98,6 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   };
 
   const handleApprove = async () => {
-    // If holding deposit is enabled, show the modal instead
-    if (holdingDepositEnabled) {
-      setShowHoldingDepositModal(true);
-      return;
-    }
-
     if (!confirm('Are you sure you want to approve this application?')) {
       return;
     }
@@ -111,23 +110,36 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
         type: 'success',
         text: 'Application approved successfully! This application can now be used to create a tenancy.'
       });
-      // Refresh application data to get new status
       await fetchApplication();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { holding_deposit_required?: boolean; error?: string } } };
-      if (err.response?.data?.holding_deposit_required) {
-        // Server says holding deposit is required - show modal
-        setHoldingDepositEnabled(true);
-        setShowHoldingDepositModal(true);
-      } else {
-        setMessage({
-          type: 'error',
-          text: err.response?.data?.error || 'Failed to approve application'
-        });
-      }
+      const err = error as { response?: { data?: { holding_deposit_required?: boolean; deposit_awaiting_payment?: boolean; error?: string } } };
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.error || 'Failed to approve application'
+      });
     } finally {
       setApproving(false);
+    }
+  };
+
+  const handleRecordPayment = () => {
+    setShowHoldingDepositModal(true);
+  };
+
+  const handleUndoPayment = async () => {
+    if (!existingDeposit || !confirm('Are you sure you want to undo this deposit payment? The deposit will revert to "awaiting payment".')) {
+      return;
+    }
+    setMessage(null);
+    try {
+      await holdingDeposits.undoPayment(existingDeposit.id);
+      setMessage({ type: 'success', text: 'Deposit payment undone successfully.' });
+      const depositRes = await holdingDeposits.getByApplication(id);
+      setExistingDeposit(depositRes.data.deposit || null);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to undo payment' });
     }
   };
 
@@ -135,9 +147,14 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
     setShowHoldingDepositModal(false);
     setMessage({
       type: 'success',
-      text: 'Holding deposit recorded and application approved successfully!'
+      text: 'Holding deposit payment recorded successfully.'
     });
     await fetchApplication();
+    // Refresh deposit data
+    try {
+      const depositRes = await holdingDeposits.getByApplication(id);
+      setExistingDeposit(depositRes.data.deposit || null);
+    } catch { /* ignore */ }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -313,6 +330,47 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
           </span>
         )}
       </div>
+
+      {/* Holding Deposit Info */}
+      {existingDeposit && (
+        <div className={`rounded-lg p-4 mb-6 ${
+          existingDeposit.status === 'awaiting_payment'
+            ? 'bg-amber-50 border border-amber-200'
+            : existingDeposit.status === 'held'
+            ? 'bg-blue-50 border border-blue-200'
+            : 'bg-gray-50 border border-gray-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Holding Deposit</h3>
+              <p className="text-sm text-gray-700 mt-1">
+                &pound;{Number(existingDeposit.amount).toFixed(2)}
+                {existingDeposit.property_address && ` \u2022 ${existingDeposit.property_address}`}
+                {existingDeposit.bedroom_name && ` \u2022 ${existingDeposit.bedroom_name}`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {existingDeposit.status === 'held' && (
+                <button
+                  onClick={handleUndoPayment}
+                  className="text-xs text-gray-500 hover:text-red-600 underline"
+                >
+                  Undo Payment
+                </button>
+              )}
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                existingDeposit.status === 'awaiting_payment'
+                  ? 'bg-amber-500 text-white'
+                  : existingDeposit.status === 'held'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-500 text-white'
+              }`}>
+                {existingDeposit.status === 'awaiting_payment' ? 'Awaiting Payment' : existingDeposit.status === 'held' ? 'Held' : existingDeposit.status.replace(/_/g, ' ')}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Application Details */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -657,17 +715,33 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <p className="text-blue-800 text-sm">
               <strong>Review Required:</strong> This application has been submitted by the applicant and is awaiting your review.
-              Once you have reviewed it, click &quot;Approve Application&quot; to allow them to sign their tenancy agreement.
+              {holdingDepositEnabled && existingDeposit?.status === 'awaiting_payment'
+                ? ' The holding deposit must be recorded as paid before you can approve.'
+                : ' Once you have reviewed it, click "Approve Application" to allow them to sign their tenancy agreement.'}
             </p>
           </div>
         )}
 
         <div className="flex flex-wrap gap-4">
+          {/* Record Payment Button — when deposit exists and is awaiting payment (any application status) */}
+          {existingDeposit?.status === 'awaiting_payment' && (
+            <button
+              onClick={handleRecordPayment}
+              className="inline-flex items-center bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Record Deposit Payment
+            </button>
+          )}
+
           {/* Approve Button - Only for submitted applications */}
           {application.status === 'submitted' && (
             <button
               onClick={handleApprove}
-              disabled={approving}
+              disabled={approving || (holdingDepositEnabled && existingDeposit?.status === 'awaiting_payment')}
+              title={holdingDepositEnabled && existingDeposit?.status === 'awaiting_payment' ? 'Record the holding deposit payment first' : undefined}
               className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -706,6 +780,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
       {showHoldingDepositModal && application && (
         <HoldingDepositApprovalModal
           applicationId={parseInt(id)}
+          existingDeposit={existingDeposit}
           onClose={() => setShowHoldingDepositModal(false)}
           onSuccess={handleHoldingDepositSuccess}
         />

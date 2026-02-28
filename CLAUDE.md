@@ -119,4 +119,23 @@ Some form_data fields also exist as legacy SQL columns (e.g. `payment_plan`, `gu
 | `repositories/applicationRepository.js` | All CRUD — hydrates on read, extracts on write |
 | `migrations/add_missing_columns.sql` | Schema: core columns + form_data JSONB + form_version |
 
+## PostgreSQL Numeric Columns in Frontend
+
+**CRITICAL: PostgreSQL returns `DECIMAL`/`NUMERIC` columns as strings, not numbers.** Even though TypeScript interfaces type these as `number`, the runtime value from the API will be `"125.00"` (a string).
+
+**Always wrap with `Number()` before calling `.toFixed()`:**
+```typescript
+// BAD — will crash at runtime if value is a string from the API
+amount.toFixed(2)
+price_pppw.toFixed(2)
+
+// GOOD — defensive, works with both string and number
+Number(amount).toFixed(2)
+Number(price_pppw).toFixed(2)
+```
+
+This applies to any value from the API that represents money (`amount`, `amount_due`, `amount_paid`, `price_pppw`, `deposit_amount`, `rent_pppw`).
+
+When storing these values in state via `parseFloat()` or `Number()`, coerce them at the point of assignment rather than at the point of display, so the runtime type matches the TypeScript type.
+
 <!-- MANUAL ADDITIONS END -->
