@@ -95,6 +95,12 @@ exports.createApplication = asyncHandler(async (req, res) => {
   let depositAmount = null;
   let parsedDays = null;
   const settings = await agencySettings.get(agencyId);
+
+  // When holding deposits are enabled, require property/bedroom so a deposit is always created
+  if (settings.holding_deposit_enabled && !property_id && !bedroom_id) {
+    return res.status(400).json({ error: 'A property and bedroom must be selected when holding deposits are enabled' });
+  }
+
   const shouldCreateDeposit = settings.holding_deposit_enabled && (property_id || bedroom_id);
 
   if (shouldCreateDeposit) {

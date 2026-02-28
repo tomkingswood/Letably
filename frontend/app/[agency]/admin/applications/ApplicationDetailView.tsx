@@ -27,6 +27,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   const [holdingDepositEnabled, setHoldingDepositEnabled] = useState(false);
   const [showHoldingDepositModal, setShowHoldingDepositModal] = useState(false);
   const [existingDeposit, setExistingDeposit] = useState<HoldingDeposit | null>(null);
+  const [depositLoadFailed, setDepositLoadFailed] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
 
   useEffect(() => {
@@ -37,9 +38,12 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
       setHoldingDepositEnabled(settings.holding_deposit_enabled === true || settings.holding_deposit_enabled === 'true');
     }).catch(() => {});
     // Fetch existing holding deposit for this application
+    setDepositLoadFailed(false);
     holdingDeposits.getByApplication(id).then(res => {
       setExistingDeposit(res.data.deposit || null);
-    }).catch(() => {});
+    }).catch(() => {
+      setDepositLoadFailed(true);
+    });
   }, [id]);
 
   const checkIdDocumentStatus = async (appData: any) => {
@@ -745,8 +749,8 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
           {application.status === 'submitted' && (
             <button
               onClick={handleApprove}
-              disabled={approving || (holdingDepositEnabled && existingDeposit?.status === 'awaiting_payment')}
-              title={holdingDepositEnabled && existingDeposit?.status === 'awaiting_payment' ? 'Record the holding deposit payment first' : undefined}
+              disabled={approving || (holdingDepositEnabled && (existingDeposit?.status === 'awaiting_payment' || depositLoadFailed))}
+              title={holdingDepositEnabled && depositLoadFailed ? 'Failed to load deposit info — please refresh' : holdingDepositEnabled && existingDeposit?.status === 'awaiting_payment' ? 'Record the holding deposit payment first' : undefined}
               className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
