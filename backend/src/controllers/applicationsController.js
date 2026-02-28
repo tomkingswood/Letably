@@ -8,6 +8,7 @@ const appRepo = require('../repositories/applicationRepository');
 const asyncHandler = require('../utils/asyncHandler');
 const { parseJsonField, parseJsonFields } = require('../utils/parseJsonField');
 const { buildAgencyUrl, buildPublicUrl } = require('../utils/urlBuilder');
+const agencySettings = require('../models/agencySettings');
 
 // Helper function to generate guarantor token
 function generateGuarantorToken() {
@@ -825,6 +826,16 @@ exports.approveApplication = asyncHandler(async (req, res) => {
 
   if (application.status !== 'submitted') {
     return res.status(400).json({ error: `Cannot approve application with status '${application.status}'. Only 'submitted' applications can be approved.` });
+  }
+
+  // Check if holding deposit is required
+  const settings = await agencySettings.get(agencyId);
+  if (settings.holding_deposit_enabled) {
+    return res.status(400).json({
+      error: 'Holding deposit required',
+      message: 'This agency requires a holding deposit before approving applications. Please use the holding deposit flow instead.',
+      holding_deposit_required: true
+    });
   }
 
   // Update status to approved

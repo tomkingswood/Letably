@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { applications, getAuthToken } from '@/lib/api';
+import { applications, agencies, getAuthToken } from '@/lib/api';
 import type { ApplicationFormData } from '@/lib/types';
 import { useAgency } from '@/lib/agency-context';
 import { MessageAlert } from '@/components/ui/MessageAlert';
+import HoldingDepositApprovalModal from '@/components/admin/HoldingDepositApprovalModal';
 
 interface ApplicationDetailViewProps {
   id: string;
@@ -23,9 +24,16 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   const [copied, setCopied] = useState(false);
   const [applicantIdUploaded, setApplicantIdUploaded] = useState(false);
   const [guarantorIdUploaded, setGuarantorIdUploaded] = useState(false);
+  const [holdingDepositEnabled, setHoldingDepositEnabled] = useState(false);
+  const [showHoldingDepositModal, setShowHoldingDepositModal] = useState(false);
 
   useEffect(() => {
     fetchApplication();
+    // Check if holding deposit is enabled
+    agencies.getSettings().then(res => {
+      const settings = res.data.settings || res.data;
+      setHoldingDepositEnabled(settings.holding_deposit_enabled === true || settings.holding_deposit_enabled === 'true');
+    }).catch(() => {});
   }, [id]);
 
   const checkIdDocumentStatus = async (appData: any) => {
@@ -85,6 +93,12 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   };
 
   const handleApprove = async () => {
+    // If holding deposit is enabled, show the modal instead
+    if (holdingDepositEnabled) {
+      setShowHoldingDepositModal(true);
+      return;
+    }
+
     if (!confirm('Are you sure you want to approve this application?')) {
       return;
     }
@@ -100,14 +114,31 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
       // Refresh application data to get new status
       await fetchApplication();
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error: any) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || 'Failed to approve application'
-      });
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { holding_deposit_required?: boolean; error?: string } } };
+      if (err.response?.data?.holding_deposit_required) {
+        // Server says holding deposit is required - show modal
+        setHoldingDepositEnabled(true);
+        setShowHoldingDepositModal(true);
+      } else {
+        setMessage({
+          type: 'error',
+          text: err.response?.data?.error || 'Failed to approve application'
+        });
+      }
     } finally {
       setApproving(false);
     }
+  };
+
+  const handleHoldingDepositSuccess = async () => {
+    setShowHoldingDepositModal(false);
+    setMessage({
+      type: 'success',
+      text: 'Holding deposit recorded and application approved successfully!'
+    });
+    await fetchApplication();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRegenerateToken = async () => {
@@ -670,6 +701,15 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
           )}
         </div>
       </div>
+
+      {/* Holding Deposit Modal */}
+      {showHoldingDepositModal && application && (
+        <HoldingDepositApprovalModal
+          applicationId={parseInt(id)}
+          onClose={() => setShowHoldingDepositModal(false)}
+          onSuccess={handleHoldingDepositSuccess}
+        />
+      )}
     </div>
   );
 }

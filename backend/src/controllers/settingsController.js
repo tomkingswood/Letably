@@ -68,7 +68,10 @@ const updateSettings = asyncHandler(async (req, res) => {
     prs_certificate_expiry,
     ico_certificate_filename,
     ico_certificate_expiry,
-    viewing_min_days_advance
+    viewing_min_days_advance,
+    holding_deposit_enabled,
+    holding_deposit_type,
+    holding_deposit_amount
   } = req.body;
 
   // Validate required fields
@@ -80,21 +83,10 @@ const updateSettings = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Company name is required' });
   }
 
-  if (!redress_scheme_name || !redress_scheme_number) {
-    return res.status(400).json({ error: 'Redress scheme information is required' });
-  }
-
   // Email validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email_address)) {
     return res.status(400).json({ error: 'Invalid email address format' });
-  }
-
-  // Phone validation (UK format - basic check)
-  const phoneRegex = /^(?:(?:\+44\s?|0)(?:\d\s?){10})$/;
-  const cleanPhone = phone_number.replace(/\s/g, '');
-  if (cleanPhone.length < 10) {
-    return res.status(400).json({ error: 'Invalid phone number format' });
   }
 
   // URL validation for social links and redress scheme (if provided)
@@ -114,10 +106,14 @@ const updateSettings = asyncHandler(async (req, res) => {
 
   await db.transaction(async (client) => {
     const updateSetting = async (value, key) => {
-      // Defense-in-depth: explicit agency_id filtering
+      // Defense-in-depth: explicit agency_id filtering, UPSERT to handle new settings
       await client.query(
-        `UPDATE site_settings SET setting_value = $1 WHERE setting_key = $2 AND agency_id = $3`,
-        [value, key, agencyId]
+        `INSERT INTO site_settings (agency_id, setting_key, setting_value, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (agency_id, setting_key) DO UPDATE SET
+           setting_value = EXCLUDED.setting_value,
+           updated_at = NOW()`,
+        [agencyId, key, value]
       );
     };
 
@@ -151,6 +147,22 @@ const updateSettings = asyncHandler(async (req, res) => {
       const minDays = parseInt(viewing_min_days_advance, 10);
       if (!isNaN(minDays) && minDays >= 0) {
         await updateSetting(minDays.toString(), 'viewing_min_days_advance');
+      }
+    }
+
+    // Holding deposit settings
+    if (holding_deposit_enabled !== undefined) {
+      await updateSetting(holding_deposit_enabled.toString(), 'holding_deposit_enabled');
+    }
+    if (holding_deposit_type !== undefined) {
+      if (['1_week_pppw', 'fixed_amount'].includes(holding_deposit_type)) {
+        await updateSetting(holding_deposit_type, 'holding_deposit_type');
+      }
+    }
+    if (holding_deposit_amount !== undefined) {
+      const amount = parseFloat(holding_deposit_amount);
+      if (!isNaN(amount) && amount >= 0) {
+        await updateSetting(amount.toString(), 'holding_deposit_amount');
       }
     }
   }, agencyId);

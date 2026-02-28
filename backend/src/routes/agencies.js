@@ -20,12 +20,6 @@ const { authLimiter } = require('../middleware/rateLimit');
  */
 router.post('/register', authLimiter, agencyController.register);
 
-/**
- * Get agency by slug (public info)
- * GET /api/agencies/:slug
- */
-router.get('/:slug', agencyController.getBySlug);
-
 // Protected routes (require authentication)
 
 /**
@@ -122,5 +116,12 @@ router.post('/custom-domain/verify',
   requirePremium,
   agencyController.verifyCustomDomain
 );
+
+/**
+ * Get agency by slug (public info)
+ * GET /api/agencies/:slug
+ * NOTE: Must be last — :slug is a catch-all that would shadow specific routes above
+ */
+router.get('/:slug', agencyController.getBySlug);
 
 module.exports = router;

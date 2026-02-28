@@ -15,7 +15,8 @@ export type StatusType =
   | 'property'
   | 'userRole'
   | 'applicantType'
-  | 'maintenance';
+  | 'maintenance'
+  | 'holdingDeposit';
 
 interface StatusConfig {
   badge: string;
@@ -259,6 +260,29 @@ const STATUS_CONFIGS: Record<StatusType, Record<string, StatusConfig>> = {
     pending: {
       badge: 'bg-yellow-600 text-white',
       label: 'Pending'
+    },
+  },
+
+  holdingDeposit: {
+    held: {
+      badge: 'bg-blue-600 text-white',
+      label: 'Held'
+    },
+    applied_to_rent: {
+      badge: 'bg-green-600 text-white',
+      label: 'Applied to Rent'
+    },
+    applied_to_deposit: {
+      badge: 'bg-green-600 text-white',
+      label: 'Applied to Deposit'
+    },
+    refunded: {
+      badge: 'bg-yellow-600 text-white',
+      label: 'Refunded'
+    },
+    forfeited: {
+      badge: 'bg-red-700 text-white',
+      label: 'Forfeited'
     },
   },
 };

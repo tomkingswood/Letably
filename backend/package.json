@@ -10,7 +10,8 @@
     "test:watch": "jest --watch",
     "migrate": "node src/scripts/migrate.js",
     "migrate:rollback": "node src/scripts/rollback-migration.js",
-    "seed:agency": "node src/scripts/seedAgency.js"
+    "seed:agency": "node src/scripts/seedAgency.js",
+    "seed:testdata": "node src/scripts/seedTestData.js"
   },
   "keywords": [
     "property",

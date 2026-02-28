@@ -7,6 +7,7 @@ const asyncHandler = require('../utils/asyncHandler');
 // Import refactored modules
 const {
   checkBedroomConflicts,
+  checkBedroomReservationConflicts,
   formatBedroomConflictError,
   validateNoDuplicateBedrooms
 } = require('../validators/tenancyValidator');
@@ -338,10 +339,19 @@ exports.createTenancy = asyncHandler(async (req, res) => {
     });
   }
 
-  const bedroomConflicts = checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null);
+  const bedroomConflicts = await checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, agencyId);
   if (bedroomConflicts.length > 0) {
     const conflictError = formatBedroomConflictError(bedroomConflicts);
     return res.status(409).json({ error: conflictError.error });
+  }
+
+  // Check for holding deposit reservation conflicts
+  const bedroomIdsToCheck = members.map(m => m.bedroom_id).filter(Boolean);
+  const memberApplicationIds = members.map(m => m.application_id);
+  const reservationConflicts = await checkBedroomReservationConflicts(bedroomIdsToCheck, memberApplicationIds, agencyId);
+  if (reservationConflicts.length > 0) {
+    const messages = reservationConflicts.map(c => c.message).join('; ');
+    return res.status(409).json({ error: 'Bedroom reservation conflict', message: messages, conflicts: reservationConflicts });
   }
 
   // Use transaction for creating tenancy
@@ -398,8 +408,8 @@ exports.createTenancy = asyncHandler(async (req, res) => {
                COALESCE(form_data->>'guarantor_relationship', guarantor_relationship) as guarantor_relationship,
                COALESCE(form_data->>'guarantor_id_type', guarantor_id_type) as guarantor_id_type
         FROM applications
-        WHERE id = $1
-      `, [member.application_id]);
+        WHERE id = $1 AND agency_id = $2
+      `, [member.application_id, agencyId]);
       const appData = appDataResult.rows[0];
 
       // Map application payment_plan to payment_option and pre-populate as default
@@ -440,7 +450,43 @@ exports.createTenancy = asyncHandler(async (req, res) => {
       ]);
 
       // Update application status to converted_to_tenancy
-      await client.query('UPDATE applications SET status = $1 WHERE id = $2', ['converted_to_tenancy', member.application_id]);
+      await client.query('UPDATE applications SET status = $1 WHERE id = $2 AND agency_id = $3', ['converted_to_tenancy', member.application_id, agencyId]);
+
+      // Apply holding deposit if specified.
+      // If the deposit is missing, already consumed, or doesn't match the application,
+      // the UPDATE RETURNING yields no rows and we silently skip — a stale or consumed
+      // deposit should not block tenancy creation.
+      if (member.holding_deposit_id && member.holding_deposit_apply_to) {
+        const applyTo = member.holding_deposit_apply_to;
+        if (!['tenancy_deposit', 'first_rent'].includes(applyTo)) {
+          throw new Error(`Invalid holding_deposit_apply_to value: ${applyTo}`);
+        }
+
+        // Atomically consume the deposit — match id, agency, application, and status='held'
+        const depositStatus = applyTo === 'first_rent' ? 'applied_to_rent' : 'applied_to_deposit';
+        const depositResult = await client.query(
+          `UPDATE holding_deposits SET status = $1, applied_to_tenancy_id = $2,
+           status_changed_at = NOW(), status_changed_by = $3, updated_at = NOW()
+           WHERE id = $4 AND agency_id = $5 AND application_id = $6 AND status = 'held'
+           RETURNING amount`,
+          [depositStatus, tenancyId, req.user?.id || null, member.holding_deposit_id, agencyId, member.application_id]
+        );
+
+        if (depositResult.rows[0]) {
+          const depositAmount = parseFloat(depositResult.rows[0].amount);
+
+          if (applyTo === 'tenancy_deposit') {
+            // Reduce the member's deposit_amount, cap at 0
+            const currentDeposit = parseFloat(member.deposit_amount) || 0;
+            const newDeposit = Math.max(0, currentDeposit - depositAmount);
+            await client.query(
+              'UPDATE tenancy_members SET deposit_amount = $1 WHERE tenancy_id = $2 AND application_id = $3 AND agency_id = $4',
+              [newDeposit, tenancyId, member.application_id, agencyId]
+            );
+          }
+          // Note: 'first_rent' is handled after payment schedule generation (in tenancySigningController)
+        }
+      }
     }
 
     return tenancyId;

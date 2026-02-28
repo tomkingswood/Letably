@@ -297,8 +297,9 @@ export function PaymentScheduleGrid({
 
                   <div className="space-y-3">
                     {group.payments.map(payment => {
-                      const balance = payment.amount_due - (payment.amount_paid || 0);
-                      const isNegative = payment.amount_due < 0;
+                      const amountDue = Number(payment.amount_due) || 0;
+                      const balance = amountDue - (Number(payment.amount_paid) || 0);
+                      const isNegative = amountDue < 0;
                       const dueDate = new Date(payment.due_date);
                       const isPast = dueDate < new Date() && payment.status !== 'paid';
                       const isPaymentExpanded = expandedPayments.has(payment.id);
@@ -334,7 +335,7 @@ export function PaymentScheduleGrid({
                                   <div>
                                     <span className="text-gray-600">Amount:</span>
                                     <span className={`ml-1 font-bold ${isNegative ? 'text-red-600' : 'text-blue-600'}`}>
-                                      {payment.amount_due < 0 ? '-' : ''}£{Math.abs(payment.amount_due).toFixed(2)}
+                                      {amountDue < 0 ? '-' : ''}£{Math.abs(amountDue).toFixed(2)}
                                     </span>
                                   </div>
                                   <div>
@@ -343,7 +344,7 @@ export function PaymentScheduleGrid({
                                   </div>
                                   <div>
                                     <span className="text-gray-600">Paid:</span>
-                                    <span className="ml-1 font-bold text-green-600">£{(payment.amount_paid || 0).toFixed(2)}</span>
+                                    <span className="ml-1 font-bold text-green-600">£{(Number(payment.amount_paid) || 0).toFixed(2)}</span>
                                   </div>
                                   <div>
                                     <span className="text-gray-600">Balance:</span>

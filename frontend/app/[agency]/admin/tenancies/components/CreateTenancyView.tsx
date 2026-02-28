@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { tenancies as tenanciesApi, bedrooms as bedroomsApi, properties as propertiesApi } from '@/lib/api';
-import type { Bedroom, Property, ApprovedApplicant } from '@/lib/types';
+import { tenancies as tenanciesApi, bedrooms as bedroomsApi, properties as propertiesApi, holdingDeposits } from '@/lib/api';
+import type { Bedroom, Property, ApprovedApplicant, HoldingDeposit } from '@/lib/types';
 import { getErrorMessage } from '@/lib/types';
 
 interface MemberForm {
@@ -15,6 +15,8 @@ interface MemberForm {
   bedroom_id: string;
   rent_pppw: string;
   deposit_amount: string;
+  holding_deposit?: HoldingDeposit | null;
+  holding_deposit_apply_to?: 'first_rent' | 'tenancy_deposit' | 'none';
 }
 
 interface CreateTenancyViewProps {
@@ -96,7 +98,7 @@ export default function CreateTenancyView({ onBack, onSuccess, onError }: Create
     }
   };
 
-  const handleProceedToConfigure = () => {
+  const handleProceedToConfigure = async () => {
     if (selectedApplicantIds.length === 0) {
       onError('Please select at least one applicant');
       return;
@@ -118,8 +120,23 @@ export default function CreateTenancyView({ onBack, onSuccess, onError }: Create
       application_type: app.application_type,
       bedroom_id: '',
       rent_pppw: '',
-      deposit_amount: '200'
+      deposit_amount: '200',
+      holding_deposit: null,
+      holding_deposit_apply_to: 'none',
     }));
+
+    // Fetch holding deposit info for each applicant
+    for (let i = 0; i < initializedForms.length; i++) {
+      try {
+        const res = await holdingDeposits.getByApplication(initializedForms[i].application_id);
+        if (res.data?.deposit && res.data.deposit.status === 'held') {
+          initializedForms[i].holding_deposit = res.data.deposit;
+          initializedForms[i].holding_deposit_apply_to = 'tenancy_deposit';
+        }
+      } catch {
+        // No deposit found, that's fine
+      }
+    }
 
     setMemberForms(initializedForms);
     setCurrentStep('configure');
@@ -195,7 +212,11 @@ export default function CreateTenancyView({ onBack, onSuccess, onError }: Create
           application_id: form.application_id,
           bedroom_id: form.bedroom_id ? parseInt(form.bedroom_id) : undefined,
           rent_pppw: parseFloat(form.rent_pppw),
-          deposit_amount: parseFloat(form.deposit_amount)
+          deposit_amount: parseFloat(form.deposit_amount),
+          ...(form.holding_deposit && form.holding_deposit_apply_to !== 'none' ? {
+            holding_deposit_id: form.holding_deposit.id,
+            holding_deposit_apply_to: form.holding_deposit_apply_to,
+          } : {}),
         }))
       });
 
@@ -569,6 +590,34 @@ export default function CreateTenancyView({ onBack, onSuccess, onError }: Create
                         {form.application_type}
                       </span>
                     </div>
+                    {/* Holding Deposit Banner */}
+                    {form.holding_deposit && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-blue-800">
+                              Holding deposit of &pound;{Number(form.holding_deposit.amount).toFixed(2)} recorded on {new Date(form.holding_deposit.date_received).toLocaleDateString('en-GB')}
+                            </p>
+                            {form.holding_deposit.payment_reference && (
+                              <p className="text-xs text-blue-600 mt-0.5">Ref: {form.holding_deposit.payment_reference}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">Apply holding deposit to:</label>
+                          <select
+                            value={form.holding_deposit_apply_to || 'none'}
+                            onChange={(e) => handleMemberFormChange(index, 'holding_deposit_apply_to', e.target.value)}
+                            className="text-sm px-3 py-1.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                          >
+                            <option value="tenancy_deposit">Tenancy deposit</option>
+                            <option value="first_rent">First month&apos;s rent</option>
+                            <option value="none">Don&apos;t apply</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Bedroom (Optional)</label>

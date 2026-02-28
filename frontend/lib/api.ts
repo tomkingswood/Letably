@@ -8,6 +8,7 @@ import type {
   ReminderThreshold,
   ManualReminderFormData,
   ApplicationFormData,
+  HoldingDepositFormData,
 } from './types';
 
 // Use internal URL for server-side requests, public URL for client-side
@@ -310,6 +311,9 @@ export const settings = {
     ico_certificate_filename?: string;
     ico_certificate_expiry?: string;
     viewing_min_days_advance?: string;
+    holding_deposit_enabled?: string;
+    holding_deposit_type?: string;
+    holding_deposit_amount?: string;
   }) => api.put('/settings', data), // Admin only - update settings
 };
 
@@ -478,6 +482,8 @@ export const tenancies = {
       bedroom_id?: number;
       rent_pppw: number;
       deposit_amount: number;
+      holding_deposit_id?: number;
+      holding_deposit_apply_to?: 'first_rent' | 'tenancy_deposit';
     }>;
   }) => api.post('/tenancies', data),
   update: (id: string | number, data: {
@@ -908,4 +914,18 @@ export const dataExport = {
   delete: (id: string | number) => api.delete(`/data-export/${id}`),
   getDownloadUrl: (id: string | number) => `${getApiUrl()}/data-export/${id}/download`,
   processQueue: (limit?: number) => api.post('/data-export/process', null, { params: { limit } }),
+};
+
+// Holding Deposits API (Admin only)
+export const holdingDeposits = {
+  create: (data: HoldingDepositFormData) =>
+    api.post('/holding-deposits', data),
+  getAll: (params?: { status?: string }) =>
+    api.get('/holding-deposits', { params }),
+  getByApplication: (applicationId: string | number) =>
+    api.get(`/holding-deposits/application/${applicationId}`),
+  getById: (id: string | number) =>
+    api.get(`/holding-deposits/${id}`),
+  updateStatus: (id: string | number, data: { status: 'refunded' | 'forfeited'; notes?: string }) =>
+    api.patch(`/holding-deposits/${id}/status`, data),
 };
