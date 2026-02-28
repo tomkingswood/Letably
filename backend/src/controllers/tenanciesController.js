@@ -456,14 +456,23 @@ exports.createTenancy = asyncHandler(async (req, res) => {
 
       // Apply holding deposit if specified
       if (member.holding_deposit_id && member.holding_deposit_apply_to) {
-        const deposit = await client.query(
-          'SELECT * FROM holding_deposits WHERE id = $1 AND agency_id = $2 AND status = $3',
-          [member.holding_deposit_id, agencyId, 'held']
+        const applyTo = member.holding_deposit_apply_to;
+        if (!['tenancy_deposit', 'first_rent'].includes(applyTo)) {
+          throw new Error(`Invalid holding_deposit_apply_to value: ${applyTo}`);
+        }
+
+        // Atomically consume the deposit — match id, agency, application, and status='held'
+        const depositStatus = applyTo === 'first_rent' ? 'applied_to_rent' : 'applied_to_deposit';
+        const depositResult = await client.query(
+          `UPDATE holding_deposits SET status = $1, applied_to_tenancy_id = $2,
+           status_changed_at = NOW(), status_changed_by = $3, updated_at = NOW()
+           WHERE id = $4 AND agency_id = $5 AND application_id = $6 AND status = 'held'
+           RETURNING amount`,
+          [depositStatus, tenancyId, req.user?.id || null, member.holding_deposit_id, agencyId, member.application_id]
         );
 
-        if (deposit.rows[0]) {
-          const depositAmount = parseFloat(deposit.rows[0].amount);
-          const applyTo = member.holding_deposit_apply_to;
+        if (depositResult.rows[0]) {
+          const depositAmount = parseFloat(depositResult.rows[0].amount);
 
           if (applyTo === 'tenancy_deposit') {
             // Reduce the member's deposit_amount, cap at 0
@@ -474,15 +483,7 @@ exports.createTenancy = asyncHandler(async (req, res) => {
               [newDeposit, tenancyId, member.application_id, agencyId]
             );
           }
-          // Note: 'first_rent' is handled after payment schedule generation (below)
-
-          const depositStatus = applyTo === 'first_rent' ? 'applied_to_rent' : 'applied_to_deposit';
-          await client.query(
-            `UPDATE holding_deposits SET status = $1, applied_to_tenancy_id = $2,
-             status_changed_at = NOW(), status_changed_by = $3, updated_at = NOW()
-             WHERE id = $4 AND agency_id = $5`,
-            [depositStatus, tenancyId, req.user?.id || null, member.holding_deposit_id, agencyId]
-          );
+          // Note: 'first_rent' is handled after payment schedule generation (in tenancySigningController)
         }
       }
     }

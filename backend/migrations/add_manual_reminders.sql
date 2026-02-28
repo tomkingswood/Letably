@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS reminder_email_notifications (
   id SERIAL PRIMARY KEY,
   agency_id INTEGER NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
   reminder_identifier VARCHAR(255) NOT NULL,
-  severity VARCHAR(20) NOT NULL,
+  severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'critical')),
   recipient_email VARCHAR(255) NOT NULL,
   last_emailed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(reminder_identifier, recipient_email)

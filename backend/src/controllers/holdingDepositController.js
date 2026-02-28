@@ -33,8 +33,9 @@ exports.createDeposit = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Application ID, amount, and date received are required' });
   }
 
-  if (parseFloat(amount) <= 0) {
-    return res.status(400).json({ error: 'Amount must be greater than 0' });
+  const parsedAmount = parseFloat(amount);
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    return res.status(400).json({ error: 'Amount must be a valid number greater than 0' });
   }
 
   // Validate date_received is a valid date
@@ -66,19 +67,19 @@ exports.createDeposit = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'This application already has an active holding deposit' });
   }
 
-  // Validate bedroom exists if provided
+  // Validate bedroom and property exist if provided
   if (bedroom_id) {
-    const bedroomResult = await db.query(
-      'SELECT id FROM bedrooms WHERE id = $1 AND agency_id = $2',
-      [bedroom_id, agencyId], agencyId
-    );
+    const bedroomQuery = property_id
+      ? 'SELECT id FROM bedrooms WHERE id = $1 AND property_id = $2 AND agency_id = $3'
+      : 'SELECT id FROM bedrooms WHERE id = $1 AND agency_id = $2';
+    const bedroomParams = property_id
+      ? [bedroom_id, property_id, agencyId]
+      : [bedroom_id, agencyId];
+    const bedroomResult = await db.query(bedroomQuery, bedroomParams, agencyId);
     if (bedroomResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Bedroom not found' });
+      return res.status(404).json({ error: property_id ? 'Bedroom not found in the specified property' : 'Bedroom not found' });
     }
-  }
-
-  // Validate property exists if provided
-  if (property_id) {
+  } else if (property_id) {
     const propertyResult = await db.query(
       'SELECT id FROM properties WHERE id = $1 AND agency_id = $2',
       [property_id, agencyId], agencyId

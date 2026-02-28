@@ -48,7 +48,7 @@ async function get(agencyId) {
     public_site_enabled: settings.public_site_enabled === 'true',
     holding_deposit_enabled: settings.holding_deposit_enabled === 'true',
     holding_deposit_type: settings.holding_deposit_type || '1_week_pppw',
-    holding_deposit_amount: parseFloat(settings.holding_deposit_amount) || 100
+    holding_deposit_amount: Number.isFinite(parseFloat(settings.holding_deposit_amount)) ? parseFloat(settings.holding_deposit_amount) : 100
   };
 }
 
