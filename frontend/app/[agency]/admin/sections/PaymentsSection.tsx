@@ -21,16 +21,25 @@ function todayLocal(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+interface PaymentHistory {
+  id: number;
+  amount: number;
+  payment_date: string;
+  payment_reference?: string;
+}
+
 interface PaymentSchedule {
   id: number;
   tenant_name?: string;
   property_address?: string;
   bedroom_name?: string;
   amount_due: number;
+  amount_paid?: number;
   due_date: string;
   status: string;
   payment_type?: string;
   description?: string;
+  payment_history?: PaymentHistory[];
 }
 
 const MONTH_NAMES = [
@@ -53,7 +62,9 @@ function getStatusDotColor(status: string) {
 export default function PaymentsSection({ onNavigate, action, itemId, onBack }: SectionProps) {
   const { agencySlug } = useAgency();
   const [schedules, setSchedules] = useState<PaymentSchedule[]>([]);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -128,8 +139,11 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
 
   const openRecordPaymentModal = (payment: PaymentSchedule) => {
     setSelectedPayment(payment);
+    const due = parseAmount(payment.amount_due);
+    const paid = parseAmount(payment.amount_paid);
+    const remaining = Math.max(0, due - paid);
     setPaymentFormData({
-      amount_paid: parseFloat(payment.amount_due as unknown as string) || 0,
+      amount_paid: remaining > 0 ? remaining : due,
       paid_date: todayLocal(),
       payment_reference: '',
     });
@@ -156,7 +170,7 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
   const openEditPaymentModal = (payment: PaymentSchedule) => {
     setSelectedPayment(payment);
     setEditPaymentFormData({
-      amount_due: parseFloat(payment.amount_due as unknown as string) || 0,
+      amount_due: parseAmount(payment.amount_due),
       due_date: payment.due_date?.split('T')[0] || '',
       payment_type: payment.payment_type || 'rent',
       description: payment.description || '',
@@ -203,7 +217,12 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
   };
 
   const filteredSchedules = schedules.filter(s => {
-    return filterStatus === 'all' || s.status === filterStatus;
+    const matchesStatus = filterStatus === 'all' || s.status === filterStatus;
+    if (!matchesStatus) return false;
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (s.tenant_name?.toLowerCase().includes(term)) ||
+           (s.property_address?.toLowerCase().includes(term));
   });
 
   // Group filtered payments by day of month
@@ -243,6 +262,16 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
       case 'partial': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const parseAmount = (val: unknown): number => parseFloat(val as string) || 0;
+
+  const toggleRow = (id: number) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   const navigateMonth = (direction: -1 | 1) => {
@@ -296,39 +325,30 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
             </button>
           </div>
 
-          {/* Month Navigation — calendar mode uses arrows, list mode uses native picker */}
-          {viewMode === 'list' ? (
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigateMonth(-1)}
-                aria-label="Previous month"
-                className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-              >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <span className="text-sm font-semibold text-gray-900 min-w-[140px] text-center">
-                {MONTH_NAMES[month - 1]} {year}
-              </span>
-              <button
-                onClick={() => navigateMonth(1)}
-                aria-label="Next month"
-                className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-              >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          )}
+          {/* Month Navigation */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigateMonth(-1)}
+              aria-label="Previous month"
+              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span className="text-sm font-semibold text-gray-900 min-w-[140px] text-center">
+              {MONTH_NAMES[month - 1]} {year}
+            </span>
+            <button
+              onClick={() => navigateMonth(1)}
+              aria-label="Next month"
+              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -362,8 +382,16 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
 
       {viewMode === 'calendar' ? (
         <>
-          {/* Status Filter for Calendar */}
+          {/* Filters for Calendar */}
           <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="Search by tenant or property..."
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setSelectedDay(null); }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
             <select
               value={filterStatus}
               onChange={(e) => { setFilterStatus(e.target.value); setSelectedDay(null); }}
@@ -375,6 +403,7 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
               <option value="overdue">Overdue</option>
               <option value="partial">Partial</option>
             </select>
+            </div>
           </div>
 
           {/* Calendar Grid */}
@@ -499,8 +528,138 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedDayPayments.map(schedule => (
-                        <tr key={schedule.id} className="border-b hover:bg-gray-50">
+                      {selectedDayPayments.map(schedule => {
+                        const history = schedule.payment_history || [];
+                        const hasHistory = history.length > 0;
+                        const isExpanded = expandedRows.has(schedule.id);
+                        return (
+                          <tr key={schedule.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4 font-medium">{schedule.tenant_name || '-'}</td>
+                            <td className="py-3 px-4">
+                              <div>{schedule.property_address || '-'}</div>
+                              {schedule.bedroom_name && (
+                                <div className="text-sm text-gray-500">{schedule.bedroom_name}</div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="font-medium">£{parseAmount(schedule.amount_due).toFixed(2)}</div>
+                              {schedule.status === 'partial' && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  £{parseAmount(schedule.amount_paid).toFixed(2)} paid · £{(parseAmount(schedule.amount_due) - parseAmount(schedule.amount_paid)).toFixed(2)} left
+                                </div>
+                              )}
+                              {hasHistory && (
+                                <button
+                                  onClick={() => toggleRow(schedule.id)}
+                                  className="text-xs text-primary hover:text-primary-dark mt-1 flex items-center gap-1"
+                                >
+                                  <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                  {history.length} payment{history.length !== 1 ? 's' : ''} recorded
+                                </button>
+                              )}
+                              {isExpanded && (
+                                <div className="mt-2 space-y-1.5">
+                                  {history.map(p => (
+                                    <div key={p.id} className="text-xs bg-gray-50 rounded px-2 py-1.5 border border-gray-100">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium text-gray-900">£{parseAmount(p.amount).toFixed(2)}</span>
+                                        <span className="text-gray-500">{parseLocalDate(p.payment_date).toLocaleDateString('en-GB')}</span>
+                                      </div>
+                                      {p.payment_reference && (
+                                        <div className="text-gray-500 mt-0.5">Ref: {p.payment_reference}</div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(schedule.status)}`}>
+                                {schedule.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                {schedule.status !== 'paid' && (
+                                  <button
+                                    onClick={() => openRecordPaymentModal(schedule)}
+                                    className="text-xs px-2.5 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                  >
+                                    Record Payment
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => openEditPaymentModal(schedule)}
+                                  className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Filters — List view */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Search by tenant or property..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+                <option value="partial">Partial</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Payments List */}
+          <div className="bg-white rounded-lg shadow-md">
+            {filteredSchedules.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-gray-600">No payment schedules found for this month</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Tenant</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Property</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Due Date</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Amount</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSchedules.map(schedule => {
+                      const history = schedule.payment_history || [];
+                      const hasHistory = history.length > 0;
+                      const isExpanded = expandedRows.has(schedule.id);
+                      return (
+                        <tr key={schedule.id} className="border-b hover:bg-gray-50 group">
                           <td className="py-3 px-4 font-medium">{schedule.tenant_name || '-'}</td>
                           <td className="py-3 px-4">
                             <div>{schedule.property_address || '-'}</div>
@@ -508,7 +667,43 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
                               <div className="text-sm text-gray-500">{schedule.bedroom_name}</div>
                             )}
                           </td>
-                          <td className="py-3 px-4 font-medium">£{parseFloat(schedule.amount_due as unknown as string)?.toFixed(2)}</td>
+                          <td className="py-3 px-4">
+                            {parseLocalDate(schedule.due_date).toLocaleDateString('en-GB')}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium">£{parseAmount(schedule.amount_due).toFixed(2)}</div>
+                            {schedule.status === 'partial' && (
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                £{parseAmount(schedule.amount_paid).toFixed(2)} paid · £{(parseAmount(schedule.amount_due) - parseAmount(schedule.amount_paid)).toFixed(2)} left
+                              </div>
+                            )}
+                            {hasHistory && (
+                              <button
+                                onClick={() => toggleRow(schedule.id)}
+                                className="text-xs text-primary hover:text-primary-dark mt-1 flex items-center gap-1"
+                              >
+                                <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                                {history.length} payment{history.length !== 1 ? 's' : ''} recorded
+                              </button>
+                            )}
+                            {isExpanded && (
+                              <div className="mt-2 space-y-1.5">
+                                {history.map(p => (
+                                  <div key={p.id} className="text-xs bg-gray-50 rounded px-2 py-1.5 border border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium text-gray-900">£{parseAmount(p.amount).toFixed(2)}</span>
+                                      <span className="text-gray-500">{parseLocalDate(p.payment_date).toLocaleDateString('en-GB')}</span>
+                                    </div>
+                                    {p.payment_reference && (
+                                      <div className="text-gray-500 mt-0.5">Ref: {p.payment_reference}</div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
                           <td className="py-3 px-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(schedule.status)}`}>
                               {schedule.status}
@@ -533,89 +728,8 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
                             </div>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          {/* Filters — List view */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-              <option value="partial">Partial</option>
-            </select>
-          </div>
-
-          {/* Payments List */}
-          <div className="bg-white rounded-lg shadow-md">
-            {filteredSchedules.length === 0 ? (
-              <div className="p-12 text-center">
-                <p className="text-gray-600">No payment schedules found for this month</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Tenant</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Property</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Due Date</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Amount</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSchedules.map(schedule => (
-                      <tr key={schedule.id} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium">{schedule.tenant_name || '-'}</td>
-                        <td className="py-3 px-4">
-                          <div>{schedule.property_address || '-'}</div>
-                          {schedule.bedroom_name && (
-                            <div className="text-sm text-gray-500">{schedule.bedroom_name}</div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          {parseLocalDate(schedule.due_date).toLocaleDateString('en-GB')}
-                        </td>
-                        <td className="py-3 px-4 font-medium">£{parseFloat(schedule.amount_due as unknown as string)?.toFixed(2)}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(schedule.status)}`}>
-                            {schedule.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            {schedule.status !== 'paid' && (
-                              <button
-                                onClick={() => openRecordPaymentModal(schedule)}
-                                className="text-xs px-2.5 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                              >
-                                Record Payment
-                              </button>
-                            )}
-                            <button
-                              onClick={() => openEditPaymentModal(schedule)}
-                              className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

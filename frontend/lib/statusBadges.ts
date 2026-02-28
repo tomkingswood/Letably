@@ -43,6 +43,10 @@ const STATUS_CONFIGS: Record<StatusType, Record<string, StatusConfig>> = {
       badge: 'bg-green-600 text-white',
       label: 'Approved'
     },
+    rejected: {
+      badge: 'bg-red-600 text-white',
+      label: 'Rejected'
+    },
     converted_to_tenancy: {
       badge: 'bg-purple-600 text-white',
       label: 'Converted to Tenancy'

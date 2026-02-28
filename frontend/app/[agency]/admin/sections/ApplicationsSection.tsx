@@ -286,7 +286,13 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     );
   }
 
-  const filteredApplications = applications.filter(app => {
+  const [showConverted, setShowConverted] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const convertedCount = applications.filter(a => a.status === 'converted_to_tenancy').length;
+  const activeApplications = applications.filter(a => a.status !== 'converted_to_tenancy');
+
+  const filteredApplications = (showConverted ? applications : activeApplications).filter(app => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm ||
       (app.user_name?.toLowerCase().includes(searchLower)) ||
@@ -295,12 +301,29 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     return matchesSearch && matchesStatus;
   });
 
-  // Stats
+  // Stats based on active (non-converted) applications
   const stats = {
-    total: applications.length,
+    total: activeApplications.length,
     pending: applications.filter(a => a.status === 'pending').length,
+    inProgress: applications.filter(a => a.status === 'submitted' || a.status === 'awaiting_guarantor').length,
     approved: applications.filter(a => a.status === 'approved').length,
-    rejected: applications.filter(a => a.status === 'rejected').length,
+  };
+
+  const handleDeleteFromList = async (appId: number) => {
+    if (!window.confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
+      return;
+    }
+    setDeletingId(appId);
+    try {
+      await applicationsApi.delete(appId.toString());
+      setApplications(prev => prev.filter(a => a.id !== appId));
+      setListMessage('Application deleted successfully');
+    } catch (err: unknown) {
+      setListMessage(null);
+      alert(getErrorMessage(err, 'Failed to delete application'));
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   if (loading) {
@@ -343,18 +366,18 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
           <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
-          <p className="text-gray-600 text-sm">Approved</p>
-          <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+          <p className="text-gray-600 text-sm">In Progress</p>
+          <p className="text-2xl font-bold text-blue-600">{stats.inProgress}</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
-          <p className="text-gray-600 text-sm">Rejected</p>
-          <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+          <p className="text-gray-600 text-sm">Approved</p>
+          <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
           <input
             type="text"
             placeholder="Search by name or email..."
@@ -369,10 +392,26 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
           >
             <option value="all">All Statuses</option>
             <option value="pending">Pending</option>
+            <option value="awaiting_guarantor">Awaiting Guarantor</option>
+            <option value="submitted">Submitted</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
-            <option value="in_tenancy">In Tenancy</option>
+            {showConverted && <option value="converted_to_tenancy">Converted to Tenancy</option>}
           </select>
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showConverted}
+              onChange={(e) => {
+                setShowConverted(e.target.checked);
+                if (!e.target.checked && filterStatus === 'converted_to_tenancy') {
+                  setFilterStatus('all');
+                }
+              }}
+              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            />
+            Show converted to tenancy ({convertedCount})
+          </label>
         </div>
       </div>
 
@@ -411,12 +450,23 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
                       {new Date(app.created_at).toLocaleDateString('en-GB')}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => onNavigate?.('applications', { action: 'view', id: app.id.toString() })}
-                        className="px-3 py-1.5 bg-primary text-white rounded hover:bg-primary-dark transition-colors text-sm font-medium"
-                      >
-                        View
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => onNavigate?.('applications', { action: 'view', id: app.id.toString() })}
+                          className="px-3 py-1.5 bg-primary text-white rounded hover:bg-primary-dark transition-colors text-sm font-medium"
+                        >
+                          View
+                        </button>
+                        {['pending', 'approved', 'rejected'].includes(app.status) && (
+                          <button
+                            onClick={() => handleDeleteFromList(app.id)}
+                            disabled={deletingId === app.id}
+                            className="px-3 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deletingId === app.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
