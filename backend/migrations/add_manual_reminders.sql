@@ -16,8 +16,7 @@ CREATE TABLE IF NOT EXISTS manual_reminders (
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_manual_reminders_agency_id ON manual_reminders(agency_id);
-CREATE INDEX IF NOT EXISTS idx_manual_reminders_reminder_date ON manual_reminders(reminder_date);
+CREATE INDEX IF NOT EXISTS idx_manual_reminders_agency_reminder_date ON manual_reminders(agency_id, reminder_date);
 
 ALTER TABLE manual_reminders ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN

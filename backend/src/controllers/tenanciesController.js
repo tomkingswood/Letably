@@ -452,7 +452,10 @@ exports.createTenancy = asyncHandler(async (req, res) => {
       // Update application status to converted_to_tenancy
       await client.query('UPDATE applications SET status = $1 WHERE id = $2 AND agency_id = $3', ['converted_to_tenancy', member.application_id, agencyId]);
 
-      // Apply holding deposit if specified
+      // Apply holding deposit if specified.
+      // If the deposit is missing, already consumed, or doesn't match the application,
+      // the UPDATE RETURNING yields no rows and we silently skip — a stale or consumed
+      // deposit should not block tenancy creation.
       if (member.holding_deposit_id && member.holding_deposit_apply_to) {
         const applyTo = member.holding_deposit_apply_to;
         if (!['tenancy_deposit', 'first_rent'].includes(applyTo)) {
