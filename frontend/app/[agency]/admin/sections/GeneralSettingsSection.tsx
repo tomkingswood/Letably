@@ -520,7 +520,9 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
                         name="sort_code"
                         value={formData.sort_code}
                         onChange={handleChange}
-                        placeholder="e.g. 20-00-00"
+                        placeholder="20-00-00"
+                        inputMode="numeric"
+                        maxLength={8}
                         className="w-40 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     </div>
@@ -532,7 +534,9 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
                         name="account_number"
                         value={formData.account_number}
                         onChange={handleChange}
-                        placeholder="e.g. 12345678"
+                        placeholder="12345678"
+                        inputMode="numeric"
+                        maxLength={8}
                         className="w-48 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     </div>

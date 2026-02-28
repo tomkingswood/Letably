@@ -596,7 +596,7 @@ export default function CreateTenancyView({ onBack, onSuccess, onError }: Create
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="text-sm font-medium text-blue-800">
-                              Holding deposit of &pound;{Number(form.holding_deposit.amount).toFixed(2)}{form.holding_deposit.date_received ? ` recorded on ${new Date(form.holding_deposit.date_received).toLocaleDateString('en-GB')}` : ' (awaiting payment)'}
+                              Holding deposit of &pound;{Number(form.holding_deposit.amount).toFixed(2)}{form.holding_deposit.status === 'held' && form.holding_deposit.date_received ? ` recorded on ${new Date(form.holding_deposit.date_received).toLocaleDateString('en-GB')}` : form.holding_deposit.status === 'awaiting_payment' ? ' (awaiting payment)' : ` (${form.holding_deposit.status.replace(/_/g, ' ')})`}
                             </p>
                             {form.holding_deposit.payment_reference && (
                               <p className="text-xs text-blue-600 mt-0.5">Ref: {form.holding_deposit.payment_reference}</p>

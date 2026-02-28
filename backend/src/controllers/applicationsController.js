@@ -89,6 +89,64 @@ exports.createApplication = asyncHandler(async (req, res) => {
     guarantorRequired = (guarantor_required === true || guarantor_required === 'true' || guarantor_required === 1);
   }
 
+  // Validate holding deposit inputs BEFORE creating the application
+  // so we don't leave orphan application rows on validation failure
+  let holdingDeposit = null;
+  let depositAmount = null;
+  let parsedDays = null;
+  const settings = await agencySettings.get(agencyId);
+  const shouldCreateDeposit = settings.holding_deposit_enabled && (property_id || bedroom_id);
+
+  if (shouldCreateDeposit) {
+    // Validate property exists and belongs to agency
+    if (property_id) {
+      const propertyCheck = await db.query(
+        'SELECT id FROM properties WHERE id = $1 AND agency_id = $2',
+        [property_id, agencyId], agencyId
+      );
+      if (propertyCheck.rows.length === 0) {
+        return res.status(400).json({ error: 'Property not found' });
+      }
+    }
+
+    // Validate bedroom exists and belongs to agency
+    if (bedroom_id) {
+      const bedroomCheck = await db.query(
+        'SELECT id, price_pppw FROM bedrooms WHERE id = $1 AND agency_id = $2' + (property_id ? ' AND property_id = $3' : ''),
+        property_id ? [bedroom_id, agencyId, property_id] : [bedroom_id, agencyId], agencyId
+      );
+      if (bedroomCheck.rows.length === 0) {
+        return res.status(400).json({ error: property_id ? 'Bedroom not found in the specified property' : 'Bedroom not found' });
+      }
+
+      // Calculate deposit amount from PPPW if configured
+      if (settings.holding_deposit_type === '1_week_pppw' && bedroomCheck.rows[0].price_pppw) {
+        depositAmount = parseFloat(bedroomCheck.rows[0].price_pppw);
+      }
+    }
+
+    if (depositAmount === null) {
+      const configuredAmount = parseFloat(settings.holding_deposit_amount);
+      depositAmount = Number.isNaN(configuredAmount) ? 100 : configuredAmount;
+    }
+
+    // Validate reservation_days
+    if (reservation_days !== undefined && reservation_days !== null && reservation_days !== '') {
+      parsedDays = parseInt(reservation_days, 10);
+      if (Number.isNaN(parsedDays) || parsedDays < 1 || parsedDays > 365) {
+        return res.status(400).json({ error: 'reservation_days must be a positive integer (1-365)' });
+      }
+    }
+
+    // Check for reservation conflicts
+    if (bedroom_id) {
+      const activeReservation = await holdingDepositRepo.getActiveReservationForBedroom(bedroom_id, agencyId);
+      if (activeReservation) {
+        return res.status(409).json({ error: `Bedroom is already reserved until ${new Date(activeReservation.reservation_expires_at).toLocaleDateString('en-GB')}` });
+      }
+    }
+  }
+
   // Create application (property is assigned at tenancy creation time)
   // Pre-populate with the user's account details
   const newApplication = await appRepo.createApplication({
@@ -102,47 +160,8 @@ exports.createApplication = asyncHandler(async (req, res) => {
 
   const applicationId = newApplication.id;
 
-  // Create holding deposit if enabled and property/bedroom specified
-  let holdingDeposit = null;
-  const settings = await agencySettings.get(agencyId);
-  if (settings.holding_deposit_enabled && (property_id || bedroom_id)) {
-    // Calculate deposit amount
-    let depositAmount = settings.holding_deposit_amount || 100;
-
-    if (settings.holding_deposit_type === '1_week_pppw' && bedroom_id) {
-      // Get bedroom PPPW
-      const bedroomResult = await db.query(
-        'SELECT price_pppw FROM bedrooms WHERE id = $1 AND agency_id = $2',
-        [bedroom_id, agencyId], agencyId
-      );
-      if (bedroomResult.rows[0]?.price_pppw) {
-        depositAmount = parseFloat(bedroomResult.rows[0].price_pppw);
-      }
-    }
-
-    // Validate bedroom belongs to property if both provided
-    if (bedroom_id && property_id) {
-      const bedroomCheck = await db.query(
-        'SELECT id FROM bedrooms WHERE id = $1 AND property_id = $2 AND agency_id = $3',
-        [bedroom_id, property_id, agencyId], agencyId
-      );
-      if (bedroomCheck.rows.length === 0) {
-        return res.status(400).json({ error: 'Bedroom not found in the specified property' });
-      }
-    }
-
-    // Check for reservation conflicts
-    if (bedroom_id) {
-      const activeReservation = await holdingDepositRepo.getActiveReservationForBedroom(bedroom_id, agencyId);
-      if (activeReservation) {
-        return res.status(409).json({ error: `Bedroom is already reserved until ${new Date(activeReservation.reservation_expires_at).toLocaleDateString('en-GB')}` });
-      }
-    }
-
-    // Store reservation_days but don't calculate expiry yet —
-    // reservation starts when deposit is paid, not when created
-    const parsedDays = reservation_days ? parseInt(reservation_days) : null;
-
+  // Create holding deposit now that application exists
+  if (shouldCreateDeposit) {
     holdingDeposit = await holdingDepositRepo.createAwaitingPayment({
       agencyId,
       applicationId,

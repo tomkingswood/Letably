@@ -76,7 +76,8 @@ export default function HoldingDepositApprovalModal({
 
         const settings = settingsRes.data.settings || settingsRes.data;
         const type = settings.holding_deposit_type || '1_week_pppw';
-        const amt = parseFloat(settings.holding_deposit_amount) || 100;
+        const parsedAmt = parseFloat(settings.holding_deposit_amount);
+        const amt = Number.isNaN(parsedAmt) ? 100 : parsedAmt;
         setDepositType(type);
         setFixedAmount(amt);
 

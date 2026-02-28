@@ -89,7 +89,8 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
         const enabled = s.holding_deposit_enabled === true || s.holding_deposit_enabled === 'true';
         setHoldingDepositEnabled(enabled);
         setDepositType(s.holding_deposit_type || '1_week_pppw');
-        setFixedAmount(parseFloat(s.holding_deposit_amount) || 100);
+        const parsedAmt = parseFloat(s.holding_deposit_amount);
+        setFixedAmount(Number.isNaN(parsedAmt) ? 100 : parsedAmt);
         setPropertyOptions(propsRes.data.properties || []);
       } catch {
         // Non-critical, deposit section just won't show

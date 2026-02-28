@@ -254,6 +254,10 @@ exports.recordPayment = asyncHandler(async (req, res) => {
     RETURNING *
   `, [payment_reference || null, date_received, reservationExpiresAt, userId, id, agencyId], agencyId);
 
+  if (updated.rowCount === 0) {
+    return res.status(409).json({ error: 'Deposit status has changed. Please refresh and try again.' });
+  }
+
   res.json({ deposit: updated.rows[0], message: 'Payment recorded successfully' });
 }, 'record holding deposit payment');
 
@@ -283,6 +287,10 @@ exports.undoPayment = asyncHandler(async (req, res) => {
     WHERE id = $2 AND agency_id = $3 AND status = 'held'
     RETURNING *
   `, [userId, id, agencyId], agencyId);
+
+  if (updated.rowCount === 0) {
+    return res.status(409).json({ error: 'Deposit status has changed. Please refresh and try again.' });
+  }
 
   res.json({ deposit: updated.rows[0], message: 'Payment undone — deposit reverted to awaiting payment' });
 }, 'undo holding deposit payment');

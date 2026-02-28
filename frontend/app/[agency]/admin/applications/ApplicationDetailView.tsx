@@ -27,6 +27,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   const [holdingDepositEnabled, setHoldingDepositEnabled] = useState(false);
   const [showHoldingDepositModal, setShowHoldingDepositModal] = useState(false);
   const [existingDeposit, setExistingDeposit] = useState<HoldingDeposit | null>(null);
+  const [isUndoing, setIsUndoing] = useState(false);
 
   useEffect(() => {
     fetchApplication();
@@ -128,9 +129,10 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   };
 
   const handleUndoPayment = async () => {
-    if (!existingDeposit || !confirm('Are you sure you want to undo this deposit payment? The deposit will revert to "awaiting payment".')) {
+    if (isUndoing || !existingDeposit || !confirm('Are you sure you want to undo this deposit payment? The deposit will revert to "awaiting payment".')) {
       return;
     }
+    setIsUndoing(true);
     setMessage(null);
     try {
       await holdingDeposits.undoPayment(existingDeposit.id);
@@ -140,6 +142,8 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to undo payment' });
+    } finally {
+      setIsUndoing(false);
     }
   };
 
@@ -353,9 +357,10 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
               {existingDeposit.status === 'held' && (
                 <button
                   onClick={handleUndoPayment}
-                  className="text-xs text-gray-500 hover:text-red-600 underline"
+                  disabled={isUndoing}
+                  className={`text-xs underline ${isUndoing ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:text-red-600'}`}
                 >
-                  Undo Payment
+                  {isUndoing ? 'Undoing...' : 'Undo Payment'}
                 </button>
               )}
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

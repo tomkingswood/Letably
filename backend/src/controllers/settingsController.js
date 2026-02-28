@@ -171,13 +171,21 @@ const updateSettings = asyncHandler(async (req, res) => {
 
     // Bank details for holding deposits
     if (bank_name !== undefined) {
-      await updateSetting(bank_name || '', 'bank_name');
+      await updateSetting((bank_name || '').trim(), 'bank_name');
     }
     if (sort_code !== undefined) {
-      await updateSetting(sort_code || '', 'sort_code');
+      const trimmed = (sort_code || '').trim();
+      if (trimmed && !/^\d{2}[-\s]?\d{2}[-\s]?\d{2}$/.test(trimmed)) {
+        return res.status(400).json({ error: 'Sort code must be 6 digits (e.g. 20-00-00)' });
+      }
+      await updateSetting(trimmed, 'sort_code');
     }
     if (account_number !== undefined) {
-      await updateSetting(account_number || '', 'account_number');
+      const trimmed = (account_number || '').trim();
+      if (trimmed && !/^\d{7,8}$/.test(trimmed)) {
+        return res.status(400).json({ error: 'Account number must be 7-8 digits' });
+      }
+      await updateSetting(trimmed, 'account_number');
     }
   }, agencyId);
 
