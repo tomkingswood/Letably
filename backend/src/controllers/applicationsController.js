@@ -544,10 +544,15 @@ exports.deleteApplication = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
   const { id } = req.params;
 
-  // Check if application exists
-  const exists = await appRepo.applicationExists(id, agencyId);
-  if (!exists) {
+  // Check if application exists and get its status
+  const application = await appRepo.getApplicationById(id, agencyId);
+  if (!application) {
     return res.status(404).json({ error: 'Application not found' });
+  }
+
+  // Block deletion of converted_to_tenancy applications (data integrity)
+  if (application.status === 'converted_to_tenancy') {
+    return res.status(400).json({ error: 'Cannot delete an application that has been converted to a tenancy' });
   }
 
   // Get all ID documents for this application

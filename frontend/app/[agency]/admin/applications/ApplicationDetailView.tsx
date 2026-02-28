@@ -659,13 +659,15 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
             </button>
           )}
 
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {deleting ? 'Deleting...' : 'Delete Application'}
-          </button>
+          {application.status !== 'converted_to_tenancy' && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {deleting ? 'Deleting...' : 'Delete Application'}
+            </button>
+          )}
         </div>
       </div>
     </div>
