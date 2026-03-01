@@ -565,11 +565,14 @@ export default function ApplicationFormPage({ params }: PageProps) {
                       ? 'bg-blue-100 text-blue-800'
                       : application.status === 'approved'
                       ? 'bg-green-100 text-green-800'
+                      : application.status === 'rejected'
+                      ? 'bg-red-100 text-red-800'
                       : 'bg-purple-100 text-purple-800'
                   }`}>
                     {application.status === 'awaiting_guarantor' ? 'Awaiting Guarantor'
                       : application.status === 'submitted' ? 'Submitted'
                       : application.status === 'approved' ? 'Approved'
+                      : application.status === 'rejected' ? 'Rejected'
                       : application.status === 'converted_to_tenancy' ? 'Tenancy Created'
                       : 'Completed'}
                   </span>
@@ -622,6 +625,21 @@ export default function ApplicationFormPage({ params }: PageProps) {
                     </p>
                     <p className="text-green-800 text-sm">
                       Your application has been reviewed and approved. You can now proceed to sign your tenancy agreement.
+                    </p>
+                  </div>
+                )}
+
+                {/* Rejected Message */}
+                {application.status === 'rejected' && (
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4">
+                    <p className="text-red-900 font-semibold mb-2">
+                      Application Rejected
+                    </p>
+                    <p className="text-red-800 text-sm">
+                      Unfortunately, your application has not been successful. If you have any questions, please contact us at{' '}
+                      <a href={`mailto:${contactEmail}`} className="underline hover:text-red-900">
+                        {contactEmail}
+                      </a>
                     </p>
                   </div>
                 )}

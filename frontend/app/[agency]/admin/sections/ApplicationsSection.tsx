@@ -112,7 +112,11 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     const loadBedrooms = async () => {
       try {
         const res = await bedroomsApi.getByProperty(selectedPropertyId);
-        setBedroomOptions(res.data.bedrooms || []);
+        const rooms = (res.data.bedrooms || []).map((b: BedroomOption) => ({
+          ...b,
+          price_pppw: b.price_pppw != null ? Number(b.price_pppw) : undefined,
+        }));
+        setBedroomOptions(rooms);
       } catch {
         setBedroomOptions([]);
       }
@@ -125,18 +129,16 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     if (depositType === '1_week_pppw' && selectedBedroomId) {
       const bed = bedroomOptions.find(b => b.id === selectedBedroomId);
       if (bed?.price_pppw) {
-        const pppw = parseFloat(String(bed.price_pppw));
-        setCalculatedAmount(pppw);
-        setOneWeekPppw(pppw);
-        setDepositAmountOverride(pppw.toFixed(2));
+        setCalculatedAmount(bed.price_pppw);
+        setOneWeekPppw(bed.price_pppw);
+        setDepositAmountOverride(bed.price_pppw.toFixed(2));
         return;
       }
     }
     if (depositType === 'fixed_amount') {
-      const amt = parseFloat(String(fixedAmount));
-      setCalculatedAmount(amt);
+      setCalculatedAmount(fixedAmount);
       setOneWeekPppw(null);
-      setDepositAmountOverride(amt.toFixed(2));
+      setDepositAmountOverride(fixedAmount.toFixed(2));
       return;
     }
     setCalculatedAmount(null);
@@ -226,9 +228,12 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
         }
         if (depositAmountOverride) {
           const override = parseFloat(depositAmountOverride);
-          if (!Number.isNaN(override) && override >= 0) {
-            data.deposit_amount_override = override;
+          if (Number.isNaN(override) || override < 0) {
+            setCreateError('Please enter a valid deposit amount');
+            setCreating(false);
+            return;
           }
+          data.deposit_amount_override = override;
         }
       }
 
