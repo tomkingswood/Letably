@@ -20,7 +20,7 @@ export default function TenanciesSection({ onNavigate, action, itemId, onBack }:
   const { agencySlug } = useAgency();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [currentView, setCurrentView] = useState<'list' | 'create' | 'migration'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'create' | 'migration'>(action === 'new' ? 'create' : 'list');
   const [showCreateMenu, setShowCreateMenu] = useState(false);
 
   const {
@@ -216,6 +216,7 @@ export default function TenanciesSection({ onNavigate, action, itemId, onBack }:
           onBack={() => setCurrentView('list')}
           onSuccess={handleCreateSuccess}
           onError={setError}
+          preSelectedApplicationId={action === 'new' && itemId ? parseInt(itemId) : undefined}
         />
       ) : (
         <CreateMigrationTenancyView

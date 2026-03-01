@@ -5,6 +5,7 @@ import { maintenance as maintenanceApi } from '@/lib/api';
 import { getStatusBadge, getStatusLabel } from '@/lib/statusBadges';
 import { useAgency } from '@/lib/agency-context';
 import { SectionProps } from './index';
+import MaintenanceDetailView from '../maintenance/components/MaintenanceDetailView';
 
 interface MaintenanceRequest {
   id: number;
@@ -54,6 +55,8 @@ export default function MaintenanceSection({ onNavigate, action, itemId, onBack 
     completed: requests.filter(r => r.status === 'completed').length,
   };
 
+  const isViewMode = action === 'view' && !!itemId;
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800';
@@ -62,6 +65,16 @@ export default function MaintenanceSection({ onNavigate, action, itemId, onBack 
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  if (isViewMode) {
+    return (
+      <MaintenanceDetailView
+        id={itemId}
+        onBack={() => onNavigate?.('maintenance')}
+        onNavigate={onNavigate}
+      />
+    );
+  }
 
   if (loading) {
     return (

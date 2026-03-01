@@ -6,14 +6,16 @@ import type { ApplicationFormData, HoldingDeposit } from '@/lib/types';
 import { useAgency } from '@/lib/agency-context';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import HoldingDepositApprovalModal from '@/components/admin/HoldingDepositApprovalModal';
+import ApprovalChecklistModal from '@/components/admin/ApprovalChecklistModal';
 
 interface ApplicationDetailViewProps {
   id: string;
   onBack: () => void;
   onDeleted?: () => void;
+  onNavigate?: (section: string | null, params?: { action?: 'new' | 'edit' | 'view' | null; id?: string | null }) => void;
 }
 
-export default function ApplicationDetailView({ id, onBack, onDeleted }: ApplicationDetailViewProps) {
+export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigate }: ApplicationDetailViewProps) {
   const { agencySlug } = useAgency();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<ApplicationFormData | null>(null);
@@ -26,6 +28,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
   const [guarantorIdUploaded, setGuarantorIdUploaded] = useState(false);
   const [holdingDepositEnabled, setHoldingDepositEnabled] = useState(false);
   const [showHoldingDepositModal, setShowHoldingDepositModal] = useState(false);
+  const [showApprovalChecklist, setShowApprovalChecklist] = useState(false);
   const [existingDeposit, setExistingDeposit] = useState<HoldingDeposit | null>(null);
   const [depositLoadFailed, setDepositLoadFailed] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
@@ -102,15 +105,16 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
     }
   };
 
-  const handleApprove = async () => {
-    if (!confirm('Are you sure you want to approve this application?')) {
-      return;
-    }
+  const handleApproveClick = () => {
+    setShowApprovalChecklist(true);
+  };
 
+  const handleApproveConfirm = async () => {
     setApproving(true);
     setMessage(null);
     try {
       await applications.approve(id);
+      setShowApprovalChecklist(false);
       setMessage({
         type: 'success',
         text: 'Application approved successfully! This application can now be used to create a tenancy.'
@@ -761,7 +765,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
           {/* Approve Button - Only for submitted applications */}
           {application.status === 'submitted' && (
             <button
-              onClick={handleApprove}
+              onClick={handleApproveClick}
               disabled={approving || (holdingDepositEnabled && (existingDeposit?.status === 'awaiting_payment' || depositLoadFailed))}
               title={holdingDepositEnabled && depositLoadFailed ? 'Failed to load deposit info — please refresh' : holdingDepositEnabled && existingDeposit?.status === 'awaiting_payment' ? 'Record the holding deposit payment first' : undefined}
               className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -770,6 +774,19 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               {approving ? 'Approving...' : 'Approve Application'}
+            </button>
+          )}
+
+          {/* Create Tenancy - Only for approved applications */}
+          {application.status === 'approved' && onNavigate && (
+            <button
+              onClick={() => onNavigate('tenancies', { action: 'new', id: id })}
+              className="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create Tenancy
             </button>
           )}
 
@@ -797,6 +814,15 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
           )}
         </div>
       </div>
+
+      {/* Approval Checklist Modal */}
+      <ApprovalChecklistModal
+        isOpen={showApprovalChecklist}
+        onClose={() => setShowApprovalChecklist(false)}
+        onConfirm={handleApproveConfirm}
+        isLoading={approving}
+        guarantorRequired={application?.guarantor_required ?? false}
+      />
 
       {/* Holding Deposit Modal */}
       {showHoldingDepositModal && application && (

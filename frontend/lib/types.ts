@@ -228,6 +228,7 @@ export interface Application {
   bedroom_id?: number;
   application_type: string;
   status: string;
+  deposit_status?: string | null;
   user_name?: string;
   user_email?: string;
   user?: {

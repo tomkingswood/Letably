@@ -33,7 +33,8 @@ async function generate(request, agencyId) {
   // Calculate days overdue and format amounts
   const tenantsInArrears = arrears.map(a => ({
     ...a,
-    total_arrears: Math.round((a.total_arrears || 0) * 100) / 100,
+    total_arrears: Math.round((parseFloat(a.total_arrears) || 0) * 100) / 100,
+    overdue_payments: parseInt(a.overdue_payments) || 0,
     days_overdue: Math.ceil(
       (new Date().getTime() - new Date(a.oldest_due_date).getTime()) / (1000 * 60 * 60 * 24)
     ),

@@ -342,7 +342,7 @@ exports.createTenancy = asyncHandler(async (req, res) => {
   const bedroomConflicts = await checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, agencyId);
   if (bedroomConflicts.length > 0) {
     const conflictError = formatBedroomConflictError(bedroomConflicts);
-    return res.status(409).json({ error: conflictError.error });
+    return res.status(409).json({ error: conflictError.message });
   }
 
   // Check for holding deposit reservation conflicts

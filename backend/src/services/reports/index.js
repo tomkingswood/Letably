@@ -74,12 +74,18 @@ function createReportRequest(reportType, context, filters = {}, options = {}) {
     effectiveOptions.includeLandlordInfo = true;
   }
 
+  // Require agencyId for multi-tenancy isolation
+  if (!context.agencyId) {
+    throw new ReportError('Agency ID is required in context', 'MISSING_AGENCY_ID');
+  }
+
   return {
     reportType,
     context: {
       userRole: context.userRole,
       userId: context.userId,
       landlordId: context.landlordId || null,
+      agencyId: context.agencyId,
     },
     filters: effectiveFilters,
     options: effectiveOptions,
@@ -91,10 +97,10 @@ function createReportRequest(reportType, context, filters = {}, options = {}) {
  * Generate a report
  *
  * @param {Object} request - Report request (from createReportRequest)
- * @returns {Object} Generated report data
+ * @returns {Promise<Object>} Generated report data
  * @throws {ReportError} If generation fails
  */
-function generateReport(request) {
+async function generateReport(request) {
   const { reportType } = request;
 
   const generator = generators[reportType];
@@ -106,7 +112,8 @@ function generateReport(request) {
   }
 
   try {
-    return generator.generate(request);
+    const agencyId = request.context?.agencyId;
+    return await generator.generate(request, agencyId);
   } catch (error) {
     // Re-throw ReportErrors as-is
     if (error instanceof ReportError) {
@@ -127,7 +134,7 @@ function generateReport(request) {
  * @param {Object} context - User context
  * @param {Object} filters - Request filters
  * @param {Object} options - Report options
- * @returns {Object} Generated report data
+ * @returns {Promise<Object>} Generated report data
  */
 function createAndGenerate(reportType, context, filters = {}, options = {}) {
   const request = createReportRequest(reportType, context, filters, options);
@@ -151,6 +158,7 @@ function buildContextFromRequest(req) {
     userRole: user.role,
     userId: user.id,
     landlordId: user.landlordId || null,
+    agencyId: req.agencyId,
   };
 }
 
