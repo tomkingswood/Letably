@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { viewingRequests as viewingRequestsApi, properties as propertiesApi } from '@/lib/api';
-import { useAgency } from '@/lib/agency-context';
 import { getErrorMessage } from '@/lib/types';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import { SectionProps } from './index';
@@ -27,7 +26,6 @@ interface PropertyOption {
 }
 
 export default function ViewingRequestsSection({ onNavigate, action, itemId, onBack }: SectionProps) {
-  const { agencySlug } = useAgency();
   const [requests, setRequests] = useState<ViewingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -35,6 +33,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [propertiesError, setPropertiesError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -59,7 +58,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
       setProperties(response.data.properties || []);
     } catch (err: unknown) {
       console.error('Error fetching properties:', err);
-      setFormError(getErrorMessage(err, 'Failed to load properties'));
+      setPropertiesError(getErrorMessage(err, 'Failed to load properties'));
     }
   };
 
@@ -192,13 +191,17 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
                   value={formData.property_id}
                   onChange={(e) => setFormData({ ...formData, property_id: e.target.value })}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  disabled={!!propertiesError}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                 >
-                  <option value="">Select a property</option>
+                  <option value="">{propertiesError ? 'Failed to load properties' : 'Select a property'}</option>
                   {properties.map(p => (
                     <option key={p.id} value={p.id}>{p.address_line1}</option>
                   ))}
                 </select>
+                {propertiesError && (
+                  <p className="text-sm text-red-600 mt-1">{propertiesError}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Visitor Name *</label>
