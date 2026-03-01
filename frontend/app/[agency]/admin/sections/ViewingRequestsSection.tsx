@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { viewingRequests as viewingRequestsApi } from '@/lib/api';
-import { useAgency } from '@/lib/agency-context';
+import { viewingRequests as viewingRequestsApi, properties as propertiesApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/types';
+import { MessageAlert } from '@/components/ui/MessageAlert';
 import { SectionProps } from './index';
 
 interface ViewingRequest {
@@ -19,15 +20,47 @@ interface ViewingRequest {
   created_at: string;
 }
 
+interface PropertyOption {
+  id: number;
+  address_line1: string;
+}
+
 export default function ViewingRequestsSection({ onNavigate, action, itemId, onBack }: SectionProps) {
-  const { agencySlug } = useAgency();
   const [requests, setRequests] = useState<ViewingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
 
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [propertiesError, setPropertiesError] = useState<string | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    property_id: '',
+    visitor_name: '',
+    visitor_email: '',
+    visitor_phone: '',
+    preferred_date: '',
+    preferred_time: '',
+    message: '',
+  });
+
   useEffect(() => {
     fetchRequests();
+    fetchProperties();
   }, []);
+
+  const fetchProperties = async () => {
+    try {
+      const response = await propertiesApi.getAll();
+      setProperties(response.data.properties || []);
+    } catch (err: unknown) {
+      console.error('Error fetching properties:', err);
+      setPropertiesError(getErrorMessage(err, 'Failed to load properties'));
+    }
+  };
 
   const fetchRequests = async () => {
     try {
@@ -48,6 +81,46 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
       ));
     } catch (error) {
       console.error('Error updating status:', error);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      property_id: '',
+      visitor_name: '',
+      visitor_email: '',
+      visitor_phone: '',
+      preferred_date: '',
+      preferred_time: '',
+      message: '',
+    });
+    setFormError(null);
+  };
+
+  const handleCreateViewing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
+    setFormSubmitting(true);
+
+    try {
+      await viewingRequestsApi.createAdmin({
+        property_id: Number(formData.property_id),
+        visitor_name: formData.visitor_name,
+        visitor_email: formData.visitor_email,
+        visitor_phone: formData.visitor_phone || undefined,
+        preferred_date: formData.preferred_date || undefined,
+        preferred_time: formData.preferred_time || undefined,
+        message: formData.message || undefined,
+      });
+      setFormSuccess('Viewing request created successfully');
+      resetForm();
+      setShowForm(false);
+      await fetchRequests();
+    } catch (err: unknown) {
+      setFormError(getErrorMessage(err, 'Failed to create viewing request'));
+    } finally {
+      setFormSubmitting(false);
     }
   };
 
@@ -88,12 +161,124 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
           <h2 className="text-2xl font-bold text-gray-900">Viewing Requests</h2>
           <p className="text-gray-600">Review and respond to property viewing requests</p>
         </div>
-        {stats.pending > 0 && (
-          <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">
-            {stats.pending} pending
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {stats.pending > 0 && (
+            <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">
+              {stats.pending} pending
+            </span>
+          )}
+          <button
+            onClick={() => { setShowForm(!showForm); setFormError(null); setFormSuccess(null); }}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+          >
+            {showForm ? 'Cancel' : 'Add Viewing'}
+          </button>
+        </div>
       </div>
+
+      <MessageAlert type="success" message={formSuccess} onDismiss={() => setFormSuccess(null)} />
+
+      {/* Inline Creation Form */}
+      {showForm && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">New Viewing Request</h3>
+          <MessageAlert type="error" message={formError} onDismiss={() => setFormError(null)} />
+          <form onSubmit={handleCreateViewing} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>
+                <select
+                  value={formData.property_id}
+                  onChange={(e) => setFormData({ ...formData, property_id: e.target.value })}
+                  required
+                  disabled={!!propertiesError}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
+                >
+                  <option value="">{propertiesError ? 'Failed to load properties' : 'Select a property'}</option>
+                  {properties.map(p => (
+                    <option key={p.id} value={p.id}>{p.address_line1}</option>
+                  ))}
+                </select>
+                {propertiesError && (
+                  <p className="text-sm text-red-600 mt-1">{propertiesError}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Visitor Name *</label>
+                <input
+                  type="text"
+                  value={formData.visitor_name}
+                  onChange={(e) => setFormData({ ...formData, visitor_name: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Visitor Email *</label>
+                <input
+                  type="email"
+                  value={formData.visitor_email}
+                  onChange={(e) => setFormData({ ...formData, visitor_email: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Visitor Phone</label>
+                <input
+                  type="tel"
+                  value={formData.visitor_phone}
+                  onChange={(e) => setFormData({ ...formData, visitor_phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Date</label>
+                <input
+                  type="date"
+                  value={formData.preferred_date}
+                  onChange={(e) => setFormData({ ...formData, preferred_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Time</label>
+                <input
+                  type="time"
+                  value={formData.preferred_time}
+                  onChange={(e) => setFormData({ ...formData, preferred_time: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+              <textarea
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={formSubmitting}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                {formSubmitting ? 'Creating...' : 'Create Viewing'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowForm(false); resetForm(); }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
