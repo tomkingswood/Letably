@@ -345,7 +345,7 @@ export default function CommunicationsSection({ onNavigate, action, itemId }: Se
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-md p-4">
           <p className="text-gray-600 text-sm">Total Tenancies</p>
-          <p className="text-2xl font-bold text-gray-900">{tenancies.length}</p>
+          <p className="text-2xl font-bold text-gray-900">{filteredTenancies.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
           <p className="text-gray-600 text-sm">With Messages</p>

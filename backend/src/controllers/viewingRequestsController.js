@@ -96,6 +96,150 @@ const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipie
   };
 };
 
+/**
+ * Generate confirmation email sent to the visitor when an admin creates a viewing request
+ */
+const generateViewingConfirmationEmail = (viewingRequest, propertyAddress, branding) => {
+  const agencyName = branding?.company_name || 'Our Agency';
+  const agencyPhone = branding?.phone_number || '';
+  const agencyEmail = branding?.email_address || '';
+
+  const contactLines = [];
+  if (agencyPhone) contactLines.push(`<p style="margin: 4px 0; color: #555;">Phone: <a href="tel:${escapeHtml(agencyPhone)}" style="color: #CF722F; text-decoration: none;">${escapeHtml(agencyPhone)}</a></p>`);
+  if (agencyEmail) contactLines.push(`<p style="margin: 4px 0; color: #555;">Email: <a href="mailto:${escapeHtml(agencyEmail)}" style="color: #CF722F; text-decoration: none;">${escapeHtml(agencyEmail)}</a></p>`);
+
+  const bodyContent = `
+    <h1>Viewing Confirmation</h1>
+    <p style="font-size: 14px; color: ${COLORS.textLight}; margin-bottom: 20px;">Your viewing request has been confirmed</p>
+
+    <p style="font-size: 14px; color: #333; margin-bottom: 20px;">
+      Hi ${escapeHtml(viewingRequest.visitor_name)}, your viewing for the following property has been confirmed.
+    </p>
+
+    <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+      <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">Property</h3>
+      <p style="margin: 0; font-weight: 600; color: #555;">${escapeHtml(propertyAddress)}</p>
+    </div>
+
+    ${viewingRequest.preferred_date ? `
+    <div style="background-color: #f0f9ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #0284c7;">
+      <h3 style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 16px;">Viewing Date & Time</h3>
+      <p style="margin: 0; color: #0c4a6e; font-weight: 600;">${formatDate(viewingRequest.preferred_date, 'full')}${viewingRequest.preferred_time ? ` at ${viewingRequest.preferred_time}` : ''}</p>
+    </div>
+    ` : ''}
+
+    ${contactLines.length > 0 ? `
+    <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+      <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">Contact Us</h3>
+      <p style="margin: 0 0 5px 0; font-weight: 600; color: #555;">${escapeHtml(agencyName)}</p>
+      ${contactLines.join('\n      ')}
+    </div>
+    ` : ''}
+
+    <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+      This is an automated confirmation from ${escapeHtml(agencyName)}.
+    </p>
+  `;
+
+  const emailHtml = createEmailTemplate('Viewing Confirmation', bodyContent);
+
+  const textParts = [
+    'VIEWING CONFIRMATION',
+    '',
+    `Hi ${viewingRequest.visitor_name}, your viewing for the following property has been confirmed.`,
+    '',
+    `PROPERTY: ${propertyAddress}`,
+    ''
+  ];
+
+  if (viewingRequest.preferred_date) {
+    const timeStr = viewingRequest.preferred_time ? ` at ${viewingRequest.preferred_time}` : '';
+    textParts.push(`VIEWING DATE: ${formatDate(viewingRequest.preferred_date, 'full')}${timeStr}`);
+    textParts.push('');
+  }
+
+  if (agencyPhone || agencyEmail) {
+    textParts.push('CONTACT US:');
+    textParts.push(agencyName);
+    if (agencyPhone) textParts.push(`Phone: ${agencyPhone}`);
+    if (agencyEmail) textParts.push(`Email: ${agencyEmail}`);
+    textParts.push('');
+  }
+
+  return {
+    to: viewingRequest.visitor_email,
+    subject: `Viewing Confirmation - ${propertyAddress}`,
+    html: emailHtml,
+    text: textParts.join('\n')
+  };
+};
+
+// Create viewing request (admin - no rate limiting, no spam checks)
+exports.createViewingRequestAdmin = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const { property_id, visitor_name, visitor_email, visitor_phone, message, preferred_date, preferred_time } = req.body;
+
+  // Validate required fields
+  if (!property_id || !visitor_name || !visitor_email) {
+    return res.status(400).json({ error: 'Property, visitor name, and visitor email are required' });
+  }
+
+  // Look up property (with agency_id filter)
+  const propertyResult = await db.query(
+    'SELECT id, address_line1 FROM properties WHERE agency_id = $1 AND id = $2',
+    [agencyId, property_id],
+    agencyId
+  );
+  const property = propertyResult.rows[0];
+
+  if (!property) {
+    return res.status(404).json({ error: 'Property not found' });
+  }
+
+  // Insert with status = 'confirmed' (admin-created = pre-confirmed)
+  const result = await db.query(
+    `INSERT INTO viewing_requests (agency_id, property_id, visitor_name, visitor_email, visitor_phone, message, preferred_date, preferred_time, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmed')
+     RETURNING *`,
+    [agencyId, property_id, visitor_name, visitor_email, visitor_phone || null, message || null, preferred_date || null, preferred_time || null],
+    agencyId
+  );
+
+  const insertedRow = result.rows[0];
+
+  // Send confirmation email to the visitor
+  try {
+    const branding = await getAgencyBranding(agencyId);
+
+    const viewingData = {
+      visitor_name,
+      visitor_email,
+      preferred_date,
+      preferred_time
+    };
+
+    const emailContent = generateViewingConfirmationEmail(
+      viewingData,
+      property.address_line1,
+      branding
+    );
+
+    queueEmail({
+      to_email: emailContent.to,
+      subject: emailContent.subject,
+      html_body: emailContent.html,
+      text_body: emailContent.text,
+      priority: 2
+    }, agencyId);
+
+    console.log(`Queued viewing confirmation email to ${visitor_email} for ${property.address_line1}`);
+  } catch (emailError) {
+    console.error('Error queuing viewing confirmation email:', emailError);
+  }
+
+  res.status(201).json({ message: 'Viewing request created successfully', id: insertedRow.id });
+}, 'create viewing request (admin)');
+
 // Create viewing request
 exports.createViewingRequest = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;

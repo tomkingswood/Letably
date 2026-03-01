@@ -263,6 +263,15 @@ export const viewingRequests = {
     preferred_time?: string;
     website?: string; // Honeypot field
   }) => api.post('/viewing-requests', data),
+  createAdmin: (data: {
+    property_id: number;
+    visitor_name: string;
+    visitor_email: string;
+    visitor_phone?: string;
+    message?: string;
+    preferred_date?: string;
+    preferred_time?: string;
+  }) => api.post('/viewing-requests/admin', data),
   getAll: () => api.get('/viewing-requests'),
   getPendingCount: () => api.get('/viewing-requests/count/pending'),
   updateStatus: (id: string | number, status: string) =>

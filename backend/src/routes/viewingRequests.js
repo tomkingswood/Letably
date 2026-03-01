@@ -8,6 +8,7 @@ const { viewingRequestLimiter } = require('../middleware/rateLimit');
 router.post('/', viewingRequestLimiter, viewingRequestsController.createViewingRequest);
 
 // Admin routes
+router.post('/admin', authenticateToken, requireAdmin, viewingRequestsController.createViewingRequestAdmin);
 router.get('/', authenticateToken, requireAdmin, viewingRequestsController.getAllViewingRequests);
 router.get('/count/pending', authenticateToken, requireAdmin, viewingRequestsController.getPendingCount);
 router.get('/calendar', authenticateToken, requireAdmin, viewingRequestsController.getViewingsByDateRange);
