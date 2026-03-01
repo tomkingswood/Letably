@@ -83,14 +83,35 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
           const portfolioRes = await adminReports.getPortfolioOverview();
           setPortfolioData(portfolioRes.data.report);
           break;
-        case 'occupancy':
+        case 'occupancy': {
           const occupancyRes = await adminReports.getOccupancyReport();
-          setOccupancyData(occupancyRes.data.report);
+          const occReport = occupancyRes.data.report;
+          if (occReport?.properties) {
+            for (const prop of occReport.properties) {
+              for (const bed of prop.bedrooms) {
+                if (bed.baseRent != null) bed.baseRent = Number(bed.baseRent);
+                if (bed.tenant) bed.tenant.rentPPPW = Number(bed.tenant.rentPPPW);
+                if (bed.nextTenant) bed.nextTenant.rentPPPW = Number(bed.nextTenant.rentPPPW);
+              }
+            }
+          }
+          setOccupancyData(occReport);
           break;
-        case 'arrears':
+        }
+        case 'arrears': {
           const arrearsRes = await adminReports.getArrearsReport();
-          setArrearsData(arrearsRes.data.report);
+          const arrReport = arrearsRes.data.report;
+          if (arrReport?.summary) {
+            arrReport.summary.totalArrears = Number(arrReport.summary.totalArrears);
+          }
+          if (arrReport?.tenants) {
+            for (const t of arrReport.tenants) {
+              t.total_arrears = Number(t.total_arrears);
+            }
+          }
+          setArrearsData(arrReport);
           break;
+        }
         case 'upcoming-endings':
           const endingsRes = await adminReports.getUpcomingEndings(30);
           setUpcomingEndingsData(endingsRes.data.report);
@@ -251,7 +272,7 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
                             {bedroom.tenant && (
                               <p className="text-xs text-gray-600 mt-1">{bedroom.tenant.name}</p>
                             )}
-                            {bedroom.baseRent && !bedroom.isOccupied && (
+                            {bedroom.baseRent != null && !bedroom.isOccupied && (
                               <p className="text-xs text-gray-400 mt-1">&pound;{Number(bedroom.baseRent).toFixed(2)} pppw</p>
                             )}
                           </div>

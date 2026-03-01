@@ -77,6 +77,10 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
     fetchData();
   }, []);
 
+  useEffect(() => {
+    setStatement(null);
+  }, [selectedLandlord, selectedYear, viewType]);
+
   const fetchData = async () => {
     try {
       const [landlordsRes, periodsRes] = await Promise.all([
@@ -118,7 +122,25 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
     try {
       const landlordId = selectedLandlord !== 'all' ? parseInt(selectedLandlord) : undefined;
       const res = await adminReports.getMonthlyStatement(year, month, landlordId);
-      setStatement(res.data.statement);
+      const stmt = res.data.statement;
+      if (stmt) {
+        if (stmt.summary) {
+          stmt.summary.totalDue = Number(stmt.summary.totalDue);
+          stmt.summary.totalPaid = Number(stmt.summary.totalPaid);
+          stmt.summary.totalOutstanding = Number(stmt.summary.totalOutstanding);
+        }
+        for (const ll of stmt.landlords) {
+          ll.totalDue = Number(ll.totalDue);
+          ll.totalPaid = Number(ll.totalPaid);
+          for (const prop of ll.properties) {
+            for (const pay of prop.payments) {
+              pay.amount_due = Number(pay.amount_due);
+              pay.amount_paid = Number(pay.amount_paid);
+            }
+          }
+        }
+      }
+      setStatement(stmt);
     } catch (err: unknown) {
       setStatementError(getErrorMessage(err, 'Failed to load statement'));
     } finally {

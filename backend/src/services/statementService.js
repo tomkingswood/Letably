@@ -99,8 +99,9 @@ async function getLandlordByEmail(email, agencyId) {
              address_line1, address_line2, city, postcode,
              bank_name, bank_account_name, sort_code, account_number
       FROM landlords
-      WHERE LOWER(email) = LOWER($1)
-    `, [email], agencyId);
+      WHERE agency_id = $1
+        AND LOWER(email) = LOWER($2)
+    `, [agencyId, email], agencyId);
     return result.rows[0];
   } catch (error) {
     console.error('Error getting landlord by email:', error);
@@ -122,9 +123,10 @@ async function generateMonthlyStatement(landlordId, year, month, agencyId) {
     const propertiesResult = await db.query(`
       SELECT id, address_line1, address_line2, city, postcode
       FROM properties
-      WHERE landlord_id = $1
+      WHERE agency_id = $1
+        AND landlord_id = $2
       ORDER BY address_line1
-    `, [landlordId], agencyId);
+    `, [agencyId, landlordId], agencyId);
     const properties = propertiesResult.rows;
 
     // Get all payment schedules for the month
@@ -152,14 +154,15 @@ async function generateMonthlyStatement(landlordId, year, month, agencyId) {
       INNER JOIN properties p ON t.property_id = p.id
       LEFT JOIN bedrooms b ON tm.bedroom_id = b.id
       LEFT JOIN payments pay ON ps.id = pay.payment_schedule_id
-      WHERE p.landlord_id = $1
-        AND EXTRACT(YEAR FROM ps.due_date) = $2
-        AND EXTRACT(MONTH FROM ps.due_date) = $3
+      WHERE ps.agency_id = $1
+        AND p.landlord_id = $2
+        AND EXTRACT(YEAR FROM ps.due_date) = $3
+        AND EXTRACT(MONTH FROM ps.due_date) = $4
       GROUP BY ps.id, ps.due_date, ps.amount_due, ps.status, ps.payment_type,
                ps.description, ps.covers_from, ps.covers_to, tm.first_name,
                tm.surname, tm.id, t.id, t.tenancy_type, p.id, p.address_line1, b.bedroom_name
       ORDER BY p.address_line1, ps.due_date ASC
-    `, [landlordId, year, month], agencyId);
+    `, [agencyId, landlordId, year, month], agencyId);
     const paymentSchedules = paymentSchedulesResult.rows;
 
     // Calculate totals
@@ -257,12 +260,14 @@ async function generateAnnualSummary(landlordId, year, agencyId) {
         LEFT JOIN (
           SELECT payment_schedule_id, SUM(amount) as amount_paid
           FROM payments
+          WHERE agency_id = $5
           GROUP BY payment_schedule_id
         ) pay_sum ON ps.id = pay_sum.payment_schedule_id
-        WHERE p.landlord_id = $2
+        WHERE ps.agency_id = $5
+          AND p.landlord_id = $2
           AND EXTRACT(YEAR FROM ps.due_date) = $3
           AND EXTRACT(MONTH FROM ps.due_date) = $4
-      `, [today, landlordId, year, month], agencyId);
+      `, [today, landlordId, year, month, agencyId], agencyId);
       const monthData = monthDataResult.rows[0];
 
       // Calculate estimated rolling monthly payments not yet generated
@@ -335,9 +340,10 @@ async function getAvailablePeriods(landlordId, agencyId) {
       INNER JOIN tenancy_members tm ON ps.tenancy_member_id = tm.id
       INNER JOIN tenancies t ON ps.tenancy_id = t.id
       INNER JOIN properties p ON t.property_id = p.id
-      WHERE p.landlord_id = $1
+      WHERE ps.agency_id = $2
+        AND p.landlord_id = $1
       ORDER BY year DESC, month DESC
-    `, [landlordId], agencyId);
+    `, [landlordId, agencyId], agencyId);
     const periods = result.rows;
 
     // Group by year

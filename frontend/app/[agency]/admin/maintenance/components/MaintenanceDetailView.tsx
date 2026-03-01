@@ -78,6 +78,7 @@ export default function MaintenanceDetailView({ id, onBack, onNavigate }: Mainte
   const fetchRequest = useCallback(async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await maintenanceApi.getRequestByIdAdmin(id);
       const { request: reqData, comments, has_landlord } = response.data;
 
@@ -124,33 +125,22 @@ export default function MaintenanceDetailView({ id, onBack, onNavigate }: Mainte
     }
   };
 
-  const handleAddComment = async (content: string, files?: File[]): Promise<number | null> => {
+  const submitComment = async (content: string, files: File[] | undefined, isPrivate: boolean): Promise<number | null> => {
     if (!request) return null;
     try {
       setError('');
-      const response = await maintenanceApi.addCommentAdmin(request.id, content, files, false);
-      setSuccess('Message sent successfully');
+      const response = await maintenanceApi.addCommentAdmin(request.id, content, files, isPrivate);
+      setSuccess(isPrivate ? 'Internal message sent successfully' : 'Message sent successfully');
       await fetchRequest();
       return response.data.commentId || null;
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to send message'));
+      setError(getErrorMessage(err, isPrivate ? 'Failed to send internal message' : 'Failed to send message'));
       return null;
     }
   };
 
-  const handleAddPrivateComment = async (content: string, files?: File[]): Promise<number | null> => {
-    if (!request) return null;
-    try {
-      setError('');
-      const response = await maintenanceApi.addCommentAdmin(request.id, content, files, true);
-      setSuccess('Internal message sent successfully');
-      await fetchRequest();
-      return response.data.commentId || null;
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to send internal message'));
-      return null;
-    }
-  };
+  const handleAddComment = (content: string, files?: File[]) => submitComment(content, files, false);
+  const handleAddPrivateComment = (content: string, files?: File[]) => submitComment(content, files, true);
 
   const handleDeleteAttachment = async (attachmentId: number): Promise<boolean> => {
     try {
@@ -211,10 +201,27 @@ export default function MaintenanceDetailView({ id, onBack, onNavigate }: Mainte
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Request not found</h3>
-          <button onClick={onBack} className="text-primary hover:underline">
-            Back to Maintenance
-          </button>
+          {error ? (
+            <>
+              <h3 className="text-lg font-medium text-red-600 mb-2">Failed to load request</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => fetchRequest()} className="text-primary hover:underline">
+                  Retry
+                </button>
+                <button onClick={onBack} className="text-gray-600 hover:underline">
+                  Back to Maintenance
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Request not found</h3>
+              <button onClick={onBack} className="text-primary hover:underline">
+                Back to Maintenance
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -351,8 +358,9 @@ export default function MaintenanceDetailView({ id, onBack, onNavigate }: Mainte
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Status & Priority</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label htmlFor="maintenance-status" className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                 <select
+                  id="maintenance-status"
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
@@ -363,8 +371,9 @@ export default function MaintenanceDetailView({ id, onBack, onNavigate }: Mainte
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                <label htmlFor="maintenance-priority" className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                 <select
+                  id="maintenance-priority"
                   value={newPriority}
                   onChange={(e) => setNewPriority(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"

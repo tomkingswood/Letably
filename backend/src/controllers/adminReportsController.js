@@ -12,8 +12,10 @@ const asyncHandler = require('../utils/asyncHandler');
  */
 exports.getStatementPeriods = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
-  const periods = await statementService.getAvailablePeriodsAdmin(agencyId);
-  const landlords = await statementService.getAllLandlords(agencyId);
+  const [periods, landlords] = await Promise.all([
+    statementService.getAvailablePeriodsAdmin(agencyId),
+    statementService.getAllLandlords(agencyId),
+  ]);
   res.json({ periods, landlords });
 }, 'fetch statement periods');
 
