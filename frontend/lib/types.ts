@@ -57,7 +57,7 @@ export interface ViewingRequest {
   visitor_name: string;
   visitor_email: string;
   visitor_phone: string;
-  message?: string;
+  internal_notes?: string;
   preferred_date?: string;
   preferred_time?: string;
   status: string;

@@ -8,6 +8,12 @@ const { getAgencyBranding } = require('../services/brandingService');
 const asyncHandler = require('../utils/asyncHandler');
 const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
+const formatFullAddress = (row) => {
+  return [row.address_line1, row.address_line2, row.city, row.postcode]
+    .filter(Boolean)
+    .join(', ') || 'Property';
+};
+
 /**
  * Generate email notification for new viewing request
  */
@@ -38,10 +44,10 @@ const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipie
     </div>
     ` : ''}
 
-    ${viewingRequest.message ? `
+    ${viewingRequest.internal_notes ? `
     <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-      <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">Message</h3>
-      <p style="margin: 0; color: #555; white-space: pre-wrap;">${escapeHtml(viewingRequest.message)}</p>
+      <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">Notes</h3>
+      <p style="margin: 0; color: #555; white-space: pre-wrap;">${escapeHtml(viewingRequest.internal_notes)}</p>
     </div>
     ` : ''}
 
@@ -79,9 +85,9 @@ const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipie
     textParts.push('');
   }
 
-  if (viewingRequest.message) {
-    textParts.push('MESSAGE:');
-    textParts.push(viewingRequest.message);
+  if (viewingRequest.internal_notes) {
+    textParts.push('NOTES:');
+    textParts.push(viewingRequest.internal_notes);
     textParts.push('');
   }
 
@@ -177,7 +183,7 @@ const generateViewingConfirmationEmail = (viewingRequest, propertyAddress, brand
 // Create viewing request (admin - no rate limiting, no spam checks)
 exports.createViewingRequestAdmin = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
-  const { property_id, visitor_name, visitor_email, visitor_phone, message, preferred_date, preferred_time } = req.body;
+  const { property_id, visitor_name, visitor_email, visitor_phone, internal_notes, preferred_date, preferred_time } = req.body;
 
   // Validate required fields
   if (!property_id || !visitor_name || !visitor_email) {
@@ -186,7 +192,7 @@ exports.createViewingRequestAdmin = asyncHandler(async (req, res) => {
 
   // Look up property (with agency_id filter)
   const propertyResult = await db.query(
-    'SELECT id, address_line1 FROM properties WHERE agency_id = $1 AND id = $2',
+    'SELECT id, address_line1, address_line2, city, postcode FROM properties WHERE agency_id = $1 AND id = $2',
     [agencyId, property_id],
     agencyId
   );
@@ -198,10 +204,10 @@ exports.createViewingRequestAdmin = asyncHandler(async (req, res) => {
 
   // Insert with status = 'confirmed' (admin-created = pre-confirmed)
   const result = await db.query(
-    `INSERT INTO viewing_requests (agency_id, property_id, visitor_name, visitor_email, visitor_phone, message, preferred_date, preferred_time, status)
+    `INSERT INTO viewing_requests (agency_id, property_id, visitor_name, visitor_email, visitor_phone, internal_notes, preferred_date, preferred_time, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmed')
      RETURNING *`,
-    [agencyId, property_id, visitor_name, visitor_email, visitor_phone || null, message || null, preferred_date || null, preferred_time || null],
+    [agencyId, property_id, visitor_name, visitor_email, visitor_phone || null, internal_notes || null, preferred_date || null, preferred_time || null],
     agencyId
   );
 
@@ -218,9 +224,10 @@ exports.createViewingRequestAdmin = asyncHandler(async (req, res) => {
       preferred_time
     };
 
+    const fullAddress = formatFullAddress(property);
     const emailContent = generateViewingConfirmationEmail(
       viewingData,
-      property.address_line1,
+      fullAddress,
       branding
     );
 
@@ -232,7 +239,7 @@ exports.createViewingRequestAdmin = asyncHandler(async (req, res) => {
       priority: 2
     }, agencyId);
 
-    console.log(`Queued viewing confirmation email for ${property.address_line1}`);
+    console.log(`Queued viewing confirmation email for ${fullAddress}`);
   } catch (emailError) {
     console.error('Error queuing viewing confirmation email:', emailError);
   }
@@ -243,7 +250,7 @@ exports.createViewingRequestAdmin = asyncHandler(async (req, res) => {
 // Create viewing request
 exports.createViewingRequest = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
-  const { property_id, name, email, phone, message, preferred_date, preferred_time, website } = req.body;
+  const { property_id, name, email, phone, message: internal_notes, preferred_date, preferred_time, website } = req.body;
 
   // Honeypot check - 'website' field should be empty (hidden from real users)
   if (!validateHoneypot(website)) {
@@ -256,7 +263,7 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
   }
 
   // Spam/injection detection
-  const validation = validateFormSubmission({ name, email, phone, message });
+  const validation = validateFormSubmission({ name, email, phone, message: internal_notes });
   if (!validation.isValid) {
     console.log(`Spam detected in viewing request from ${req.ip}: ${validation.reason}`);
     return res.status(400).json({ error: validation.reason });
@@ -269,7 +276,7 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
 
   // Check if property exists and get address
   const propertyResult = await db.query(
-    'SELECT id, address_line1 FROM properties WHERE id = $1',
+    'SELECT id, address_line1, address_line2, city, postcode FROM properties WHERE id = $1',
     [property_id],
     agencyId
   );
@@ -304,10 +311,10 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
 
   // Insert viewing request
   const result = await db.query(
-    `INSERT INTO viewing_requests (agency_id, property_id, visitor_name, visitor_email, visitor_phone, message, preferred_date, preferred_time, status)
+    `INSERT INTO viewing_requests (agency_id, property_id, visitor_name, visitor_email, visitor_phone, internal_notes, preferred_date, preferred_time, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
      RETURNING *`,
-    [agencyId, property_id, name, email, phone, message || null, preferred_date || null, preferred_time || null],
+    [agencyId, property_id, name, email, phone, internal_notes || null, preferred_date || null, preferred_time || null],
     agencyId
   );
 
@@ -321,14 +328,15 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
         name,
         email,
         phone,
-        message,
+        internal_notes,
         preferred_date,
         preferred_time
       };
 
+      const fullAddress = formatFullAddress(property);
       const emailContent = generateNewViewingRequestEmail(
         viewingRequestData,
-        property.address_line1,
+        fullAddress,
         recipientEmail,
         req.agency?.slug
       );
@@ -341,7 +349,7 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
         priority: 2 // High priority (1 = critical, 2 = high, 3 = medium, 5 = low)
       }, agencyId);
 
-      console.log(`Queued new viewing request notification email for ${property.address_line1}`);
+      console.log(`Queued new viewing request notification email for ${fullAddress}`);
     } else {
       console.log('No recipient email configured - skipping viewing request notification');
     }
@@ -395,16 +403,21 @@ exports.updateViewingRequestStatus = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Invalid status' });
   }
 
-  // Check if viewing request exists
+  // Fetch full viewing request (need previous status + visitor details for email)
   const requestResult = await db.query(
-    'SELECT id FROM viewing_requests WHERE id = $1',
-    [id],
+    `SELECT vr.*, p.address_line1, p.address_line2, p.city, p.postcode
+     FROM viewing_requests vr
+     LEFT JOIN properties p ON vr.property_id = p.id
+     WHERE vr.id = $1 AND vr.agency_id = $2`,
+    [id, agencyId],
     agencyId
   );
 
   if (requestResult.rows.length === 0) {
     return res.status(404).json({ error: 'Viewing request not found' });
   }
+
+  const viewingRequest = requestResult.rows[0];
 
   // Defense-in-depth: explicit agency_id filtering
   // Update the status
@@ -413,6 +426,32 @@ exports.updateViewingRequestStatus = asyncHandler(async (req, res) => {
     [status, id, agencyId],
     agencyId
   );
+
+  // Send confirmation email when moving to 'confirmed'
+  if (status === 'confirmed' && viewingRequest.status !== 'confirmed' && viewingRequest.visitor_email) {
+    try {
+      const branding = await getAgencyBranding(agencyId);
+
+      const fullAddress = formatFullAddress(viewingRequest);
+      const emailContent = generateViewingConfirmationEmail(
+        viewingRequest,
+        fullAddress,
+        branding
+      );
+
+      await queueEmail({
+        to_email: emailContent.to,
+        subject: emailContent.subject,
+        html_body: emailContent.html,
+        text_body: emailContent.text,
+        priority: 2
+      }, agencyId);
+
+      console.log(`Queued viewing confirmation email to ${viewingRequest.visitor_email}`);
+    } catch (emailError) {
+      console.error('Error queuing viewing confirmation email:', emailError);
+    }
+  }
 
   res.json({ message: 'Status updated successfully' });
 }, 'update viewing request');
@@ -445,11 +484,29 @@ exports.updateViewingDate = asyncHandler(async (req, res) => {
   res.json({ message: 'Viewing date and time updated successfully' });
 }, 'update viewing date');
 
-// Update viewing request notes (admin only)
-// NOTE: The viewing_requests table does not have a 'notes' column.
-// This endpoint is kept for API compatibility but returns an error.
+// Update viewing request internal notes (admin only)
 exports.updateViewingNotes = asyncHandler(async (req, res) => {
-  return res.status(400).json({ error: 'Notes are not supported on viewing requests. Use the message field instead.' });
+  const agencyId = req.agencyId;
+  const { id } = req.params;
+  const { internal_notes } = req.body;
+
+  const requestResult = await db.query(
+    'SELECT id FROM viewing_requests WHERE id = $1 AND agency_id = $2',
+    [id, agencyId],
+    agencyId
+  );
+
+  if (requestResult.rows.length === 0) {
+    return res.status(404).json({ error: 'Viewing request not found' });
+  }
+
+  await db.query(
+    'UPDATE viewing_requests SET internal_notes = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND agency_id = $3',
+    [internal_notes || null, id, agencyId],
+    agencyId
+  );
+
+  res.json({ message: 'Internal notes updated successfully' });
 }, 'update viewing notes');
 
 // Get viewing requests by date range (for calendar view)

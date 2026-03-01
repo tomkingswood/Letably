@@ -258,7 +258,7 @@ export const viewingRequests = {
     name: string;
     email: string;
     phone: string;
-    message?: string;
+    message?: string; // Public form field, stored as internal_notes
     preferred_date?: string;
     preferred_time?: string;
     website?: string; // Honeypot field
@@ -268,7 +268,7 @@ export const viewingRequests = {
     visitor_name: string;
     visitor_email: string;
     visitor_phone?: string;
-    message?: string;
+    internal_notes?: string;
     preferred_date?: string;
     preferred_time?: string;
   }) => api.post('/viewing-requests/admin', data),
@@ -276,8 +276,10 @@ export const viewingRequests = {
   getPendingCount: () => api.get('/viewing-requests/count/pending'),
   updateStatus: (id: string | number, status: string) =>
     api.patch(`/viewing-requests/${id}/status`, { status }),
-  updateDate: (id: string | number, preferred_date: string) =>
-    api.patch(`/viewing-requests/${id}/date`, { preferred_date }),
+  updateDate: (id: string | number, preferred_date: string, preferred_time?: string) =>
+    api.patch(`/viewing-requests/${id}/date`, { preferred_date, preferred_time }),
+  updateNotes: (id: string | number, internal_notes: string) =>
+    api.patch(`/viewing-requests/${id}/notes`, { internal_notes }),
   delete: (id: string | number) => api.delete(`/viewing-requests/${id}`),
   bulkDelete: (ids: (string | number)[]) =>
     api.post('/viewing-requests/bulk-delete', { ids }),
