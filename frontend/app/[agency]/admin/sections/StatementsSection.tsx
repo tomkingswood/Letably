@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { adminReports, landlords as landlordsApi } from '@/lib/api';
 import { useAgency } from '@/lib/agency-context';
 import { getErrorMessage } from '@/lib/types';
@@ -77,7 +77,10 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
     fetchData();
   }, []);
 
+  const requestIdRef = useRef(0);
+
   useEffect(() => {
+    requestIdRef.current++;
     setStatement(null);
   }, [selectedLandlord, selectedYear, viewType]);
 
@@ -117,11 +120,13 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
   const monthsInYear = periodsArray.filter(p => p.year === selectedYear);
 
   const handleViewStatement = async (year: number, month: number) => {
+    const thisRequestId = ++requestIdRef.current;
     setStatementLoading(true);
     setStatementError('');
     try {
       const landlordId = selectedLandlord !== 'all' ? parseInt(selectedLandlord) : undefined;
       const res = await adminReports.getMonthlyStatement(year, month, landlordId);
+      if (requestIdRef.current !== thisRequestId) return;
       const stmt = res.data.statement;
       if (stmt) {
         if (stmt.summary) {
@@ -144,9 +149,12 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
       }
       setStatement(stmt);
     } catch (err: unknown) {
+      if (requestIdRef.current !== thisRequestId) return;
       setStatementError(getErrorMessage(err, 'Failed to load statement'));
     } finally {
-      setStatementLoading(false);
+      if (requestIdRef.current === thisRequestId) {
+        setStatementLoading(false);
+      }
     }
   };
 
