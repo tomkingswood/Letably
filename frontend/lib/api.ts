@@ -399,6 +399,7 @@ export const applications = {
     property_id?: number;
     bedroom_id?: number;
     reservation_days?: number;
+    deposit_amount_override?: number;
   }) => api.post('/applications', data),
   getAll: (params?: { status?: string; application_type?: string }) =>
     api.get('/applications/all', { params }),

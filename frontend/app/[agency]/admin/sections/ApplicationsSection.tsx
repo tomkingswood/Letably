@@ -68,6 +68,8 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
   const [selectedBedroomId, setSelectedBedroomId] = useState<number | ''>('');
   const [reservationDays, setReservationDays] = useState('');
   const [calculatedAmount, setCalculatedAmount] = useState<number | null>(null);
+  const [depositAmountOverride, setDepositAmountOverride] = useState<string>('');
+  const [oneWeekPppw, setOneWeekPppw] = useState<number | null>(null);
 
   const isCreateMode = action === 'new';
   const isViewMode = action === 'view' && !!itemId;
@@ -110,7 +112,11 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     const loadBedrooms = async () => {
       try {
         const res = await bedroomsApi.getByProperty(selectedPropertyId);
-        setBedroomOptions(res.data.bedrooms || []);
+        const rooms = (res.data.bedrooms || []).map((b: BedroomOption) => ({
+          ...b,
+          price_pppw: b.price_pppw != null ? Number(b.price_pppw) : undefined,
+        }));
+        setBedroomOptions(rooms);
       } catch {
         setBedroomOptions([]);
       }
@@ -123,15 +129,21 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     if (depositType === '1_week_pppw' && selectedBedroomId) {
       const bed = bedroomOptions.find(b => b.id === selectedBedroomId);
       if (bed?.price_pppw) {
-        setCalculatedAmount(parseFloat(String(bed.price_pppw)));
+        setCalculatedAmount(bed.price_pppw);
+        setOneWeekPppw(bed.price_pppw);
+        setDepositAmountOverride(bed.price_pppw.toFixed(2));
         return;
       }
     }
     if (depositType === 'fixed_amount') {
-      setCalculatedAmount(parseFloat(String(fixedAmount)));
+      setCalculatedAmount(fixedAmount);
+      setOneWeekPppw(null);
+      setDepositAmountOverride(fixedAmount.toFixed(2));
       return;
     }
     setCalculatedAmount(null);
+    setOneWeekPppw(null);
+    setDepositAmountOverride('');
   }, [selectedBedroomId, depositType, bedroomOptions, fixedAmount]);
 
   // Re-fetch when navigating back from detail view or create mode
@@ -213,6 +225,15 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
         if (selectedBedroomId) data.bedroom_id = selectedBedroomId as number;
         if (reservationDays && parseInt(reservationDays) > 0) {
           data.reservation_days = parseInt(reservationDays);
+        }
+        if (depositAmountOverride) {
+          const override = parseFloat(depositAmountOverride);
+          if (Number.isNaN(override) || override < 0) {
+            setCreateError('Please enter a valid deposit amount');
+            setCreating(false);
+            return;
+          }
+          data.deposit_amount_override = override;
         }
       }
 
@@ -423,14 +444,31 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
                   </div>
                 )}
 
-                {/* Calculated Amount */}
+                {/* Deposit Amount */}
                 {calculatedAmount !== null && (
-                  <div className="bg-white rounded-lg p-3 border border-amber-300">
-                    <p className="text-sm text-gray-600">Deposit Amount</p>
-                    <p className="text-xl font-bold text-gray-900">&pound;{Number(calculatedAmount).toFixed(2)}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {depositType === '1_week_pppw' ? 'Based on 1 week PPPW' : 'Fixed amount'}
-                    </p>
+                  <div>
+                    <label htmlFor="create-deposit-amount" className="block text-sm font-medium text-gray-700 mb-1">
+                      Deposit Amount (&pound;)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        id="create-deposit-amount"
+                        value={depositAmountOverride}
+                        onChange={(e) => setDepositAmountOverride(e.target.value)}
+                        step="0.01"
+                        min="0"
+                        className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500">
+                        {depositType === '1_week_pppw' ? `1 week PPPW = \u00A3${Number(calculatedAmount).toFixed(2)}` : 'Fixed amount'}
+                      </p>
+                    </div>
+                    {oneWeekPppw !== null && parseFloat(depositAmountOverride) > oneWeekPppw && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mt-2">
+                        <strong>Compliance warning:</strong> This amount exceeds one week&apos;s rent (&pound;{oneWeekPppw.toFixed(2)}). Under the Tenant Fees Act 2019, holding deposits are capped at one week&apos;s rent. Charging more may breach compliance.
+                      </p>
+                    )}
                   </div>
                 )}
 
