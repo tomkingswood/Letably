@@ -272,7 +272,7 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="bg-red-50 rounded-lg p-4">
                       <p className="text-red-600 text-sm">Total Arrears</p>
-                      <p className="text-2xl font-bold text-red-700">&pound;{arrearsData.summary.totalArrears.toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-red-700">&pound;{Number(arrearsData.summary.totalArrears).toFixed(2)}</p>
                     </div>
                     <div className="bg-red-50 rounded-lg p-4">
                       <p className="text-red-600 text-sm">Tenants in Arrears</p>
@@ -317,7 +317,7 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
                                 {t.days_overdue}d
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-right font-medium text-red-600">&pound;{t.total_arrears.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right font-medium text-red-600">&pound;{Number(t.total_arrears).toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>

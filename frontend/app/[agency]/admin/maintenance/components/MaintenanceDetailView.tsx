@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAgency } from '@/lib/agency-context';
 import { maintenance as maintenanceApi } from '@/lib/api';
 import {
   MaintenanceComment,
@@ -25,7 +24,7 @@ interface MaintenanceRequest extends MaintenanceRequestDetail {
 }
 
 interface ExtendedThreadMessage extends ThreadMessage {
-  is_private?: number;
+  is_private?: boolean;
 }
 
 function transformCommentsToMessages(comments: MaintenanceComment[]): ExtendedThreadMessage[] {
@@ -48,7 +47,7 @@ function transformCommentsToMessages(comments: MaintenanceComment[]): ExtendedTh
       created_at: comment.created_at,
       user_name: comment.user_name,
       user_role: comment.user_role,
-      is_private: comment.is_private,
+      is_private: !!comment.is_private,
       attachments: comment.attachments?.map(att => ({
         id: att.id,
         file_path: att.file_path,
@@ -67,7 +66,6 @@ interface MaintenanceDetailViewProps {
 }
 
 export default function MaintenanceDetailView({ id, onBack, onNavigate }: MaintenanceDetailViewProps) {
-  const { agencySlug } = useAgency();
   const [request, setRequest] = useState<MaintenanceRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -226,6 +224,10 @@ export default function MaintenanceDetailView({ id, onBack, onNavigate }: Mainte
   const priorityInfo = getPriorityInfo(request.priority);
   const statusInfo = getStatusInfo(request.status);
 
+  const allMessages = transformCommentsToMessages(request.comments);
+  const publicMessages = allMessages.filter(m => !m.is_private);
+  const privateMessages = allMessages.filter(m => m.is_private);
+
   return (
     <div>
       {/* Header */}
@@ -291,64 +293,55 @@ export default function MaintenanceDetailView({ id, onBack, onNavigate }: Mainte
             </div>
           </div>
 
-          {/* Message Thread */}
-          {(() => {
-            const allMessages = transformCommentsToMessages(request.comments);
-            const publicMessages = allMessages.filter(m => !m.is_private || m.is_private === 0);
-            const privateMessages = allMessages.filter(m => m.is_private === 1);
+          {/* Message Thread - Public */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Messages</h2>
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-4">
+              <p className="text-sm">
+                Messages here are visible to all tenants on this tenancy, the landlord, and the admin team.
+              </p>
+            </div>
+            <MessageThread
+              messages={publicMessages}
+              onSendMessage={handleAddComment}
+              onDeleteMessage={handleDeleteComment}
+              onDeleteAttachment={handleDeleteAttachment}
+              canDeleteMessages={true}
+              canDeleteAttachments={true}
+              emptyMessage="No messages yet"
+              submitButtonText="Send Message"
+              getAttachmentUrl={getAttachmentUrl}
+              formatDate={formatMaintenanceDateShort}
+              noWrapper={true}
+            />
+          </div>
 
-            return (
-              <>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Messages</h2>
-                  <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-4">
-                    <p className="text-sm">
-                      Messages here are visible to all tenants on this tenancy, the landlord, and the admin team.
-                    </p>
-                  </div>
-                  <MessageThread
-                    messages={publicMessages}
-                    onSendMessage={handleAddComment}
-                    onDeleteMessage={handleDeleteComment}
-                    onDeleteAttachment={handleDeleteAttachment}
-                    canDeleteMessages={true}
-                    canDeleteAttachments={true}
-                    emptyMessage="No messages yet"
-                    submitButtonText="Send Message"
-                    getAttachmentUrl={getAttachmentUrl}
-                    formatDate={formatMaintenanceDateShort}
-                    noWrapper={true}
-                  />
-                </div>
-
-                {request.has_landlord && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <span className="text-violet-600">Internal Chat</span>
-                    </h2>
-                    <div className="bg-violet-50 border border-violet-200 text-violet-800 px-4 py-3 rounded-lg mb-4">
-                      <p className="text-sm">
-                        Messages here are private between you and the landlord. Tenants cannot see this section.
-                      </p>
-                    </div>
-                    <MessageThread
-                      messages={privateMessages}
-                      onSendMessage={handleAddPrivateComment}
-                      onDeleteMessage={handleDeleteComment}
-                      onDeleteAttachment={handleDeleteAttachment}
-                      canDeleteMessages={true}
-                      canDeleteAttachments={true}
-                      emptyMessage="No internal messages yet"
-                      submitButtonText="Send Internal Message"
-                      getAttachmentUrl={getAttachmentUrl}
-                      formatDate={formatMaintenanceDateShort}
-                      noWrapper={true}
-                    />
-                  </div>
-                )}
-              </>
-            );
-          })()}
+          {/* Message Thread - Internal (Landlord only) */}
+          {request.has_landlord && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="text-violet-600">Internal Chat</span>
+              </h2>
+              <div className="bg-violet-50 border border-violet-200 text-violet-800 px-4 py-3 rounded-lg mb-4">
+                <p className="text-sm">
+                  Messages here are private between you and the landlord. Tenants cannot see this section.
+                </p>
+              </div>
+              <MessageThread
+                messages={privateMessages}
+                onSendMessage={handleAddPrivateComment}
+                onDeleteMessage={handleDeleteComment}
+                onDeleteAttachment={handleDeleteAttachment}
+                canDeleteMessages={true}
+                canDeleteAttachments={true}
+                emptyMessage="No internal messages yet"
+                submitButtonText="Send Internal Message"
+                getAttachmentUrl={getAttachmentUrl}
+                formatDate={formatMaintenanceDateShort}
+                noWrapper={true}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right Column - Status & Actions */}

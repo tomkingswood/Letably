@@ -77,6 +77,7 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
   // Pre-populate property and applicant when coming from an approved application
   useEffect(() => {
     if (loading || !preSelectedApplicationId) return;
+    if (selectedApplicantIds.includes(preSelectedApplicationId) || selectedPropertyId) return;
 
     const applicant = approvedApplicants.find(a => a.id === preSelectedApplicationId);
     if (!applicant) return;
@@ -112,7 +113,8 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
     };
 
     prePopulate();
-  }, [loading, preSelectedApplicationId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, preSelectedApplicationId, approvedApplicants, properties]);
 
   const handlePropertySelect = async (propertyId: number) => {
     setSelectedPropertyId(propertyId);

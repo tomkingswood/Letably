@@ -97,7 +97,7 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
           });
         }
       }
-      flat.sort((a, b) => a.month - b.month);
+      flat.sort((a, b) => a.year - b.year || a.month - b.month);
       setPeriods(flat);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -227,15 +227,15 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow-md p-4">
               <p className="text-sm text-gray-500">Total Due</p>
-              <p className="text-xl font-bold text-gray-900">&pound;{statement.summary.totalDue.toFixed(2)}</p>
+              <p className="text-xl font-bold text-gray-900">&pound;{Number(statement.summary.totalDue).toFixed(2)}</p>
             </div>
             <div className="bg-white rounded-lg shadow-md p-4">
               <p className="text-sm text-gray-500">Total Paid</p>
-              <p className="text-xl font-bold text-green-600">&pound;{statement.summary.totalPaid.toFixed(2)}</p>
+              <p className="text-xl font-bold text-green-600">&pound;{Number(statement.summary.totalPaid).toFixed(2)}</p>
             </div>
             <div className="bg-white rounded-lg shadow-md p-4">
               <p className="text-sm text-gray-500">Outstanding</p>
-              <p className="text-xl font-bold text-red-600">&pound;{statement.summary.totalOutstanding.toFixed(2)}</p>
+              <p className="text-xl font-bold text-red-600">&pound;{Number(statement.summary.totalOutstanding).toFixed(2)}</p>
             </div>
             <div className="bg-white rounded-lg shadow-md p-4">
               <p className="text-sm text-gray-500">Payments</p>
@@ -253,12 +253,12 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
             <div className="bg-white rounded-lg shadow-md p-4">
               <p className="text-sm text-gray-500">Collection Rate</p>
               <p className={`text-xl font-bold ${
-                statement.summary.totalDue > 0
-                  ? Math.round((statement.summary.totalPaid / statement.summary.totalDue) * 100) >= 90 ? 'text-green-600' : 'text-amber-600'
+                Number(statement.summary.totalDue) > 0
+                  ? Math.round((Number(statement.summary.totalPaid) / Number(statement.summary.totalDue)) * 100) >= 90 ? 'text-green-600' : 'text-amber-600'
                   : 'text-gray-900'
               }`}>
-                {statement.summary.totalDue > 0
-                  ? Math.round((statement.summary.totalPaid / statement.summary.totalDue) * 100)
+                {Number(statement.summary.totalDue) > 0
+                  ? Math.round((Number(statement.summary.totalPaid) / Number(statement.summary.totalDue)) * 100)
                   : 0}%
               </p>
             </div>
@@ -276,7 +276,7 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
                   <div className="px-6 py-4 bg-gray-50 border-b flex items-center justify-between">
                     <h4 className="font-semibold text-gray-900">{landlord.landlord_name}</h4>
                     <div className="text-sm text-gray-600">
-                      Due: &pound;{landlord.totalDue.toFixed(2)} &middot; Paid: &pound;{landlord.totalPaid.toFixed(2)}
+                      Due: &pound;{Number(landlord.totalDue).toFixed(2)} &middot; Paid: &pound;{Number(landlord.totalPaid).toFixed(2)}
                     </div>
                   </div>
                   {landlord.properties.map((property) => (

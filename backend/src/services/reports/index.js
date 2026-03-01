@@ -80,6 +80,7 @@ function createReportRequest(reportType, context, filters = {}, options = {}) {
       userRole: context.userRole,
       userId: context.userId,
       landlordId: context.landlordId || null,
+      agencyId: context.agencyId || null,
     },
     filters: effectiveFilters,
     options: effectiveOptions,

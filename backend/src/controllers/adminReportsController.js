@@ -70,9 +70,10 @@ exports.downloadAnnualStatementPDF = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Year is required' });
   }
 
-  const summary = statementService.generateAnnualSummaryAdmin(
+  const summary = await statementService.generateAnnualSummaryAdmin(
     year,
-    landlord_id ? parseInt(landlord_id) : null
+    landlord_id ? parseInt(landlord_id) : null,
+    agencyId
   );
 
   // Get branding

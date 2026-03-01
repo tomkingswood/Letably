@@ -51,6 +51,7 @@ async function calculateRollingMonthlyEstimate(year, month, landlordId = null, a
         AND NOT EXISTS (
           SELECT 1 FROM payment_schedules ps
           WHERE ps.tenancy_member_id = tm.id
+            AND ps.agency_id = $1
             AND ps.payment_type = 'rent'
             AND EXTRACT(YEAR FROM ps.due_date) = $4
             AND EXTRACT(MONTH FROM ps.due_date) = $5
@@ -540,6 +541,7 @@ async function generateAnnualSummaryAdmin(year, landlordId = null, agencyId) {
         LEFT JOIN (
           SELECT payment_schedule_id, SUM(amount) as amount_paid
           FROM payments
+          WHERE agency_id = $2
           GROUP BY payment_schedule_id
         ) pay_sum ON ps.id = pay_sum.payment_schedule_id
         WHERE ps.agency_id = $2
