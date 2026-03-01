@@ -272,7 +272,8 @@ function CommunicationThreadView({ tenancyId, onBack }: { tenancyId: string; onB
 export default function CommunicationsSection({ onNavigate, action, itemId }: SectionProps) {
   const [tenancies, setTenancies] = useState<TenancyThread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterMessages, setFilterMessages] = useState<'all' | 'has_messages'>('all');
+  const [filterMessages, setFilterMessages] = useState<'all' | 'has_messages'>('has_messages');
+  const [showExpired, setShowExpired] = useState(false);
   const prevViewMode = useRef(false);
 
   const isViewMode = action === 'view' && !!itemId;
@@ -314,8 +315,11 @@ export default function CommunicationsSection({ onNavigate, action, itemId }: Se
     );
   }
 
-  const totalMessages = tenancies.reduce((sum, t) => sum + (Number(t.message_count) || 0), 0);
-  const tenanciesWithMessages = tenancies.filter(t => Number(t.message_count) > 0).length;
+  const filteredTenancies = tenancies
+    .filter(t => t.status !== 'pending')
+    .filter(t => showExpired || t.status !== 'expired');
+  const totalMessages = filteredTenancies.reduce((sum, t) => sum + (Number(t.message_count) || 0), 0);
+  const tenanciesWithMessages = filteredTenancies.filter(t => Number(t.message_count) > 0).length;
 
   if (loading) {
     return (
@@ -355,35 +359,46 @@ export default function CommunicationsSection({ onNavigate, action, itemId }: Se
 
       {/* Filter */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'all' as const, label: 'All Tenancies' },
-            { id: 'has_messages' as const, label: 'With Messages' },
-          ].map(filter => (
-            <button
-              key={filter.id}
-              onClick={() => setFilterMessages(filter.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filterMessages === filter.id
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'all' as const, label: 'All Tenancies' },
+              { id: 'has_messages' as const, label: 'With Messages' },
+            ].map(filter => (
+              <button
+                key={filter.id}
+                onClick={() => setFilterMessages(filter.id)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filterMessages === filter.id
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showExpired}
+              onChange={(e) => setShowExpired(e.target.checked)}
+              className="rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            Show expired tenancies
+          </label>
         </div>
       </div>
 
       {/* Tenancy Threads List */}
       <div className="bg-white rounded-lg shadow-md">
-        {tenancies.length === 0 ? (
+        {filteredTenancies.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-gray-600">No tenancies found</p>
           </div>
         ) : (
           <div className="divide-y">
-            {tenancies.map(tenancy => (
+            {filteredTenancies.map(tenancy => (
               <div
                 key={tenancy.id}
                 className="p-4 hover:bg-gray-50 cursor-pointer"
