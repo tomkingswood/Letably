@@ -82,6 +82,8 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
   useEffect(() => {
     requestIdRef.current++;
     setStatement(null);
+    setStatementLoading(false);
+    setStatementError('');
   }, [selectedLandlord, selectedYear, viewType]);
 
   const fetchData = async () => {
