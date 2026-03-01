@@ -59,6 +59,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
       setProperties(response.data.properties || []);
     } catch (err: unknown) {
       console.error('Error fetching properties:', err);
+      setFormError(getErrorMessage(err, 'Failed to load properties'));
     }
   };
 
@@ -113,7 +114,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
         preferred_time: formData.preferred_time || undefined,
         message: formData.message || undefined,
       });
-      setFormSuccess('Viewing request created and confirmation email sent');
+      setFormSuccess('Viewing request created successfully');
       resetForm();
       setShowForm(false);
       await fetchRequests();

@@ -232,7 +232,7 @@ exports.createViewingRequestAdmin = asyncHandler(async (req, res) => {
       priority: 2
     }, agencyId);
 
-    console.log(`Queued viewing confirmation email to ${visitor_email} for ${property.address_line1}`);
+    console.log(`Queued viewing confirmation email for ${property.address_line1}`);
   } catch (emailError) {
     console.error('Error queuing viewing confirmation email:', emailError);
   }
