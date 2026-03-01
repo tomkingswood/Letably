@@ -6,7 +6,57 @@
 const db = require('../db');
 
 /**
- * Create a holding deposit record
+ * Create a holding deposit as 'awaiting_payment' (at application creation time)
+ * @param {Object} data - Deposit data
+ * @param {number} data.agencyId - Agency ID
+ * @param {number} data.applicationId - Application ID
+ * @param {number} data.amount - Deposit amount
+ * @param {number|null} data.bedroomId - Bedroom ID for reservation
+ * @param {number|null} data.propertyId - Property ID for reservation
+ * @param {number|null} data.reservationDays - Number of days for reservation
+ * @param {string|null} data.reservationExpiresAt - Reservation expiry timestamp
+ * @returns {Promise<Object>} Created deposit record
+ */
+async function createAwaitingPayment({ agencyId, applicationId, amount, bedroomId, propertyId, reservationDays, reservationExpiresAt }) {
+  const result = await db.query(`
+    INSERT INTO holding_deposits (
+      agency_id, application_id, amount,
+      bedroom_id, property_id, reservation_days, reservation_expires_at,
+      status
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, 'awaiting_payment')
+    RETURNING *
+  `, [
+    agencyId, applicationId, amount,
+    bedroomId || null, propertyId || null, reservationDays || null,
+    reservationExpiresAt || null
+  ], agencyId);
+  return result.rows[0];
+}
+
+/**
+ * Record payment for an awaiting_payment deposit (transitions to 'held')
+ * @param {number} id - Deposit ID
+ * @param {Object} data - Payment data
+ * @param {string|null} data.paymentReference - Payment reference
+ * @param {string} data.dateReceived - Date deposit was received
+ * @param {number} data.changedByUserId - User ID recording the payment
+ * @param {number} agencyId - Agency context
+ * @returns {Promise<Object|null>} Updated deposit or null
+ */
+async function recordPayment(id, { paymentReference, dateReceived, changedByUserId }, agencyId) {
+  const result = await db.query(`
+    UPDATE holding_deposits
+    SET status = 'held', payment_reference = $1, date_received = $2,
+        status_changed_at = NOW(), status_changed_by = $3, updated_at = NOW()
+    WHERE id = $4 AND agency_id = $5 AND status = 'awaiting_payment'
+    RETURNING *
+  `, [paymentReference || null, dateReceived, changedByUserId, id, agencyId], agencyId);
+  return result.rows[0] || null;
+}
+
+/**
+ * Create a holding deposit record (immediate 'held' status, for approval flow)
  * @param {Object} data - Deposit data
  * @param {number} data.agencyId - Agency ID
  * @param {number} data.applicationId - Application ID
@@ -198,6 +248,8 @@ async function getAll(filters, agencyId) {
 
 module.exports = {
   create,
+  createAwaitingPayment,
+  recordPayment,
   getById,
   getByApplicationId,
   updateStatus,

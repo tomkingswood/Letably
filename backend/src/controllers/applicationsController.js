@@ -9,6 +9,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { parseJsonField, parseJsonFields } = require('../utils/parseJsonField');
 const { buildAgencyUrl, buildPublicUrl } = require('../utils/urlBuilder');
 const agencySettings = require('../models/agencySettings');
+const holdingDepositRepo = require('../repositories/holdingDepositRepository');
 
 // Helper function to generate guarantor token
 function generateGuarantorToken() {
@@ -26,7 +27,10 @@ exports.createApplication = asyncHandler(async (req, res) => {
     phone,
     is_new_user,
     application_type,
-    guarantor_required
+    guarantor_required,
+    property_id,
+    bedroom_id,
+    reservation_days
   } = req.body;
 
   // Validation
@@ -85,6 +89,70 @@ exports.createApplication = asyncHandler(async (req, res) => {
     guarantorRequired = (guarantor_required === true || guarantor_required === 'true' || guarantor_required === 1);
   }
 
+  // Validate holding deposit inputs BEFORE creating the application
+  // so we don't leave orphan application rows on validation failure
+  let holdingDeposit = null;
+  let depositAmount = null;
+  let parsedDays = null;
+  const settings = await agencySettings.get(agencyId);
+
+  // When holding deposits are enabled, require property/bedroom so a deposit is always created
+  if (settings.holding_deposit_enabled && !property_id && !bedroom_id) {
+    return res.status(400).json({ error: 'A property and bedroom must be selected when holding deposits are enabled' });
+  }
+
+  const shouldCreateDeposit = settings.holding_deposit_enabled && (property_id || bedroom_id);
+
+  if (shouldCreateDeposit) {
+    // Validate property exists and belongs to agency
+    if (property_id) {
+      const propertyCheck = await db.query(
+        'SELECT id FROM properties WHERE id = $1 AND agency_id = $2',
+        [property_id, agencyId], agencyId
+      );
+      if (propertyCheck.rows.length === 0) {
+        return res.status(400).json({ error: 'Property not found' });
+      }
+    }
+
+    // Validate bedroom exists and belongs to agency
+    if (bedroom_id) {
+      const bedroomCheck = await db.query(
+        'SELECT id, price_pppw FROM bedrooms WHERE id = $1 AND agency_id = $2' + (property_id ? ' AND property_id = $3' : ''),
+        property_id ? [bedroom_id, agencyId, property_id] : [bedroom_id, agencyId], agencyId
+      );
+      if (bedroomCheck.rows.length === 0) {
+        return res.status(400).json({ error: property_id ? 'Bedroom not found in the specified property' : 'Bedroom not found' });
+      }
+
+      // Calculate deposit amount from PPPW if configured
+      if (settings.holding_deposit_type === '1_week_pppw' && bedroomCheck.rows[0].price_pppw) {
+        depositAmount = parseFloat(bedroomCheck.rows[0].price_pppw);
+      }
+    }
+
+    if (depositAmount === null) {
+      const configuredAmount = parseFloat(settings.holding_deposit_amount);
+      depositAmount = Number.isNaN(configuredAmount) ? 100 : configuredAmount;
+    }
+
+    // Validate reservation_days
+    if (reservation_days !== undefined && reservation_days !== null && reservation_days !== '') {
+      parsedDays = parseInt(reservation_days, 10);
+      if (Number.isNaN(parsedDays) || parsedDays < 1 || parsedDays > 365) {
+        return res.status(400).json({ error: 'reservation_days must be a positive integer (1-365)' });
+      }
+    }
+
+    // Check for reservation conflicts
+    if (bedroom_id) {
+      const activeReservation = await holdingDepositRepo.getActiveReservationForBedroom(bedroom_id, agencyId);
+      if (activeReservation) {
+        return res.status(409).json({ error: `Bedroom is already reserved until ${new Date(activeReservation.reservation_expires_at).toLocaleDateString('en-GB')}` });
+      }
+    }
+  }
+
   // Create application (property is assigned at tenancy creation time)
   // Pre-populate with the user's account details
   const newApplication = await appRepo.createApplication({
@@ -97,6 +165,19 @@ exports.createApplication = asyncHandler(async (req, res) => {
   });
 
   const applicationId = newApplication.id;
+
+  // Create holding deposit now that application exists
+  if (shouldCreateDeposit) {
+    holdingDeposit = await holdingDepositRepo.createAwaitingPayment({
+      agencyId,
+      applicationId,
+      amount: depositAmount,
+      bedroomId: bedroom_id || null,
+      propertyId: property_id || null,
+      reservationDays: parsedDays,
+      reservationExpiresAt: null
+    });
+  }
 
   // Get site settings for email
   // Get branding for email
@@ -233,6 +314,7 @@ If you have any questions, please contact us at ${contactEmail}.
     message: 'Application created successfully',
     application_id: applicationId,
     user_created: is_new_user,
+    holding_deposit: holdingDeposit || undefined,
   };
 
   res.status(201).json(response);
@@ -831,11 +913,20 @@ exports.approveApplication = asyncHandler(async (req, res) => {
   // Check if holding deposit is required
   const settings = await agencySettings.get(agencyId);
   if (settings.holding_deposit_enabled) {
-    return res.status(400).json({
-      error: 'Holding deposit required',
-      message: 'This agency requires a holding deposit before approving applications. Please use the holding deposit flow instead.',
-      holding_deposit_required: true
-    });
+    const deposit = await holdingDepositRepo.getByApplicationId(id, agencyId);
+    if (!deposit) {
+      return res.status(400).json({
+        error: 'No holding deposit found for this application. A deposit must be created and paid before approval.',
+        holding_deposit_required: true
+      });
+    }
+    if (deposit.status === 'awaiting_payment') {
+      return res.status(400).json({
+        error: 'The holding deposit must be paid before the application can be approved.',
+        deposit_awaiting_payment: true
+      });
+    }
+    // deposit.status === 'held' — proceed with approval
   }
 
   // Update status to approved

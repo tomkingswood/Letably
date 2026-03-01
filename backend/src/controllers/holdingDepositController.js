@@ -210,6 +210,127 @@ exports.getById = asyncHandler(async (req, res) => {
 }, 'get holding deposit');
 
 /**
+ * Record payment for an awaiting_payment deposit (does NOT approve the application)
+ * PATCH /api/holding-deposits/:id/record-payment
+ */
+exports.recordPayment = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const userId = req.user.id;
+  const { id } = req.params;
+  const { payment_reference, date_received } = req.body;
+
+  if (!date_received) {
+    return res.status(400).json({ error: 'Date received is required' });
+  }
+
+  if (isNaN(new Date(date_received).getTime())) {
+    return res.status(400).json({ error: 'Invalid date received' });
+  }
+
+  const deposit = await holdingDepositRepo.getById(id, agencyId);
+  if (!deposit) {
+    return res.status(404).json({ error: 'Holding deposit not found' });
+  }
+
+  if (deposit.status !== 'awaiting_payment') {
+    return res.status(400).json({ error: `Cannot record payment for deposit with status '${deposit.status}'. Only 'awaiting_payment' deposits can receive payments.` });
+  }
+
+  // Calculate reservation expiry from payment date
+  let reservationExpiresAt = null;
+  if (deposit.reservation_days && deposit.reservation_days > 0) {
+    const received = new Date(date_received);
+    received.setDate(received.getDate() + deposit.reservation_days);
+    reservationExpiresAt = received.toISOString();
+  }
+
+  // Record payment — update deposit to 'held' (reservation starts now)
+  const updated = await db.query(`
+    UPDATE holding_deposits
+    SET status = 'held', payment_reference = $1, date_received = $2,
+        reservation_expires_at = $3,
+        status_changed_at = NOW(), status_changed_by = $4, updated_at = NOW()
+    WHERE id = $5 AND agency_id = $6 AND status = 'awaiting_payment'
+    RETURNING *
+  `, [payment_reference || null, date_received, reservationExpiresAt, userId, id, agencyId], agencyId);
+
+  if (updated.rowCount === 0) {
+    return res.status(409).json({ error: 'Deposit status has changed. Please refresh and try again.' });
+  }
+
+  res.json({ deposit: updated.rows[0], message: 'Payment recorded successfully' });
+}, 'record holding deposit payment');
+
+/**
+ * Undo payment — revert a 'held' deposit back to 'awaiting_payment'
+ * PATCH /api/holding-deposits/:id/undo-payment
+ */
+exports.undoPayment = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  const deposit = await holdingDepositRepo.getById(id, agencyId);
+  if (!deposit) {
+    return res.status(404).json({ error: 'Holding deposit not found' });
+  }
+
+  if (deposit.status !== 'held') {
+    return res.status(400).json({ error: `Cannot undo payment for deposit with status '${deposit.status}'. Only 'held' deposits can be reverted.` });
+  }
+
+  const updated = await db.query(`
+    UPDATE holding_deposits
+    SET status = 'awaiting_payment', payment_reference = NULL, date_received = NULL,
+        reservation_expires_at = NULL,
+        status_changed_at = NOW(), status_changed_by = $1, updated_at = NOW()
+    WHERE id = $2 AND agency_id = $3 AND status = 'held'
+    RETURNING *
+  `, [userId, id, agencyId], agencyId);
+
+  if (updated.rowCount === 0) {
+    return res.status(409).json({ error: 'Deposit status has changed. Please refresh and try again.' });
+  }
+
+  res.json({ deposit: updated.rows[0], message: 'Payment undone — deposit reverted to awaiting payment' });
+}, 'undo holding deposit payment');
+
+/**
+ * Get holding deposit for tenant's own application
+ * GET /api/holding-deposits/my-application/:applicationId
+ */
+exports.getByApplicationForTenant = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const userId = req.user.id;
+  const { applicationId } = req.params;
+
+  // Verify the application belongs to this user
+  const application = await appRepo.getApplicationById(applicationId, agencyId);
+  if (!application) {
+    return res.status(404).json({ error: 'Application not found' });
+  }
+
+  if (application.user_id !== userId) {
+    return res.status(403).json({ error: 'You do not have permission to access this deposit' });
+  }
+
+  const deposit = await holdingDepositRepo.getByApplicationId(applicationId, agencyId);
+
+  // Also return bank details from settings
+  const agencySettingsModel = require('../models/agencySettings');
+  const settings = await agencySettingsModel.get(agencyId);
+
+  res.json({
+    deposit: deposit || null,
+    bank_details: {
+      bank_name: settings.bank_name || null,
+      sort_code: settings.sort_code || null,
+      account_number: settings.account_number || null,
+    }
+  });
+}, 'get holding deposit for tenant application');
+
+/**
  * Update holding deposit status (refund or forfeit)
  * PATCH /api/holding-deposits/:id/status
  */
@@ -229,8 +350,8 @@ exports.updateStatus = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: 'Holding deposit not found' });
   }
 
-  if (deposit.status !== 'held') {
-    return res.status(400).json({ error: `Cannot change status from '${deposit.status}' to '${newStatus}'. Only 'held' deposits can be refunded or forfeited.` });
+  if (deposit.status !== 'held' && deposit.status !== 'awaiting_payment') {
+    return res.status(400).json({ error: `Cannot change status from '${deposit.status}' to '${newStatus}'. Only 'held' or 'awaiting_payment' deposits can be refunded or forfeited.` });
   }
 
   const updated = await holdingDepositRepo.updateStatus(id, newStatus, userId, notes || null, agencyId);

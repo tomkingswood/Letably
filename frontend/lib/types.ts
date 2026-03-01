@@ -523,13 +523,13 @@ export interface HoldingDeposit {
   application_id: number;
   amount: number;
   payment_reference?: string;
-  date_received: string;
+  date_received?: string;
   bedroom_id?: number;
   property_id?: number;
   reservation_days?: number;
   reservation_expires_at?: string;
   reservation_released: boolean;
-  status: 'held' | 'applied_to_rent' | 'applied_to_deposit' | 'refunded' | 'forfeited';
+  status: 'awaiting_payment' | 'held' | 'applied_to_rent' | 'applied_to_deposit' | 'refunded' | 'forfeited';
   applied_to_tenancy_id?: number;
   status_changed_at?: string;
   status_changed_by?: number;
@@ -550,7 +550,7 @@ export interface HoldingDepositFormData {
   application_id: number;
   amount: number;
   payment_reference?: string;
-  date_received: string;
+  date_received?: string;
   bedroom_id?: number;
   property_id?: number;
   reservation_days?: number;

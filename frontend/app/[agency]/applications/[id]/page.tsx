@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { applications, settings, getAuthToken } from '@/lib/api';
+import { applications, settings, holdingDeposits, getAuthToken } from '@/lib/api';
 import { validateSignatureAgainstName } from '@/lib/validation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -38,6 +38,10 @@ export default function ApplicationFormPage({ params }: PageProps) {
   const [application, setApplication] = useState<ApplicationFormData | null>(null);
   const [addressHistory, setAddressHistory] = useState<AddressHistoryEntry[]>([]);
   const [contactEmail, setContactEmail] = useState('');
+  const [depositInfo, setDepositInfo] = useState<{
+    deposit: { amount: number; status: string; property_address?: string; bedroom_name?: string; reservation_days?: number; reservation_expires_at?: string } | null;
+    bank_details: { bank_name: string | null; sort_code: string | null; account_number: string | null };
+  } | null>(null);
 
   // ID document upload (via shared hook)
   const {
@@ -130,6 +134,10 @@ export default function ApplicationFormPage({ params }: PageProps) {
     };
     fetchSettings();
     fetchApplication();
+    // Fetch holding deposit info for this application
+    holdingDeposits.getByApplicationForTenant(id).then(res => {
+      setDepositInfo(res.data);
+    }).catch(() => {});
   }, [authLoading, isAuthenticated, id, agencySlug, router]);
 
   const fetchApplication = async () => {
@@ -460,6 +468,89 @@ export default function ApplicationFormPage({ params }: PageProps) {
         <div className="max-w-4xl mx-auto">
           {/* Status Message */}
           {message && <MessageAlert type={message.type} message={message.text} className="mb-6" />}
+
+          {/* Holding Deposit Banner */}
+          {depositInfo?.deposit && depositInfo.deposit.status === 'awaiting_payment' && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-5 mb-6">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-amber-900">Holding Deposit Required</h3>
+                  <p className="text-sm text-amber-800 mt-1">
+                    A holding deposit of <strong>&pound;{Number(depositInfo.deposit.amount).toFixed(2)}</strong> is required
+                    {depositInfo.deposit.property_address && (
+                      <> for <strong>{depositInfo.deposit.property_address}</strong></>
+                    )}
+                    {depositInfo.deposit.bedroom_name && (
+                      <> ({depositInfo.deposit.bedroom_name})</>
+                    )}
+                    {depositInfo.deposit.reservation_days && (
+                      <> &mdash; {depositInfo.deposit.reservation_days} day reservation</>
+                    )}
+                    .
+                  </p>
+
+                  {/* Bank details */}
+                  {(depositInfo.bank_details.bank_name || depositInfo.bank_details.sort_code || depositInfo.bank_details.account_number) && (
+                    <div className="mt-3 bg-white rounded-lg p-3 border border-amber-200">
+                      <p className="text-sm font-medium text-gray-900 mb-2">Bank Transfer Details</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                        {depositInfo.bank_details.bank_name && (
+                          <div>
+                            <span className="text-gray-500">Bank:</span>{' '}
+                            <span className="font-medium text-gray-900">{depositInfo.bank_details.bank_name}</span>
+                          </div>
+                        )}
+                        {depositInfo.bank_details.sort_code && (
+                          <div>
+                            <span className="text-gray-500">Sort Code:</span>{' '}
+                            <span className="font-medium text-gray-900">{depositInfo.bank_details.sort_code}</span>
+                          </div>
+                        )}
+                        {depositInfo.bank_details.account_number && (
+                          <div>
+                            <span className="text-gray-500">Account:</span>{' '}
+                            <span className="font-medium text-gray-900">{depositInfo.bank_details.account_number}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-amber-700 mt-2">
+                    You can still complete and submit your application while the deposit is being processed.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {depositInfo?.deposit && depositInfo.deposit.status === 'held' && (
+            <div className="bg-green-50 border border-green-300 rounded-lg p-5 mb-6">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <div>
+                  <p className="text-sm text-green-800">
+                    A holding deposit of <strong>&pound;{Number(depositInfo.deposit.amount).toFixed(2)}</strong> has already been paid
+                    {depositInfo.deposit.property_address && (
+                      <> for <strong>{depositInfo.deposit.property_address}</strong></>
+                    )}
+                    {depositInfo.deposit.bedroom_name && (
+                      <> ({depositInfo.deposit.bedroom_name})</>
+                    )}
+                    {depositInfo.deposit.reservation_expires_at && (
+                      <> and the room is reserved until <strong>{new Date(depositInfo.deposit.reservation_expires_at).toLocaleDateString('en-GB')}</strong></>
+                    )}
+                    .
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {isCompleted && (
             <div className="mb-6">

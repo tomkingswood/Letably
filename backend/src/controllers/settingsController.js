@@ -71,7 +71,10 @@ const updateSettings = asyncHandler(async (req, res) => {
     viewing_min_days_advance,
     holding_deposit_enabled,
     holding_deposit_type,
-    holding_deposit_amount
+    holding_deposit_amount,
+    bank_name,
+    sort_code,
+    account_number
   } = req.body;
 
   // Validate required fields
@@ -102,6 +105,17 @@ const updateSettings = asyncHandler(async (req, res) => {
   }
   if (redress_scheme_url && !urlRegex.test(redress_scheme_url)) {
     return res.status(400).json({ error: 'Invalid redress scheme URL format' });
+  }
+
+  // Bank detail validation (before transaction to avoid returning HTTP responses inside callback)
+  const trimmedSortCode = sort_code !== undefined ? (sort_code || '').trim() : undefined;
+  const trimmedAccountNumber = account_number !== undefined ? (account_number || '').trim() : undefined;
+
+  if (trimmedSortCode && !/^\d{2}[-\s]?\d{2}[-\s]?\d{2}$/.test(trimmedSortCode)) {
+    return res.status(400).json({ error: 'Sort code must be 6 digits (e.g. 20-00-00)' });
+  }
+  if (trimmedAccountNumber && !/^\d{7,8}$/.test(trimmedAccountNumber)) {
+    return res.status(400).json({ error: 'Account number must be 7-8 digits' });
   }
 
   await db.transaction(async (client) => {
@@ -164,6 +178,17 @@ const updateSettings = asyncHandler(async (req, res) => {
       if (!isNaN(amount) && amount >= 0) {
         await updateSetting(amount.toString(), 'holding_deposit_amount');
       }
+    }
+
+    // Bank details for holding deposits (validated above, before transaction)
+    if (bank_name !== undefined) {
+      await updateSetting((bank_name || '').trim(), 'bank_name');
+    }
+    if (trimmedSortCode !== undefined) {
+      await updateSetting(trimmedSortCode, 'sort_code');
+    }
+    if (trimmedAccountNumber !== undefined) {
+      await updateSetting(trimmedAccountNumber, 'account_number');
     }
   }, agencyId);
 
