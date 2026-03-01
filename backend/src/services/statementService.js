@@ -40,24 +40,25 @@ async function calculateRollingMonthlyEstimate(year, month, landlordId = null, a
       INNER JOIN tenancies t ON tm.tenancy_id = t.id
       INNER JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.is_rolling_monthly = true
+      WHERE t.agency_id = $1
+        AND t.is_rolling_monthly = true
         AND t.auto_generate_payments = true
         AND t.status IN ('active', 'approval')
-        AND t.start_date <= $1
-        AND (t.end_date IS NULL OR t.end_date >= $2)
+        AND t.start_date <= $2
+        AND (t.end_date IS NULL OR t.end_date >= $3)
         AND (l.manage_rent = true OR l.manage_rent IS NULL OR p.landlord_id IS NULL)
         AND tm.rent_pppw > 0
         AND NOT EXISTS (
           SELECT 1 FROM payment_schedules ps
           WHERE ps.tenancy_member_id = tm.id
             AND ps.payment_type = 'rent'
-            AND EXTRACT(YEAR FROM ps.due_date) = $3
-            AND EXTRACT(MONTH FROM ps.due_date) = $4
+            AND EXTRACT(YEAR FROM ps.due_date) = $4
+            AND EXTRACT(MONTH FROM ps.due_date) = $5
         )
     `;
 
-    const params = [monthEnd, monthStart, year, month];
-    let paramIndex = 5;
+    const params = [agencyId, monthEnd, monthStart, year, month];
+    let paramIndex = 6;
 
     if (landlordId === -1) {
       query += ` AND p.landlord_id IS NULL`;
@@ -398,12 +399,13 @@ async function generateMonthlyStatementAdmin(year, month, landlordId = null, age
       LEFT JOIN landlords l ON p.landlord_id = l.id
       LEFT JOIN bedrooms b ON tm.bedroom_id = b.id
       LEFT JOIN payments pay ON ps.id = pay.payment_schedule_id
-      WHERE EXTRACT(YEAR FROM ps.due_date) = $1
-        AND EXTRACT(MONTH FROM ps.due_date) = $2
+      WHERE ps.agency_id = $1
+        AND EXTRACT(YEAR FROM ps.due_date) = $2
+        AND EXTRACT(MONTH FROM ps.due_date) = $3
     `;
 
-    const params = [year, month];
-    let paramIndex = 3;
+    const params = [agencyId, year, month];
+    let paramIndex = 4;
 
     if (landlordId === -1) {
       // Special case: filter for unassigned properties (no landlord)
@@ -540,12 +542,13 @@ async function generateAnnualSummaryAdmin(year, landlordId = null, agencyId) {
           FROM payments
           GROUP BY payment_schedule_id
         ) pay_sum ON ps.id = pay_sum.payment_schedule_id
-        WHERE EXTRACT(YEAR FROM ps.due_date) = $2
-          AND EXTRACT(MONTH FROM ps.due_date) = $3
+        WHERE ps.agency_id = $2
+          AND EXTRACT(YEAR FROM ps.due_date) = $3
+          AND EXTRACT(MONTH FROM ps.due_date) = $4
       `;
 
-      const params = [today, year, month];
-      let paramIndex = 4;
+      const params = [today, agencyId, year, month];
+      let paramIndex = 5;
 
       if (landlordId === -1) {
         // Special case: filter for unassigned properties (no landlord)
@@ -625,8 +628,9 @@ async function getAvailablePeriodsAdmin(agencyId) {
         EXTRACT(YEAR FROM ps.due_date)::integer as year,
         EXTRACT(MONTH FROM ps.due_date)::integer as month
       FROM payment_schedules ps
+      WHERE ps.agency_id = $1
       ORDER BY year DESC, month DESC
-    `, [], agencyId);
+    `, [agencyId], agencyId);
     const periods = result.rows;
 
     // Group by year
@@ -658,8 +662,9 @@ async function getAllLandlords(agencyId) {
     const result = await db.query(`
       SELECT id, name, legal_name
       FROM landlords
+      WHERE agency_id = $1
       ORDER BY name
-    `, [], agencyId);
+    `, [agencyId], agencyId);
     return result.rows;
   } catch (error) {
     console.error('Error getting all landlords:', error);

@@ -15,7 +15,7 @@ interface AgreementDocumentProps {
  * Used by:
  * - Admin tenancy agreement preview (/admin/tenancies/[id]/agreement/[memberId])
  * - Tenant signing page (/agreements/sign/[tenancyId]/[memberId])
- * - Landlord preview modal (/admin/landlords/[id])
+ * - Landlord preview modal (?section=landlords&action=edit&id=Y)
  */
 export default function AgreementDocument({
   agreement,

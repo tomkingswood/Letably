@@ -23,11 +23,12 @@ interface CreateTenancyViewProps {
   onBack: () => void;
   onSuccess: () => void;
   onError: (message: string) => void;
+  preSelectedApplicationId?: number;
 }
 
 type Step = 'property' | 'applicants' | 'configure';
 
-export default function CreateTenancyView({ onBack, onSuccess, onError }: CreateTenancyViewProps) {
+export default function CreateTenancyView({ onBack, onSuccess, onError, preSelectedApplicationId }: CreateTenancyViewProps) {
   // Step state
   const [currentStep, setCurrentStep] = useState<Step>('property');
 
@@ -72,6 +73,46 @@ export default function CreateTenancyView({ onBack, onSuccess, onError }: Create
       setLoading(false);
     }
   };
+
+  // Pre-populate property and applicant when coming from an approved application
+  useEffect(() => {
+    if (loading || !preSelectedApplicationId) return;
+
+    const applicant = approvedApplicants.find(a => a.id === preSelectedApplicationId);
+    if (!applicant) return;
+
+    // Pre-select the applicant
+    setSelectedApplicantIds([preSelectedApplicationId]);
+
+    // Try to find a property from the holding deposit
+    const prePopulate = async () => {
+      try {
+        const res = await holdingDeposits.getByApplication(preSelectedApplicationId);
+        const deposit = res.data?.deposit;
+        if (deposit?.property_id) {
+          const property = properties.find(p => p.id === deposit.property_id);
+          if (property) {
+            setSelectedPropertyId(deposit.property_id);
+            setSelectedProperty(property);
+            try {
+              const bedroomsRes = await bedroomsApi.getByProperty(deposit.property_id);
+              setPropertyRooms(bedroomsRes.data.bedrooms || []);
+            } catch {
+              setPropertyRooms([]);
+            }
+            // Land on applicants step so user can add more applicants
+            setCurrentStep('applicants');
+            return;
+          }
+        }
+      } catch {
+        // No deposit, that's fine
+      }
+      // No property from deposit — still land on property step with applicant pre-selected
+    };
+
+    prePopulate();
+  }, [loading, preSelectedApplicationId]);
 
   const handlePropertySelect = async (propertyId: number) => {
     setSelectedPropertyId(propertyId);

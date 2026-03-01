@@ -267,6 +267,7 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
           setListMessage('Application deleted successfully');
           onNavigate?.('applications');
         }}
+        onNavigate={onNavigate}
       />
     );
   }

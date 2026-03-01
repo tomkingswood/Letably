@@ -94,7 +94,7 @@ function createReportRequest(reportType, context, filters = {}, options = {}) {
  * @returns {Object} Generated report data
  * @throws {ReportError} If generation fails
  */
-function generateReport(request) {
+async function generateReport(request) {
   const { reportType } = request;
 
   const generator = generators[reportType];
@@ -106,7 +106,8 @@ function generateReport(request) {
   }
 
   try {
-    return generator.generate(request);
+    const agencyId = request.context?.agencyId;
+    return await generator.generate(request, agencyId);
   } catch (error) {
     // Re-throw ReportErrors as-is
     if (error instanceof ReportError) {
@@ -151,6 +152,7 @@ function buildContextFromRequest(req) {
     userRole: user.role,
     userId: user.id,
     landlordId: user.landlordId || null,
+    agencyId: req.agencyId,
   };
 }
 

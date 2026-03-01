@@ -10,16 +10,18 @@ const asyncHandler = require('../utils/asyncHandler');
 /**
  * Get available statement periods (Admin)
  */
-exports.getStatementPeriods = asyncHandler((req, res) => {
-  const periods = statementService.getAvailablePeriodsAdmin();
-  const landlords = statementService.getAllLandlords();
+exports.getStatementPeriods = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const periods = await statementService.getAvailablePeriodsAdmin(agencyId);
+  const landlords = await statementService.getAllLandlords(agencyId);
   res.json({ periods, landlords });
 }, 'fetch statement periods');
 
 /**
  * Get monthly statement (Admin)
  */
-exports.getMonthlyStatement = asyncHandler((req, res) => {
+exports.getMonthlyStatement = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
   const { year, month } = req.params;
   const { landlord_id } = req.query;
 
@@ -27,10 +29,11 @@ exports.getMonthlyStatement = asyncHandler((req, res) => {
     return res.status(400).json({ error: 'Year and month are required' });
   }
 
-  const statement = statementService.generateMonthlyStatementAdmin(
+  const statement = await statementService.generateMonthlyStatementAdmin(
     year,
     month,
-    landlord_id ? parseInt(landlord_id) : null
+    landlord_id ? parseInt(landlord_id) : null,
+    agencyId
   );
   res.json({ statement });
 }, 'generate monthly statement');
@@ -38,7 +41,8 @@ exports.getMonthlyStatement = asyncHandler((req, res) => {
 /**
  * Get annual summary (Admin)
  */
-exports.getAnnualSummary = asyncHandler((req, res) => {
+exports.getAnnualSummary = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
   const { year } = req.params;
   const { landlord_id } = req.query;
 
@@ -46,9 +50,10 @@ exports.getAnnualSummary = asyncHandler((req, res) => {
     return res.status(400).json({ error: 'Year is required' });
   }
 
-  const summary = statementService.generateAnnualSummaryAdmin(
+  const summary = await statementService.generateAnnualSummaryAdmin(
     year,
-    landlord_id ? parseInt(landlord_id) : null
+    landlord_id ? parseInt(landlord_id) : null,
+    agencyId
   );
   res.json({ summary });
 }, 'generate annual summary');

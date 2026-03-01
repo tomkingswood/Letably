@@ -32,7 +32,7 @@ function createReportHandler(reportType) {
       const filters = parseFiltersFromQuery(req.query);
       const options = parseOptionsFromQuery(req.query);
 
-      const report = createAndGenerate(reportType, context, filters, options);
+      const report = await createAndGenerate(reportType, context, filters, options);
 
       res.json({ report });
     } catch (error) {
@@ -129,7 +129,7 @@ function createExportHandler(reportType, exportType = null) {
       const options = parseOptionsFromQuery(req.query);
 
       // Generate the report
-      const report = createAndGenerate(reportType, context, filters, options);
+      const report = await createAndGenerate(reportType, context, filters, options);
 
       // Determine export type (for financial report variants)
       const effectiveExportType = exportType || reportType;
