@@ -129,13 +129,13 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
           stmt.summary.totalPaid = Number(stmt.summary.totalPaid);
           stmt.summary.totalOutstanding = Number(stmt.summary.totalOutstanding);
         }
-        for (const ll of stmt.landlords) {
+        for (const ll of (stmt.landlords || [])) {
           ll.totalDue = Number(ll.totalDue);
           ll.totalPaid = Number(ll.totalPaid);
-          for (const prop of ll.properties) {
+          for (const prop of (ll.properties || [])) {
             prop.totalDue = Number(prop.totalDue);
             prop.totalPaid = Number(prop.totalPaid);
-            for (const pay of prop.payments) {
+            for (const pay of (prop.payments || [])) {
               pay.amount_due = Number(pay.amount_due);
               pay.amount_paid = Number(pay.amount_paid);
             }
