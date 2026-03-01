@@ -78,9 +78,11 @@ async function getAllApplications({ status, applicationType }, agencyId) {
     SELECT
       a.*,
       u.first_name || ' ' || u.last_name as user_name,
-      u.email as user_email
+      u.email as user_email,
+      hd.status as deposit_status
     FROM applications a
     JOIN users u ON a.user_id = u.id
+    LEFT JOIN holding_deposits hd ON hd.application_id = a.id AND hd.agency_id = a.agency_id
     WHERE a.agency_id = $1
   `;
 

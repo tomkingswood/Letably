@@ -159,8 +159,13 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
 
   const fetchData = async () => {
     try {
-      const appsResponse = await applicationsApi.getAll();
+      const [appsResponse, settingsRes] = await Promise.all([
+        applicationsApi.getAll(),
+        agencies.getSettings(),
+      ]);
       setApplications(appsResponse.data.applications || []);
+      const s = settingsRes.data.settings || settingsRes.data;
+      setHoldingDepositEnabled(s.holding_deposit_enabled === true || s.holding_deposit_enabled === 'true');
     } catch (error) {
       console.error('Error fetching applications:', error);
     } finally {
@@ -657,6 +662,9 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
                   <th className="text-left py-3 px-4 font-semibold text-gray-700">Applicant</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-700">Type</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                  {holdingDepositEnabled && (
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Deposit</th>
+                  )}
                   <th className="text-left py-3 px-4 font-semibold text-gray-700">Date</th>
                   <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>
                 </tr>
@@ -674,6 +682,17 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
                         {getStatusLabel('application', app.status)}
                       </span>
                     </td>
+                    {holdingDepositEnabled && (
+                      <td className="py-3 px-4">
+                        {app.deposit_status ? (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge('holdingDeposit', app.deposit_status)}`}>
+                            {getStatusLabel('holdingDeposit', app.deposit_status)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">&mdash;</span>
+                        )}
+                      </td>
+                    )}
                     <td className="py-3 px-4">
                       {new Date(app.created_at).toLocaleDateString('en-GB')}
                     </td>
