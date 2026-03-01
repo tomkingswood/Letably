@@ -356,8 +356,21 @@ export default function ApplicationDetailView({ id, onBack, onDeleted }: Applica
                 {existingDeposit.property_address && ` \u2022 ${existingDeposit.property_address}`}
                 {existingDeposit.bedroom_name && ` \u2022 ${existingDeposit.bedroom_name}`}
               </p>
+              {existingDeposit.status === 'held' && existingDeposit.reservation_expires_at && (
+                <p className="text-xs text-blue-700 mt-1">
+                  Room reserved until {new Date(existingDeposit.reservation_expires_at).toLocaleDateString('en-GB')}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
+              {existingDeposit.status === 'awaiting_payment' && (
+                <button
+                  onClick={handleRecordPayment}
+                  className="text-xs bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+                >
+                  Record Payment
+                </button>
+              )}
               {existingDeposit.status === 'held' && (
                 <button
                   onClick={handleUndoPayment}

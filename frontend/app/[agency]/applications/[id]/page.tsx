@@ -552,18 +552,26 @@ export default function ApplicationFormPage({ params }: PageProps) {
             </div>
           )}
 
-          {isCompleted && (
-            <div className="mb-6">
-              {/* Status Badge */}
+          {isCompleted ? (
+            <>
+              {/* Application Status */}
               <div className="bg-white rounded-lg shadow-md p-6 mb-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-gray-900">Application Status</h2>
                   <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
                     application.status === 'awaiting_guarantor'
                       ? 'bg-orange-100 text-orange-800'
-                      : 'bg-green-100 text-green-800'
+                      : application.status === 'submitted'
+                      ? 'bg-blue-100 text-blue-800'
+                      : application.status === 'approved'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-purple-100 text-purple-800'
                   }`}>
-                    {application.status === 'awaiting_guarantor' ? 'Awaiting Guarantor' : 'Completed'}
+                    {application.status === 'awaiting_guarantor' ? 'Awaiting Guarantor'
+                      : application.status === 'submitted' ? 'Submitted'
+                      : application.status === 'approved' ? 'Approved'
+                      : application.status === 'converted_to_tenancy' ? 'Tenancy Created'
+                      : 'Completed'}
                   </span>
                 </div>
 
@@ -578,8 +586,8 @@ export default function ApplicationFormPage({ params }: PageProps) {
                       They will receive an email with instructions to complete their part of the application.
                     </p>
                     <p className="text-orange-800 text-sm">
-                      <strong>Haven't received the email?</strong> Please ask your guarantor to check their junk/spam folder.
-                      If they still haven't received it, please contact us at{' '}
+                      <strong>Haven&apos;t received the email?</strong> Please ask your guarantor to check their junk/spam folder.
+                      If they still haven&apos;t received it, please contact us at{' '}
                       <a href={`mailto:${contactEmail}`} className="underline hover:text-orange-900">
                         {contactEmail}
                       </a>
@@ -610,7 +618,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
                 {application.status === 'approved' && (
                   <div className="bg-green-50 border-l-4 border-green-500 p-4">
                     <p className="text-green-900 font-semibold mb-2">
-                      ✓ Application Approved
+                      Application Approved
                     </p>
                     <p className="text-green-800 text-sm">
                       Your application has been reviewed and approved. You can now proceed to sign your tenancy agreement.
@@ -622,23 +630,26 @@ export default function ApplicationFormPage({ params }: PageProps) {
                 {application.status === 'converted_to_tenancy' && (
                   <div className="bg-purple-50 border-l-4 border-purple-500 p-4">
                     <p className="text-purple-900 font-semibold mb-2">
-                      ✓ Application Converted to Tenancy
+                      Application Converted to Tenancy
                     </p>
                     <p className="text-purple-800 text-sm">
                       Congratulations! Your application has been approved and converted to a tenancy.
                       We will be in touch shortly with your tenancy agreement and next steps.
                     </p>
                     <p className="text-purple-700 text-sm mt-3">
-                      <strong>Note:</strong> This application cannot be modified as it has been converted to a tenancy.
-                      If you have any questions, please contact your letting agent.
+                      <strong>Note:</strong> If you have any questions, please contact your letting agent.
                     </p>
                   </div>
                 )}
               </div>
-            </div>
-          )}
 
-          {submitting ? (
+              <div className="text-center mt-6">
+                <Link href={`/${agencySlug}`} className="text-primary hover:underline font-semibold">
+                  Return to Homepage
+                </Link>
+              </div>
+            </>
+          ) : submitting ? (
             <div className="bg-white rounded-lg shadow-md p-12 text-center">
               <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent mb-6"></div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Submitting...</h2>

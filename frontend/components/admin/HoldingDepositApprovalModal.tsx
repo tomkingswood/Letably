@@ -132,6 +132,12 @@ export default function HoldingDepositApprovalModal({
       return;
     }
 
+    const parsed = new Date(dateReceived);
+    if (isNaN(parsed.getTime()) || dateReceived !== parsed.toISOString().split('T')[0]) {
+      setError('Please enter a valid date');
+      return;
+    }
+
     // For new deposits, validate amount
     if (!hasExisting && (!amount || parseFloat(amount) <= 0)) {
       setError('Please enter a valid amount');
@@ -209,7 +215,13 @@ export default function HoldingDepositApprovalModal({
                   <p><strong>Room:</strong> {existingDeposit!.bedroom_name}</p>
                 )}
                 {existingDeposit!.reservation_days && (
-                  <p><strong>Reservation:</strong> {existingDeposit!.reservation_days} days</p>
+                  <p><strong>Reservation:</strong> {existingDeposit!.reservation_days} days
+                    {dateReceived && (() => {
+                      const expiry = new Date(dateReceived);
+                      expiry.setDate(expiry.getDate() + existingDeposit!.reservation_days!);
+                      return <> (until {expiry.toLocaleDateString('en-GB')})</>;
+                    })()}
+                  </p>
                 )}
               </div>
             </div>

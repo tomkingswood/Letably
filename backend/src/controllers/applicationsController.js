@@ -30,7 +30,8 @@ exports.createApplication = asyncHandler(async (req, res) => {
     guarantor_required,
     property_id,
     bedroom_id,
-    reservation_days
+    reservation_days,
+    deposit_amount_override
   } = req.body;
 
   // Validation
@@ -134,6 +135,15 @@ exports.createApplication = asyncHandler(async (req, res) => {
     if (depositAmount === null) {
       const configuredAmount = parseFloat(settings.holding_deposit_amount);
       depositAmount = Number.isNaN(configuredAmount) ? 100 : configuredAmount;
+    }
+
+    // Allow admin to override the deposit amount
+    if (deposit_amount_override !== undefined && deposit_amount_override !== null) {
+      const override = parseFloat(deposit_amount_override);
+      if (Number.isNaN(override) || override < 0) {
+        return res.status(400).json({ error: 'Deposit amount must be a valid non-negative number' });
+      }
+      depositAmount = override;
     }
 
     // Validate reservation_days
