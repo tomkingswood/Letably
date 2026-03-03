@@ -892,12 +892,12 @@ function resolveFormSchema(agencyConfig, applicationType) {
   // Build a lookup from the agency config — merge 'all' scope + type-specific
   const configMap = {};
   if (agencyConfig) {
-    if (agencyConfig.all) {
+    if (Array.isArray(agencyConfig.all)) {
       for (const entry of agencyConfig.all) {
         configMap[entry.key] = entry;
       }
     }
-    if (agencyConfig[applicationType]) {
+    if (Array.isArray(agencyConfig[applicationType])) {
       for (const entry of agencyConfig[applicationType]) {
         configMap[entry.key] = entry;
       }
@@ -961,8 +961,6 @@ function deriveFormDataDefaults() {
     // Set the appropriate default
     if (q.type === 'number') {
       defaults[q.key] = 0;
-    } else if (q.key === 'guarantor_signature_agreed') {
-      defaults[q.key] = false;
     } else {
       defaults[q.key] = null;
     }

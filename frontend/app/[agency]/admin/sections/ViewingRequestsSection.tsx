@@ -2,24 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { viewingRequests as viewingRequestsApi, properties as propertiesApi } from '@/lib/api';
-import { getErrorMessage } from '@/lib/types';
+import { getErrorMessage, ViewingRequest } from '@/lib/types';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { SectionProps } from './index';
-
-interface ViewingRequest {
-  id: number;
-  visitor_name: string;
-  visitor_email: string;
-  visitor_phone?: string;
-  internal_notes?: string;
-  preferred_date?: string;
-  preferred_time?: string;
-  status: string;
-  address_line1?: string;
-  property_id?: number;
-  created_at: string;
-}
 
 interface PropertyOption {
   id: number;
@@ -167,6 +153,8 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
       handleCloseModal();
     } catch (err: unknown) {
       setActionError(getErrorMessage(err, 'Failed to save changes'));
+      // Re-fetch to reconcile state after partial success
+      await fetchRequests();
     } finally {
       setSaving(false);
     }

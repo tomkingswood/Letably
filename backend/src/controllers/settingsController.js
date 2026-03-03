@@ -442,13 +442,22 @@ const updateApplicationFormConfig = asyncHandler(async (req, res) => {
   );
 
   for (const type of ['all', 'student', 'professional']) {
-    if (!Array.isArray(config[type])) continue;
+    if (!(type in config)) continue;
+    if (!Array.isArray(config[type])) {
+      return res.status(400).json({ error: `config.${type} must be an array` });
+    }
     for (const entry of config[type]) {
       if (!entry || typeof entry !== 'object' || !entry.key) {
         return res.status(400).json({ error: 'Each config entry must be an object with a key property' });
       }
       if (!validKeys.has(entry.key)) {
         return res.status(400).json({ error: `Unknown or non-configurable field: ${entry.key}` });
+      }
+      if ('enabled' in entry && typeof entry.enabled !== 'boolean') {
+        return res.status(400).json({ error: `enabled must be a boolean for field: ${entry.key}` });
+      }
+      if ('required' in entry && typeof entry.required !== 'boolean') {
+        return res.status(400).json({ error: `required must be a boolean for field: ${entry.key}` });
       }
     }
   }

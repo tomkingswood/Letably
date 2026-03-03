@@ -466,7 +466,8 @@ const calculateReminders = async (agencyId) => {
       FROM viewing_requests vr
       LEFT JOIN properties p ON vr.property_id = p.id
       WHERE vr.status IN ('pending', 'confirmed')
-    `, [], agencyId);
+      AND vr.agency_id = $1
+    `, [agencyId], agencyId);
     const viewingRequests = viewingRequestsResult.rows;
 
     for (const vr of viewingRequests) {
