@@ -108,7 +108,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
     setActionError(null);
     try {
       await viewingRequestsApi.updateStatus(id, status);
-      setRequests(requests.map(r =>
+      setRequests(prev => prev.map(r =>
         r.id === id ? { ...r, status } : r
       ));
     } catch (err: unknown) {
@@ -140,7 +140,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
         await viewingRequestsApi.updateNotes(id, editForm.notes);
       }
 
-      setRequests(requests.map(r =>
+      setRequests(prev => prev.map(r =>
         r.id === id
           ? {
               ...r,
@@ -166,7 +166,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
     setActionError(null);
     try {
       await viewingRequestsApi.delete(selectedRequest.id);
-      setRequests(requests.filter(r => r.id !== selectedRequest.id));
+      setRequests(prev => prev.filter(r => r.id !== selectedRequest.id));
       handleCloseModal();
     } catch (err: unknown) {
       setActionError(getErrorMessage(err, 'Failed to delete viewing request'));
@@ -435,7 +435,9 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
                     <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-1">
                       {request.preferred_date && (
                         <span>
-                          {new Date(request.preferred_date).toLocaleDateString('en-GB')}
+                          {request.preferred_date.match(/^\d{4}-\d{2}-\d{2}$/)
+                            ? request.preferred_date.split('-').reverse().join('/')
+                            : new Date(request.preferred_date).toLocaleDateString('en-GB')}
                           {request.preferred_time && ` at ${request.preferred_time}`}
                         </span>
                       )}

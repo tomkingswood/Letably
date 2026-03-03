@@ -866,6 +866,9 @@ function getConfigurableQuestions() {
   const configurable = QUESTION_CATALOGUE.filter((q) => !q.core);
   const grouped = { student: [], professional: [], all: [] };
   for (const q of configurable) {
+    if (!grouped[q.scope]) {
+      throw new Error(`Unknown scope "${q.scope}" on catalogue entry "${q.key}"`);
+    }
     grouped[q.scope].push({
       key: q.key,
       label: q.label,
@@ -892,14 +895,12 @@ function resolveFormSchema(agencyConfig, applicationType) {
   // Build a lookup from the agency config — merge 'all' scope + type-specific
   const configMap = {};
   if (agencyConfig) {
-    if (Array.isArray(agencyConfig.all)) {
-      for (const entry of agencyConfig.all) {
-        configMap[entry.key] = entry;
-      }
-    }
-    if (Array.isArray(agencyConfig[applicationType])) {
-      for (const entry of agencyConfig[applicationType]) {
-        configMap[entry.key] = entry;
+    for (const section of [agencyConfig.all, agencyConfig[applicationType]]) {
+      if (!Array.isArray(section)) continue;
+      for (const entry of section) {
+        if (entry && typeof entry === 'object' && typeof entry.key === 'string') {
+          configMap[entry.key] = entry;
+        }
       }
     }
   }

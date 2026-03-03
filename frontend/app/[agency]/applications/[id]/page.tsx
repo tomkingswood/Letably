@@ -84,7 +84,11 @@ export default function ApplicationFormPage({ params }: PageProps) {
     fetchApplication();
     // Fetch holding deposit info
     holdingDeposits.getByApplicationForTenant(id).then(res => {
-      setDepositInfo(res.data);
+      const data = res.data;
+      if (data?.deposit) {
+        data.deposit.amount = Number(data.deposit.amount);
+      }
+      setDepositInfo(data);
     }).catch(() => {});
   }, [authLoading, isAuthenticated, id, agencySlug, router]);
 
@@ -179,7 +183,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
     try {
       await applications.update(id, {
         ...formData,
-        address_history: addressHistory,
+        address_history: addressHistory.map(({ id: _id, ...rest }) => rest),
       } as ApplicationFormData);
       setMessage({ type: 'success', text: 'Application saved successfully' });
     } catch (err: unknown) {
@@ -259,7 +263,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
     try {
       await applications.submit(id, {
         ...formData,
-        address_history: addressHistory,
+        address_history: addressHistory.map(({ id: _id, ...rest }) => rest),
       } as ApplicationFormData);
 
       const newStatus = application!.guarantor_required ? 'awaiting_guarantor' : 'submitted';
