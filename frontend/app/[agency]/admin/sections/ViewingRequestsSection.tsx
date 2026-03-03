@@ -134,7 +134,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
         await viewingRequestsApi.updateStatus(id, editForm.status);
       }
       if (dateChanged) {
-        await viewingRequestsApi.updateDate(id, editForm.date || null, editForm.time || null);
+        await viewingRequestsApi.updateDate(id, editForm.date || null, editForm.date ? (editForm.time || null) : null);
       }
       if (notesChanged) {
         await viewingRequestsApi.updateNotes(id, editForm.notes);
@@ -145,7 +145,7 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
           ? {
               ...r,
               ...(statusChanged && { status: editForm.status }),
-              ...(dateChanged && { preferred_date: editForm.date || undefined, preferred_time: editForm.time || undefined }),
+              ...(dateChanged && { preferred_date: editForm.date || undefined, preferred_time: editForm.date ? (editForm.time || undefined) : undefined }),
               ...(notesChanged && { internal_notes: editForm.notes || undefined }),
             }
           : r

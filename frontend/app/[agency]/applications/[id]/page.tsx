@@ -87,6 +87,9 @@ export default function ApplicationFormPage({ params }: PageProps) {
       const data = res.data;
       if (data?.deposit) {
         data.deposit.amount = Number(data.deposit.amount);
+        if (data.deposit.reservation_days != null) {
+          data.deposit.reservation_days = Number(data.deposit.reservation_days);
+        }
       }
       setDepositInfo(data);
     }).catch(() => {});
