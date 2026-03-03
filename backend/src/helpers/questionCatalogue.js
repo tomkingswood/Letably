@@ -924,6 +924,20 @@ function resolveFormSchema(agencyConfig, applicationType) {
   });
 }
 
+// Guarantor sub-fields rendered by the GuarantorInfo complex component.
+// Not individually listed in QUESTION_CATALOGUE but stored in form_data.
+const GUARANTOR_FORM_DATA_FIELDS = [
+  ['guarantor_name', null],
+  ['guarantor_dob', null],
+  ['guarantor_email', null],
+  ['guarantor_phone', null],
+  ['guarantor_address', null],
+  ['guarantor_relationship', null],
+  ['guarantor_id_type', null],
+  ['guarantor_signature_name', null],
+  ['guarantor_signature_agreed', false],
+];
+
 /**
  * Derive the FORM_DATA_DEFAULTS object from the catalogue.
  * Only includes entries where storage === 'form_data'.
@@ -956,15 +970,9 @@ function deriveFormDataDefaults() {
 
   // Guarantor fields stored in form_data — always present in defaults
   // (written by both the applicant form and the guarantor form)
-  defaults.guarantor_name = null;
-  defaults.guarantor_dob = null;
-  defaults.guarantor_email = null;
-  defaults.guarantor_phone = null;
-  defaults.guarantor_address = null;
-  defaults.guarantor_relationship = null;
-  defaults.guarantor_id_type = null;
-  defaults.guarantor_signature_name = null;
-  defaults.guarantor_signature_agreed = false;
+  for (const [key, defaultVal] of GUARANTOR_FORM_DATA_FIELDS) {
+    defaults[key] = defaultVal;
+  }
 
   return defaults;
 }
@@ -972,12 +980,18 @@ function deriveFormDataDefaults() {
 /**
  * Get the list of configurable field keys that are required for a given
  * application type under the agency's current config.
+ * When `data` is provided, fields whose dependsOn condition is not met are excluded.
  * Used for backend submit validation.
  */
-function getRequiredFieldKeys(agencyConfig, applicationType) {
+function getRequiredFieldKeys(agencyConfig, applicationType, data) {
   const schema = resolveFormSchema(agencyConfig, applicationType);
   return schema
     .filter((q) => q.enabled && q.required && q.type !== 'complex')
+    .filter((q) => {
+      if (!data || !q.dependsOn) return true;
+      const depVal = data[q.dependsOn.key];
+      return depVal === q.dependsOn.value;
+    })
     .map((q) => q.key);
 }
 

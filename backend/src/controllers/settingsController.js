@@ -432,7 +432,7 @@ const updateApplicationFormConfig = asyncHandler(async (req, res) => {
   const { config } = req.body;
   const { QUESTION_CATALOGUE } = require('../helpers/questionCatalogue');
 
-  if (!config || typeof config !== 'object') {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
     return res.status(400).json({ error: 'config object is required' });
   }
 
@@ -444,6 +444,9 @@ const updateApplicationFormConfig = asyncHandler(async (req, res) => {
   for (const type of ['all', 'student', 'professional']) {
     if (!Array.isArray(config[type])) continue;
     for (const entry of config[type]) {
+      if (!entry || typeof entry !== 'object' || !entry.key) {
+        return res.status(400).json({ error: 'Each config entry must be an object with a key property' });
+      }
       if (!validKeys.has(entry.key)) {
         return res.status(400).json({ error: `Unknown or non-configurable field: ${entry.key}` });
       }

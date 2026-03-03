@@ -277,7 +277,7 @@ export const viewingRequests = {
   getPendingCount: () => api.get('/viewing-requests/count/pending'),
   updateStatus: (id: string | number, status: string) =>
     api.patch(`/viewing-requests/${id}/status`, { status }),
-  updateDate: (id: string | number, preferred_date: string, preferred_time?: string) =>
+  updateDate: (id: string | number, preferred_date: string | null, preferred_time?: string | null) =>
     api.patch(`/viewing-requests/${id}/date`, { preferred_date, preferred_time }),
   updateNotes: (id: string | number, internal_notes: string) =>
     api.patch(`/viewing-requests/${id}/notes`, { internal_notes }),

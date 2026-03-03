@@ -21,17 +21,18 @@ export default function DeclarationSection({
         <p className="text-sm text-gray-700 mb-4">
           I confirm that I am over 18 years of age and the information given above is true and accurate.
           I confirm that no one will be living in the property except anyone who is named above provided
-          in the application information. I agree to allow the letting agent to make whatever enquires
+          in the application information. I agree to allow the letting agent to make whatever enquiries
           required, including a credit check, as deemed necessary regarding this application for tenancy.
         </p>
       </div>
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="declaration_name" className="block text-sm font-medium text-gray-700 mb-2">
             Print Name *
           </label>
           <input
+            id="declaration_name"
             type="text"
             name="declaration_name"
             value={declarationName}

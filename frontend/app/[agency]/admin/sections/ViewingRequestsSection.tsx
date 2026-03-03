@@ -147,8 +147,8 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
       if (statusChanged) {
         await viewingRequestsApi.updateStatus(id, editForm.status);
       }
-      if (dateChanged && editForm.date) {
-        await viewingRequestsApi.updateDate(id, editForm.date, editForm.time || undefined);
+      if (dateChanged) {
+        await viewingRequestsApi.updateDate(id, editForm.date || null, editForm.time || null);
       }
       if (notesChanged) {
         await viewingRequestsApi.updateNotes(id, editForm.notes);
@@ -417,6 +417,13 @@ export default function ViewingRequestsSection({ onNavigate, action, itemId, onB
           <option value="cancelled">Cancelled</option>
         </select>
       </div>
+
+      {/* List-level action error (e.g. from quick-status buttons) */}
+      {actionError && !selectedRequest && (
+        <div className="mb-4">
+          <MessageAlert type="error" message={actionError} onDismiss={() => setActionError(null)} />
+        </div>
+      )}
 
       {/* Requests List */}
       <div className="bg-white rounded-lg shadow-md">

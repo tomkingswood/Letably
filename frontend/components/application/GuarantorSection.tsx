@@ -23,10 +23,11 @@ export default function GuarantorSection({
       </p>
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="guarantor_name" className="block text-sm font-medium text-gray-700 mb-2">
             Guarantor Full Name *
           </label>
           <input
+            id="guarantor_name"
             type="text"
             name="guarantor_name"
             value={formData.guarantor_name}
@@ -39,10 +40,11 @@ export default function GuarantorSection({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="guarantor_dob" className="block text-sm font-medium text-gray-700 mb-2">
               Guarantor Date of Birth *
             </label>
             <input
+              id="guarantor_dob"
               type="date"
               name="guarantor_dob"
               value={formData.guarantor_dob}
@@ -53,10 +55,11 @@ export default function GuarantorSection({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="guarantor_relationship" className="block text-sm font-medium text-gray-700 mb-2">
               Relationship to You *
             </label>
             <input
+              id="guarantor_relationship"
               type="text"
               name="guarantor_relationship"
               value={formData.guarantor_relationship}
@@ -71,10 +74,11 @@ export default function GuarantorSection({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="guarantor_email" className="block text-sm font-medium text-gray-700 mb-2">
               Guarantor Email *
             </label>
             <input
+              id="guarantor_email"
               type="email"
               name="guarantor_email"
               value={formData.guarantor_email}
@@ -88,10 +92,11 @@ export default function GuarantorSection({
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="guarantor_phone" className="block text-sm font-medium text-gray-700 mb-2">
               Guarantor Phone *
             </label>
             <input
+              id="guarantor_phone"
               type="tel"
               name="guarantor_phone"
               value={formData.guarantor_phone}
@@ -104,10 +109,11 @@ export default function GuarantorSection({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="guarantor_address" className="block text-sm font-medium text-gray-700 mb-2">
             Guarantor Address *
           </label>
           <textarea
+            id="guarantor_address"
             name="guarantor_address"
             value={formData.guarantor_address}
             onChange={onChange}

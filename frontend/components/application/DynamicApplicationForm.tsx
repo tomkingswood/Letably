@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { applications } from '@/lib/api';
 import { QuestionDefinition, ApplicationFormData, IdDocumentStatus } from '@/lib/types';
 import { getErrorMessage } from '@/lib/types';
@@ -11,6 +11,7 @@ import GuarantorSection from './GuarantorSection';
 import DeclarationSection from './DeclarationSection';
 
 interface AddressHistoryEntry {
+  id: string;
   residential_status: string;
   residential_status_other?: string;
   period_years: number;
@@ -82,9 +83,11 @@ export default function DynamicApplicationForm({
 }: DynamicApplicationFormProps) {
   const [schema, setSchema] = useState<QuestionDefinition[]>([]);
   const [schemaLoading, setSchemaLoading] = useState(true);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>(initialFormData);
   const [addressHistory, setAddressHistory] = useState<AddressHistoryEntry[]>(initialAddressHistory);
   const [showRightToRentModal, setShowRightToRentModal] = useState(false);
+  const nextAddressId = useRef(initialAddressHistory.length);
 
   // Fetch the resolved form schema
   useEffect(() => {
@@ -93,8 +96,7 @@ export default function DynamicApplicationForm({
         const response = await applications.getFormConfig(applicationType);
         setSchema(response.data.schema);
       } catch (err: unknown) {
-        console.error('Failed to load form config:', getErrorMessage(err));
-        // On error, schema stays empty — sections won't render
+        setSchemaError(getErrorMessage(err, 'Failed to load form configuration'));
       } finally {
         setSchemaLoading(false);
       }
@@ -133,9 +135,10 @@ export default function DynamicApplicationForm({
 
   // Address history handlers
   const addAddressEntry = () => {
+    const id = `addr-${nextAddressId.current++}`;
     const updated = [
       ...addressHistory,
-      { residential_status: '', residential_status_other: '', period_years: 0, period_months: 0, address: '' },
+      { id, residential_status: '', residential_status_other: '', period_years: 0, period_months: 0, address: '' },
     ];
     setAddressHistory(updated);
     onAddressHistoryChange(updated);
@@ -225,6 +228,17 @@ export default function DynamicApplicationForm({
     );
   }
 
+  if (schemaError) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-red-700 font-medium">{schemaError}</p>
+          <p className="text-red-600 text-sm mt-1">Please try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Application Details (always shown, read-only) */}
@@ -264,6 +278,7 @@ export default function DynamicApplicationForm({
                 <h3 className="text-2xl font-bold text-gray-900">Right to Rent Checks</h3>
                 <button
                   onClick={() => setShowRightToRentModal(false)}
+                  aria-label="Close right-to-rent modal"
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

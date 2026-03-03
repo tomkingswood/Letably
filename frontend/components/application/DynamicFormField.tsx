@@ -25,7 +25,8 @@ export default function DynamicFormField({
     if (target instanceof HTMLInputElement && target.type === 'checkbox') {
       onChange(key, target.checked);
     } else if (type === 'number') {
-      onChange(key, parseInt(target.value) || 0);
+      const parsed = parseFloat(target.value);
+      onChange(key, isNaN(parsed) ? 0 : parsed);
     } else {
       onChange(key, target.value);
     }
@@ -94,7 +95,7 @@ export default function DynamicFormField({
           onChange={handleChange}
           required={required}
           disabled={disabled}
-          rows={type === 'textarea' ? 3 : 2}
+          rows={3}
           placeholder={placeholder}
           className={inputClass}
         />

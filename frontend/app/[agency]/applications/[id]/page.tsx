@@ -14,6 +14,7 @@ import { MessageAlert } from '@/components/ui/MessageAlert';
 import DynamicApplicationForm from '@/components/application/DynamicApplicationForm';
 
 interface AddressHistoryEntry {
+  id: string;
   residential_status: string;
   residential_status_other?: string;
   period_years: number;
@@ -137,9 +138,9 @@ export default function ApplicationFormPage({ params }: PageProps) {
         declaration_agreed: app.declaration_agreed === 1,
       });
 
-      // Load address history
+      // Load address history (assign stable ids for React keys)
       if (app.address_history && Array.isArray(app.address_history)) {
-        setAddressHistory(app.address_history);
+        setAddressHistory(app.address_history.map((entry: Omit<AddressHistoryEntry, 'id'>, i: number) => ({ ...entry, id: `addr-${i}` })));
       }
 
       // Check if ID document is uploaded

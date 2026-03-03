@@ -502,7 +502,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
 
   if (submit && application.status === 'pending') {
     // Config-aware required-field validation
-    const { getRequiredFieldKeys, resolveFormSchema } = require('../helpers/questionCatalogue');
+    const { getRequiredFieldKeys } = require('../helpers/questionCatalogue');
     let agencyFormConfig = null;
     const configResult = await db.query(
       "SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2",
@@ -513,16 +513,9 @@ exports.updateApplication = asyncHandler(async (req, res) => {
       try { agencyFormConfig = JSON.parse(configResult.rows[0].setting_value); } catch { /* use null */ }
     }
 
-    const schema = resolveFormSchema(agencyFormConfig, application.application_type);
-    const requiredKeys = schema
-      .filter(q => q.enabled && q.required && q.type !== 'complex')
-      .filter(q => {
-        // Skip fields whose dependency is not met
-        if (!q.dependsOn) return true;
-        const depVal = req.body[q.dependsOn.key] ?? application[q.dependsOn.key];
-        return depVal === q.dependsOn.value;
-      })
-      .map(q => q.key);
+    // Merge req.body with existing application data for dependency resolution
+    const mergedData = { ...application, ...req.body };
+    const requiredKeys = getRequiredFieldKeys(agencyFormConfig, application.application_type, mergedData);
 
     const missingFields = [];
     for (const key of requiredKeys) {

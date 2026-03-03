@@ -1,4 +1,7 @@
+import { useRef, useCallback } from 'react';
+
 interface AddressHistoryEntry {
+  id: string;
   residential_status: string;
   residential_status_other?: string;
   period_years: number;
@@ -42,7 +45,7 @@ export default function AddressHistorySection({
       ) : (
         <div className="space-y-6">
           {addressHistory.map((entry, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-4">
+            <div key={entry.id} className="border border-gray-200 rounded-lg p-4">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="font-semibold text-gray-900">Previous Address {index + 1}</h3>
                 {!disabled && (
@@ -59,10 +62,11 @@ export default function AddressHistorySection({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor={`residential_status-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
                       Residential Status *
                     </label>
                     <select
+                      id={`residential_status-${index}`}
                       value={entry.residential_status}
                       onChange={(e) => onUpdate(index, 'residential_status', e.target.value)}
                       required
@@ -79,10 +83,11 @@ export default function AddressHistorySection({
                   </div>
                   {entry.residential_status === 'Other' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor={`residential_status_other-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
                         Please Specify *
                       </label>
                       <input
+                        id={`residential_status_other-${index}`}
                         type="text"
                         value={entry.residential_status_other || ''}
                         onChange={(e) => onUpdate(index, 'residential_status_other', e.target.value)}
@@ -95,13 +100,14 @@ export default function AddressHistorySection({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <span className="block text-sm font-medium text-gray-700 mb-2">
                     Period at Address *
-                  </label>
+                  </span>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Years</label>
+                      <label htmlFor={`period_years-${index}`} className="block text-xs font-medium text-gray-600 mb-1">Years</label>
                       <input
+                        id={`period_years-${index}`}
                         type="number"
                         value={entry.period_years}
                         onChange={(e) => onUpdate(index, 'period_years', parseInt(e.target.value) || 0)}
@@ -113,8 +119,9 @@ export default function AddressHistorySection({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Months</label>
+                      <label htmlFor={`period_months-${index}`} className="block text-xs font-medium text-gray-600 mb-1">Months</label>
                       <input
+                        id={`period_months-${index}`}
                         type="number"
                         value={entry.period_months}
                         onChange={(e) => onUpdate(index, 'period_months', parseInt(e.target.value) || 0)}
@@ -130,10 +137,11 @@ export default function AddressHistorySection({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor={`address-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
                     Full Address *
                   </label>
                   <textarea
+                    id={`address-${index}`}
                     value={entry.address}
                     onChange={(e) => onUpdate(index, 'address', e.target.value)}
                     required

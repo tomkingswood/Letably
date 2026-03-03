@@ -276,8 +276,8 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
 
   // Check if property exists and get address
   const propertyResult = await db.query(
-    'SELECT id, address_line1, address_line2, city, postcode FROM properties WHERE id = $1',
-    [property_id],
+    'SELECT id, address_line1, address_line2, city, postcode FROM properties WHERE id = $1 AND agency_id = $2',
+    [property_id, agencyId],
     agencyId
   );
   const property = propertyResult.rows[0];
@@ -464,8 +464,8 @@ exports.updateViewingDate = asyncHandler(async (req, res) => {
 
   // Check if viewing request exists
   const requestResult = await db.query(
-    'SELECT id FROM viewing_requests WHERE id = $1',
-    [id],
+    'SELECT id FROM viewing_requests WHERE id = $1 AND agency_id = $2',
+    [id, agencyId],
     agencyId
   );
 
@@ -473,7 +473,6 @@ exports.updateViewingDate = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: 'Viewing request not found' });
   }
 
-  // Defense-in-depth: explicit agency_id filtering
   // Update the date and time (can be null/empty to clear them)
   await db.query(
     'UPDATE viewing_requests SET preferred_date = $1, preferred_time = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND agency_id = $4',
@@ -540,8 +539,8 @@ exports.deleteViewingRequest = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const requestResult = await db.query(
-    'SELECT id FROM viewing_requests WHERE id = $1',
-    [id],
+    'SELECT id FROM viewing_requests WHERE id = $1 AND agency_id = $2',
+    [id, agencyId],
     agencyId
   );
 
