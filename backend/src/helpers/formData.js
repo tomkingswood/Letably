@@ -12,54 +12,10 @@
 
 /**
  * Fields stored in the JSONB form_data column, with their safe defaults.
- * These fields are conditional — they depend on application_type (student/professional),
- * residential_status (Private Tenant shows landlord fields), or guarantor_required.
+ * Derived from the question catalogue — single source of truth.
  */
-const FORM_DATA_DEFAULTS = {
-  // Current address details
-  residential_status: null,
-  residential_status_other: null,
-  period_years: 0,
-  period_months: 0,
-
-  // Landlord details (shown when residential_status = 'Private Tenant')
-  landlord_name: null,
-  landlord_address: null,
-  landlord_email: null,
-  landlord_phone: null,
-
-  // Address history (array of previous address objects)
-  address_history: [],
-
-  // Student-specific fields
-  university: null,
-  year_of_study: null,
-  course: null,
-  student_number: null,
-  payment_plan: null,
-
-  // Professional-specific fields
-  employment_type: null,
-  company_name: null,
-  employment_start_date: null,
-  contact_name: null,
-  contact_job_title: null,
-  contact_email: null,
-  contact_phone: null,
-  company_address: null,
-
-  // Guarantor personal info (only when guarantor_required = true)
-  // Written by both the applicant form and the guarantor form
-  guarantor_name: null,
-  guarantor_dob: null,
-  guarantor_email: null,
-  guarantor_phone: null,
-  guarantor_address: null,
-  guarantor_relationship: null,
-  guarantor_id_type: null,
-  guarantor_signature_name: null,
-  guarantor_signature_agreed: false,
-};
+const { deriveFormDataDefaults } = require('./questionCatalogue');
+const FORM_DATA_DEFAULTS = deriveFormDataDefaults();
 
 const FORM_DATA_FIELDS = Object.keys(FORM_DATA_DEFAULTS);
 

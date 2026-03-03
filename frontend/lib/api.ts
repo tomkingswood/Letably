@@ -9,6 +9,7 @@ import type {
   ManualReminderFormData,
   ApplicationFormData,
   HoldingDepositFormData,
+  ApplicationFormConfig,
 } from './types';
 
 // Use internal URL for server-side requests, public URL for client-side
@@ -326,6 +327,9 @@ export const settings = {
     holding_deposit_type?: string;
     holding_deposit_amount?: string;
   }) => api.put('/settings', data), // Admin only - update settings
+  getApplicationFormConfig: () => api.get('/settings/application-form-config'),
+  updateApplicationFormConfig: (config: ApplicationFormConfig) =>
+    api.put('/settings/application-form-config', { config }),
 };
 
 
@@ -441,6 +445,10 @@ export const applications = {
     guarantor_signature_name: string;
     guarantor_signature_agreed: boolean;
   }) => axios.post(`${getApiUrl()}/applications/guarantor/${token}`, data),
+
+  // Form config
+  getFormConfig: (type: 'student' | 'professional') =>
+    api.get(`/applications/form-config?type=${type}`),
 
   // ID Document routes
   uploadApplicantId: (id: string | number, file: File) => {

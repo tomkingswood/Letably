@@ -399,6 +399,63 @@ const uploadIcoCertificate = async (req, res) => {
   }
 };
 
+// Get application form config (admin — returns full catalogue + saved config)
+const getApplicationFormConfig = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const { getConfigurableQuestions } = require('../helpers/questionCatalogue');
+
+  // Get saved config from site_settings
+  const result = await db.query(
+    "SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2",
+    ['application_form_config', agencyId],
+    agencyId
+  );
+
+  let savedConfig = null;
+  if (result.rows[0]?.setting_value) {
+    try {
+      savedConfig = JSON.parse(result.rows[0].setting_value);
+    } catch {
+      savedConfig = null;
+    }
+  }
+
+  res.json({
+    catalogue: getConfigurableQuestions(),
+    config: savedConfig,
+  });
+}, 'fetch application form config');
+
+// Update application form config (admin)
+const updateApplicationFormConfig = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const { config } = req.body;
+  const { QUESTION_CATALOGUE } = require('../helpers/questionCatalogue');
+
+  if (!config || typeof config !== 'object') {
+    return res.status(400).json({ error: 'config object is required' });
+  }
+
+  // Validate: only allow known non-core keys
+  const validKeys = new Set(
+    QUESTION_CATALOGUE.filter((q) => !q.core).map((q) => q.key)
+  );
+
+  for (const type of ['all', 'student', 'professional']) {
+    if (!Array.isArray(config[type])) continue;
+    for (const entry of config[type]) {
+      if (!validKeys.has(entry.key)) {
+        return res.status(400).json({ error: `Unknown or non-configurable field: ${entry.key}` });
+      }
+    }
+  }
+
+  const agencySettings = require('../models/agencySettings');
+  await agencySettings.setSetting(agencyId, 'application_form_config', JSON.stringify(config));
+
+  res.json({ message: 'Application form config updated' });
+}, 'update application form config');
+
 module.exports = {
   getAllSettings,
   getViewingSettings,
@@ -406,5 +463,7 @@ module.exports = {
   uploadCmpCertificate,
   uploadPrsCertificate,
   uploadPrivacyPolicy,
-  uploadIcoCertificate
+  uploadIcoCertificate,
+  getApplicationFormConfig,
+  updateApplicationFormConfig,
 };

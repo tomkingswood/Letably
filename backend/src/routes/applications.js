@@ -20,6 +20,9 @@ router.get('/:id/generate-pdf', authenticateToken, requireAdmin, pdfGeneratorCon
 // File cleanup endpoint - manual trigger for admin
 router.post('/cleanup-orphaned-files', authenticateToken, requireAdmin, applicationsController.cleanupOrphanedFiles);
 
+// Form config (any authenticated user — returns resolved schema for rendering)
+router.get('/form-config', authenticateToken, applicationsController.getFormConfig);
+
 // User routes
 router.get('/my-applications', authenticateToken, applicationsController.getUserApplications);
 router.get('/:id', authenticateToken, applicationsController.getApplicationById);
