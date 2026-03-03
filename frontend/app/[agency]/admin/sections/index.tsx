@@ -242,6 +242,16 @@ export const sections: Record<string, {
       bgColor: 'bg-indigo-100',
     },
   },
+  'application-form-config': {
+    component: dynamic(() => import('./ApplicationFormConfigSection'), { loading: SectionLoading }),
+    meta: {
+      title: 'Application Form Config',
+      description: 'Configure which questions appear on student and professional application forms',
+      group: 'settings',
+      iconColor: 'text-green-600',
+      bgColor: 'bg-green-100',
+    },
+  },
   'property-certificate-types': {
     component: dynamic(() => import('./PropertyCertificateTypesSection'), { loading: SectionLoading }),
     meta: {

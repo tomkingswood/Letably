@@ -207,7 +207,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
           <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${escapeHtml(vr.visitor_email)}" style="color: #CF722F;">${escapeHtml(vr.visitor_email)}</a></p>
           <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:${escapeHtml(vr.visitor_phone)}" style="color: #CF722F;">${escapeHtml(vr.visitor_phone)}</a></p>
           ${vr.preferred_date ? `<p style="margin: 5px 0;"><strong>Preferred Date:</strong> ${formatDate(vr.preferred_date, 'full')}</p>` : ''}
-          ${vr.message ? `<p style="margin: 5px 0;"><strong>Message:</strong> ${escapeHtml(vr.message)}</p>` : ''}
+          ${vr.internal_notes ? `<p style="margin: 5px 0;"><strong>Notes:</strong> ${escapeHtml(vr.internal_notes)}</p>` : ''}
         </div>
       `;
     }
@@ -466,7 +466,8 @@ const calculateReminders = async (agencyId) => {
       FROM viewing_requests vr
       LEFT JOIN properties p ON vr.property_id = p.id
       WHERE vr.status IN ('pending', 'confirmed')
-    `, [], agencyId);
+      AND vr.agency_id = $1
+    `, [agencyId], agencyId);
     const viewingRequests = viewingRequestsResult.rows;
 
     for (const vr of viewingRequests) {
@@ -504,7 +505,7 @@ const calculateReminders = async (agencyId) => {
               visitor_email: vr.visitor_email,
               visitor_phone: vr.visitor_phone,
               preferred_date: vr.preferred_date,
-              message: vr.message
+              internal_notes: vr.internal_notes
             }
           });
         }
@@ -549,7 +550,7 @@ const calculateReminders = async (agencyId) => {
               visitor_email: vr.visitor_email,
               visitor_phone: vr.visitor_phone,
               preferred_date: vr.preferred_date,
-              message: vr.message
+              internal_notes: vr.internal_notes
             }
           });
         }

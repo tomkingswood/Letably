@@ -7,7 +7,9 @@ const {
   uploadCmpCertificate,
   uploadPrsCertificate,
   uploadPrivacyPolicy,
-  uploadIcoCertificate
+  uploadIcoCertificate,
+  getApplicationFormConfig,
+  updateApplicationFormConfig,
 } = require('../controllers/settingsController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { agencyContext, requireAgency } = require('../middleware/agencyContext');
@@ -33,5 +35,9 @@ router.post('/upload-privacy-policy', agencyContext, requireAgency, authenticate
 
 // Admin only - upload ICO certificate
 router.post('/upload-ico-certificate', agencyContext, requireAgency, authenticateToken, requireAdmin, legalDocumentUpload.single('file'), uploadIcoCertificate);
+
+// Application form config (admin only)
+router.get('/application-form-config', agencyContext, requireAgency, authenticateToken, requireAdmin, getApplicationFormConfig);
+router.put('/application-form-config', agencyContext, requireAgency, authenticateToken, requireAdmin, updateApplicationFormConfig);
 
 module.exports = router;

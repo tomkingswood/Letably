@@ -252,7 +252,7 @@ exports.getAllReminders = asyncHandler(async (req, res) => {
               visitor_email: vr.visitor_email,
               visitor_phone: vr.visitor_phone,
               preferred_date: vr.preferred_date,
-              message: vr.message
+              internal_notes: vr.internal_notes
             }
           });
         }
@@ -297,7 +297,7 @@ exports.getAllReminders = asyncHandler(async (req, res) => {
               visitor_email: vr.visitor_email,
               visitor_phone: vr.visitor_phone,
               preferred_date: vr.preferred_date,
-              message: vr.message
+              internal_notes: vr.internal_notes
             }
           });
         }

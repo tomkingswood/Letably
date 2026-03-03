@@ -9,6 +9,7 @@ import type {
   ManualReminderFormData,
   ApplicationFormData,
   HoldingDepositFormData,
+  ApplicationFormConfig,
 } from './types';
 
 // Use internal URL for server-side requests, public URL for client-side
@@ -258,7 +259,7 @@ export const viewingRequests = {
     name: string;
     email: string;
     phone: string;
-    message?: string;
+    message?: string; // Public form field, stored as internal_notes
     preferred_date?: string;
     preferred_time?: string;
     website?: string; // Honeypot field
@@ -268,7 +269,7 @@ export const viewingRequests = {
     visitor_name: string;
     visitor_email: string;
     visitor_phone?: string;
-    message?: string;
+    internal_notes?: string;
     preferred_date?: string;
     preferred_time?: string;
   }) => api.post('/viewing-requests/admin', data),
@@ -276,8 +277,10 @@ export const viewingRequests = {
   getPendingCount: () => api.get('/viewing-requests/count/pending'),
   updateStatus: (id: string | number, status: string) =>
     api.patch(`/viewing-requests/${id}/status`, { status }),
-  updateDate: (id: string | number, preferred_date: string) =>
-    api.patch(`/viewing-requests/${id}/date`, { preferred_date }),
+  updateDate: (id: string | number, preferred_date: string | null, preferred_time?: string | null) =>
+    api.patch(`/viewing-requests/${id}/date`, { preferred_date, preferred_time }),
+  updateNotes: (id: string | number, internal_notes: string) =>
+    api.patch(`/viewing-requests/${id}/notes`, { internal_notes }),
   delete: (id: string | number) => api.delete(`/viewing-requests/${id}`),
   bulkDelete: (ids: (string | number)[]) =>
     api.post('/viewing-requests/bulk-delete', { ids }),
@@ -324,6 +327,9 @@ export const settings = {
     holding_deposit_type?: string;
     holding_deposit_amount?: string;
   }) => api.put('/settings', data), // Admin only - update settings
+  getApplicationFormConfig: () => api.get('/settings/application-form-config'),
+  updateApplicationFormConfig: (config: ApplicationFormConfig) =>
+    api.put('/settings/application-form-config', { config }),
 };
 
 
@@ -439,6 +445,10 @@ export const applications = {
     guarantor_signature_name: string;
     guarantor_signature_agreed: boolean;
   }) => axios.post(`${getApiUrl()}/applications/guarantor/${token}`, data),
+
+  // Form config
+  getFormConfig: (type: 'student' | 'professional') =>
+    api.get(`/applications/form-config?type=${type}`),
 
   // ID Document routes
   uploadApplicantId: (id: string | number, file: File) => {

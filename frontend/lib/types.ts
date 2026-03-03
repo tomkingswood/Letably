@@ -57,7 +57,7 @@ export interface ViewingRequest {
   visitor_name: string;
   visitor_email: string;
   visitor_phone: string;
-  message?: string;
+  internal_notes?: string;
   preferred_date?: string;
   preferred_time?: string;
   status: string;
@@ -555,4 +555,59 @@ export interface HoldingDepositFormData {
   bedroom_id?: number;
   property_id?: number;
   reservation_days?: number;
+}
+
+// ── Application Form Config Types ────────────────────────────────────────────
+
+export interface QuestionOption {
+  value: string;
+  label: string;
+}
+
+export interface QuestionDefinition {
+  key: string;
+  label: string;
+  type: 'text' | 'select' | 'date' | 'email' | 'tel' | 'textarea' | 'number' | 'radio' | 'complex';
+  component?: string;
+  section: string;
+  sectionLabel: string;
+  scope: 'all' | 'student' | 'professional';
+  core: boolean;
+  required: boolean;
+  enabled: boolean;
+  storage: 'column' | 'form_data';
+  options?: QuestionOption[] | null;
+  dependsOn?: { key: string; value: string | boolean } | null;
+  placeholder?: string;
+  gridCols?: number;
+  min?: number;
+  max?: number;
+  subSection?: string;
+}
+
+export interface FormSectionGroup {
+  sectionKey: string;
+  sectionLabel: string;
+  questions: QuestionDefinition[];
+}
+
+export interface ConfigurableQuestion {
+  key: string;
+  label: string;
+  section: string;
+  sectionLabel: string;
+  scope: string;
+  required: boolean;
+}
+
+export interface ApplicationFormConfigEntry {
+  key: string;
+  enabled: boolean;
+  required: boolean;
+}
+
+export interface ApplicationFormConfig {
+  all: ApplicationFormConfigEntry[];
+  student: ApplicationFormConfigEntry[];
+  professional: ApplicationFormConfigEntry[];
 }

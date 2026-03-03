@@ -396,6 +396,36 @@ exports.getApplicationByIdAdmin = asyncHandler(async (req, res) => {
   res.json(application);
 }, 'fetch application');
 
+// Get resolved form config for rendering
+exports.getFormConfig = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const { type } = req.query;
+
+  if (!type || !['student', 'professional'].includes(type)) {
+    return res.status(400).json({ error: 'type query parameter must be "student" or "professional"' });
+  }
+
+  const { resolveFormSchema } = require('../helpers/questionCatalogue');
+
+  // Load agency config from site_settings
+  let agencyConfig = null;
+  const result = await db.query(
+    "SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2",
+    ['application_form_config', agencyId],
+    agencyId
+  );
+  if (result.rows[0]?.setting_value) {
+    try {
+      agencyConfig = JSON.parse(result.rows[0].setting_value);
+    } catch {
+      agencyConfig = null;
+    }
+  }
+
+  const schema = resolveFormSchema(agencyConfig, type);
+  res.json({ schema });
+}, 'fetch form config');
+
 // Update/Submit application
 exports.updateApplication = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
@@ -471,6 +501,35 @@ exports.updateApplication = asyncHandler(async (req, res) => {
   let guarantorTokenExpiresAt = application.guarantor_token_expires_at;
 
   if (submit && application.status === 'pending') {
+    // Config-aware required-field validation
+    const { getRequiredFieldKeys } = require('../helpers/questionCatalogue');
+    let agencyFormConfig = null;
+    const configResult = await db.query(
+      "SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2",
+      ['application_form_config', agencyId],
+      agencyId
+    );
+    if (configResult.rows[0]?.setting_value) {
+      try { agencyFormConfig = JSON.parse(configResult.rows[0].setting_value); } catch { /* use null */ }
+    }
+
+    // Merge req.body with existing application data for dependency resolution
+    const mergedData = { ...application, ...req.body };
+    const requiredKeys = getRequiredFieldKeys(agencyFormConfig, application.application_type, mergedData);
+
+    const missingFields = [];
+    for (const key of requiredKeys) {
+      const val = req.body[key] ?? application[key];
+      if (val === undefined || val === null || val === '') {
+        missingFields.push(key);
+      }
+    }
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: `Please complete all required fields before submitting: ${missingFields.join(', ')}`,
+      });
+    }
+
     // Validate signature matches applicant's name
     const applicantFirstName = first_name || application.first_name || '';
     const applicantSurname = surname || application.surname || '';
