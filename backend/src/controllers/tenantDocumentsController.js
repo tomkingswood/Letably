@@ -4,7 +4,6 @@ const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const { encryptFile, decryptFile } = require('../utils/encryption');
-const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 
 // Secure documents directory (outside web root, same level as ID documents)
@@ -190,8 +189,7 @@ exports.getMyDocuments = asyncHandler(async (req, res) => {
 /**
  * Download/view a document (Admin or owner tenant)
  */
-exports.downloadDocument = async (req, res) => {
-  try {
+exports.downloadDocument = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     const isAdmin = req.user.role === 'admin';
@@ -243,18 +241,7 @@ exports.downloadDocument = async (req, res) => {
 
     res.send(decryptedData);
 
-  } catch (err) {
-    if (err.message.includes('decrypt')) {
-      return res.status(500).json({ error: 'File corrupted or tampered with' });
-    }
-
-    if (err.code === 'ENOENT') {
-      return res.status(404).json({ error: 'File not found on server not found' });
-    }
-
-    handleError(res, err, 'download document');
-  }
-};
+}, 'download document');
 
 /**
  * Delete a document (Admin only)

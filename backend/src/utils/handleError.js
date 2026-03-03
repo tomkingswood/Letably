@@ -1,3 +1,5 @@
+const { AppError } = require('../middleware/errorHandler');
+
 /**
  * Handle common controller errors
  * Logs the error and sends appropriate response
@@ -6,6 +8,11 @@
  * @param {string} action - Description of the action that failed
  */
 const handleError = (res, err, action = 'perform operation') => {
+  // AppError subclasses (ValidationError, NotFoundError, etc.) carry their own status code
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({ error: err.message });
+  }
+
   console.error(`Error during ${action}:`, err);
 
   // Check for known error types

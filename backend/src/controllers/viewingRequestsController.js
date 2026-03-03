@@ -289,8 +289,8 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
   // Validate preferred date against minimum days setting
   if (preferred_date) {
     const minDaysResult = await db.query(
-      "SELECT setting_value FROM site_settings WHERE setting_key = $1",
-      ['viewing_min_days_advance'],
+      "SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2",
+      ['viewing_min_days_advance', agencyId],
       agencyId
     );
     const minDaysSetting = minDaysResult.rows[0];

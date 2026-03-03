@@ -6,7 +6,6 @@
 
 const agencyService = require('../services/agencyService');
 const AgencyModel = require('../models/agency');
-const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 
 /**
@@ -14,29 +13,29 @@ const asyncHandler = require('../utils/asyncHandler');
  *
  * POST /api/agencies/register
  */
-exports.register = async (req, res) => {
+exports.register = asyncHandler(async (req, res) => {
+  const {
+    agency_name,
+    agency_email,
+    agency_phone,
+    admin_email,
+    admin_password,
+    admin_first_name,
+    admin_last_name,
+    admin_phone
+  } = req.body;
+
+  // Validation
+  if (!agency_name || !agency_email || !admin_email || !admin_password || !admin_first_name || !admin_last_name) {
+    return res.status(400).json({ error: 'Missing required fields: agency_name, agency_email, admin_email, admin_password, admin_first_name, admin_last_name' });
+  }
+
+  // Password validation
+  if (admin_password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+
   try {
-    const {
-      agency_name,
-      agency_email,
-      agency_phone,
-      admin_email,
-      admin_password,
-      admin_first_name,
-      admin_last_name,
-      admin_phone
-    } = req.body;
-
-    // Validation
-    if (!agency_name || !agency_email || !admin_email || !admin_password || !admin_first_name || !admin_last_name) {
-      return res.status(400).json({ error: 'Missing required fields: agency_name, agency_email, admin_email, admin_password, admin_first_name, admin_last_name' });
-    }
-
-    // Password validation
-    if (admin_password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-
     const result = await agencyService.registerAgency({
       agency_name,
       agency_email,
@@ -60,13 +59,12 @@ exports.register = async (req, res) => {
       login_url: `/${result.agency.slug}/login`
     });
   } catch (err) {
-    if (err.code === '23505') { // Unique constraint violation
+    if (err.code === '23505') {
       return res.status(400).json({ error: 'Agency with this email or slug already exists' });
     }
-
-    handleError(res, err, 'register agency');
+    throw err;
   }
-};
+}, 'register agency');
 
 /**
  * Get agency by slug (public info)
@@ -105,10 +103,10 @@ exports.getCurrent = asyncHandler(async (req, res) => {
  *
  * PUT /api/agencies/branding
  */
-exports.updateBranding = async (req, res) => {
-  try {
-    const { logo_url, primary_color, secondary_color, show_powered_by } = req.body;
+exports.updateBranding = asyncHandler(async (req, res) => {
+  const { logo_url, primary_color, secondary_color, show_powered_by } = req.body;
 
+  try {
     const agency = await agencyService.updateBranding(req.agencyId, {
       logo_url,
       primary_color,
@@ -126,13 +124,12 @@ exports.updateBranding = async (req, res) => {
       }
     });
   } catch (err) {
-    if (err.message.includes('Invalid')) {
+    if (err.message && err.message.includes('Invalid')) {
       return res.status(400).json({ error: err.message });
     }
-
-    handleError(res, err, 'update branding');
+    throw err;
   }
-};
+}, 'update branding');
 
 /**
  * Get agency settings
@@ -190,20 +187,20 @@ exports.revokeApiKey = asyncHandler(async (req, res) => {
  *
  * POST /api/agencies/custom-domain
  */
-exports.setupCustomDomain = async (req, res) => {
+exports.setupCustomDomain = asyncHandler(async (req, res) => {
+  const { domain } = req.body;
+
+  if (!domain) {
+    return res.status(400).json({ error: 'Domain is required' });
+  }
+
+  // Check premium subscription
+  const agency = await AgencyModel.findById(req.agencyId);
+  if (agency.subscription_tier !== 'premium') {
+    return res.status(403).json({ error: 'Custom domains require a premium subscription' });
+  }
+
   try {
-    const { domain } = req.body;
-
-    if (!domain) {
-      return res.status(400).json({ error: 'Domain is required' });
-    }
-
-    // Check premium subscription
-    const agency = await AgencyModel.findById(req.agencyId);
-    if (agency.subscription_tier !== 'premium') {
-      return res.status(403).json({ error: 'Custom domains require a premium subscription' });
-    }
-
     const result = await agencyService.setupCustomDomain(req.agencyId, domain);
 
     res.json({
@@ -211,13 +208,12 @@ exports.setupCustomDomain = async (req, res) => {
       ...result
     });
   } catch (err) {
-    if (err.message.includes('Invalid') || err.message.includes('already in use')) {
+    if (err.message && (err.message.includes('Invalid') || err.message.includes('already in use'))) {
       return res.status(400).json({ error: err.message });
     }
-
-    handleError(res, err, 'setup custom domain');
+    throw err;
   }
-};
+}, 'setup custom domain');
 
 /**
  * Verify custom domain

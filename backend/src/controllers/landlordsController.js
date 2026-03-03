@@ -5,6 +5,7 @@ const agreementService = require('../services/agreementService');
 const userService = require('../services/userService');
 const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
+const { validateRequiredFields } = require('../utils/validators');
 
 // Get all landlords
 exports.getAllLandlords = asyncHandler(async (req, res) => {
@@ -80,12 +81,7 @@ exports.createLandlord = asyncHandler(async (req, res) => {
     send_welcome_email = true
   } = req.body;
 
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Name is required' });
-  }
-  if (!email || !email.trim()) {
-    return res.status(400).json({ error: 'Email is required' });
-  }
+  validateRequiredFields(req.body, ['name', 'email']);
 
   const result = await db.query(`
     INSERT INTO landlords (

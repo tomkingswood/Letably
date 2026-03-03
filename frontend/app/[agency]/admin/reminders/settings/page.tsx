@@ -6,6 +6,7 @@ import { useAgency } from '@/lib/agency-context';
 import { reminders } from '@/lib/api';
 import Link from 'next/link';
 import { MessageAlert } from '@/components/ui/MessageAlert';
+import { getErrorMessage } from '@/lib/types';
 import {
   DndContext,
   closestCenter,
@@ -146,17 +147,17 @@ export default function ReminderSettingsPage() {
     try {
       const response = await reminders.getThresholds();
       setThresholds(response.data);
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to load reminder thresholds',
+        text: getErrorMessage(err, 'Failed to load reminder thresholds'),
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleThresholdChange = (index: number, field: string, value: any) => {
+  const handleThresholdChange = (index: number, field: string, value: string | number | boolean) => {
     const newThresholds = [...thresholds];
     newThresholds[index] = { ...newThresholds[index], [field]: value };
     setThresholds(newThresholds);
@@ -181,10 +182,10 @@ export default function ReminderSettingsPage() {
           text: 'Threshold order updated successfully!',
         });
         setTimeout(() => setMessage(null), 3000);
-      } catch (error: any) {
+      } catch (err: unknown) {
         setMessage({
           type: 'error',
-          text: error.response?.data?.error || 'Failed to update threshold order',
+          text: getErrorMessage(err, 'Failed to update threshold order'),
         });
         // Revert on error
         fetchThresholds();
@@ -204,10 +205,10 @@ export default function ReminderSettingsPage() {
         text: 'Reminder settings updated successfully!',
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to update reminder settings',
+        text: getErrorMessage(err, 'Failed to update reminder settings'),
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {

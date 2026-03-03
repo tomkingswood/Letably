@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { auth } from '@/lib/api';
 import Link from 'next/link';
 import { MessageAlert } from '@/components/ui/MessageAlert';
+import { getErrorMessage } from '@/lib/types';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -23,10 +24,10 @@ export default function ForgotPasswordPage() {
         type: 'success',
         text: 'If an account exists with that email, you will receive a password reset link.'
       });
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to process request'
+        text: getErrorMessage(err, 'Failed to process request')
       });
     } finally {
       setLoading(false);

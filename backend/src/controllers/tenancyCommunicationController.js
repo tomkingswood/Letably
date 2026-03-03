@@ -5,7 +5,7 @@ const { queueEmail } = require('../services/emailService');
 const { createEmailTemplate, createButton, createInfoBox, escapeHtml } = require('../utils/emailTemplates');
 const { getAgencyBranding } = require('../services/brandingService');
 const asyncHandler = require('../utils/asyncHandler');
-const handleError = require('../utils/handleError');
+
 const { getFrontendBaseUrl } = require('../utils/urlBuilder');
 
 /**
@@ -269,8 +269,7 @@ exports.getMyThread = asyncHandler(async (req, res) => {
 /**
  * Send message to tenant's tenancy thread (with optional attachments)
  */
-exports.sendMessage = async (req, res) => {
-  try {
+exports.sendMessage = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const agencyId = req.agencyId;
     const { content } = req.body;
@@ -354,16 +353,7 @@ exports.sendMessage = async (req, res) => {
         attachments
       }
     });
-  } catch (err) {
-    // Clean up any uploaded files on error
-    if (req.files) {
-      for (const file of req.files) {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      }
-    }
-    handleError(res, err, 'send message');
-  }
-};
+}, 'send message');
 
 
 // ============================================
@@ -464,8 +454,7 @@ exports.getLandlordThread = asyncHandler(async (req, res) => {
 /**
  * Send message as landlord (with optional attachments)
  */
-exports.sendMessageLandlord = async (req, res) => {
-  try {
+exports.sendMessageLandlord = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const userEmail = req.user.email;
     const agencyId = req.agencyId;
@@ -553,16 +542,7 @@ exports.sendMessageLandlord = async (req, res) => {
         attachments
       }
     });
-  } catch (err) {
-    // Clean up any uploaded files on error
-    if (req.files) {
-      for (const file of req.files) {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      }
-    }
-    handleError(res, err, 'send landlord message');
-  }
-};
+}, 'send landlord message');
 
 
 /**
@@ -791,8 +771,7 @@ exports.getAdminThread = asyncHandler(async (req, res) => {
 /**
  * Send message as admin (with optional attachments)
  */
-exports.sendMessageAdmin = async (req, res) => {
-  try {
+exports.sendMessageAdmin = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const agencyId = req.agencyId;
     const { tenancyId } = req.params;
@@ -872,16 +851,7 @@ exports.sendMessageAdmin = async (req, res) => {
         attachments
       }
     });
-  } catch (err) {
-    // Clean up any uploaded files on error
-    if (req.files) {
-      for (const file of req.files) {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      }
-    }
-    handleError(res, err, 'send admin message');
-  }
-};
+}, 'send admin message');
 
 /**
  * Delete message (admin only)

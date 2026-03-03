@@ -101,9 +101,9 @@ exports.create = asyncHandler(async (req, res) => {
     const newDisplayOrder = (maxOrderResult.rows[0]?.max_order || 0) + 1;
 
     await db.query(`
-      INSERT INTO reminder_thresholds (certificate_type, display_name, critical_days, medium_days, low_days, enabled, display_order)
-      VALUES ($1, $2, 3, 7, 30, true, $3)
-    `, [name, display_name || name, newDisplayOrder], agencyId);
+      INSERT INTO reminder_thresholds (agency_id, certificate_type, display_name, critical_days, medium_days, low_days, enabled, display_order)
+      VALUES ($1, $2, $3, 3, 7, 30, true, $4)
+    `, [agencyId, name, display_name || name, newDisplayOrder], agencyId);
   }
 
   res.status(201).json({

@@ -168,9 +168,8 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
     try {
       await propertiesApi.delete(id);
       setProperties(properties.filter((p) => p.id !== id));
-    } catch (error) {
-      console.error('Error deleting property:', error);
-      alert('Failed to delete property');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to delete property'));
     }
   };
 
@@ -218,9 +217,8 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
       await propertiesApi.updateDisplayOrder(propertyIds);
       setReorderMode(false);
       setOriginalOrder([]);
-    } catch (error) {
-      console.error('Error saving order:', error);
-      alert('Failed to save property order');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to save property order'));
     } finally {
       setSavingOrder(false);
     }

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSuperAuth } from '@/lib/super-auth-context';
 import { superUsers, SuperUser } from '@/lib/super-api';
+import { getErrorMessage } from '@/lib/types';
 
 export default function SuperAdminUsersPage() {
   const router = useRouter();
@@ -62,10 +63,10 @@ export default function SuperAdminUsersPage() {
       setShowCreateForm(false);
       setFormData({ email: '', password: '', first_name: '', last_name: '' });
       setMessage({ type: 'success', text: 'Super user created successfully' });
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to create user'
+        text: getErrorMessage(err, 'Failed to create user')
       });
     } finally {
       setCreating(false);

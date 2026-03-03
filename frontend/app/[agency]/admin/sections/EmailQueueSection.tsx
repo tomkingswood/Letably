@@ -5,6 +5,7 @@ import { emailQueue } from '@/lib/api';
 import { useAgency } from '@/lib/agency-context';
 import { SectionProps } from './index';
 import { MessageAlert } from '@/components/ui/MessageAlert';
+import { getErrorMessage } from '@/lib/types';
 
 interface QueuedEmail {
   id: number;
@@ -68,10 +69,10 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
       await emailQueue.deleteEmail(id);
       setMessage({ type: 'success', text: 'Email deleted successfully' });
       fetchEmails();
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to delete email',
+        text: getErrorMessage(err, 'Failed to delete email'),
       });
     }
   };
@@ -90,10 +91,10 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
       setShowDeleteAllModal(false);
       setDeleteAllConfirmStep(0);
       fetchEmails();
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to delete emails',
+        text: getErrorMessage(err, 'Failed to delete emails'),
       });
     } finally {
       setDeletingAll(false);

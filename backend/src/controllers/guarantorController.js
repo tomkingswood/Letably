@@ -1,7 +1,6 @@
 const { getGuarantorAgreementByToken, signGuarantorAgreement, checkTenancySigningComplete, generateGuarantorAgreementContent } = require('../services/guarantorService');
 const { generatePaymentSchedulesForTenancy } = require('../services/paymentService');
 const db = require('../db');
-const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 
 /**
@@ -75,82 +74,81 @@ exports.getAgreementByToken = asyncHandler(async (req, res) => {
  * Sign guarantor agreement (public endpoint)
  * This allows guarantors to sign their agreement
  */
-exports.signAgreement = async (req, res) => {
+exports.signAgreement = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  const { signature_data } = req.body;
+
+  if (!signature_data) {
+    return res.status(400).json({ error: 'Signature is required' });
+  }
+
+  // Validate signature format (basic validation)
+  if (typeof signature_data !== 'string' || signature_data.trim().length < 2) {
+    return res.status(400).json({ error: 'Invalid signature format' });
+  }
+
+  let signedAgreement;
+  const agencyId = await getAgencyIdFromToken(token);
   try {
-    const { token } = req.params;
-    const { signature_data } = req.body;
-
-    if (!signature_data) {
-      return res.status(400).json({ error: 'Signature is required' });
-    }
-
-    // Validate signature format (basic validation)
-    if (typeof signature_data !== 'string' || signature_data.trim().length < 2) {
-      return res.status(400).json({ error: 'Invalid signature format' });
-    }
-
-    const agencyId = await getAgencyIdFromToken(token);
-    const signedAgreement = await signGuarantorAgreement(token, signature_data.trim(), agencyId);
-
-    // Check if all guarantor agreements for this tenancy are now signed
-    // If so, auto-promote the tenancy to 'approval' status
-    try {
-      // Get tenancy_id from the signed agreement's member
-      const memberResult = await db.query(
-        'SELECT tenancy_id FROM tenancy_members WHERE id = $1',
-        [signedAgreement.tenancy_member_id]
-      );
-      const tenancyId = memberResult.rows[0]?.tenancy_id;
-
-      if (tenancyId) {
-        // Get tenancy status and agency_id
-        const tenancyResult = await db.query(
-          'SELECT status, agency_id FROM tenancies WHERE id = $1',
-          [tenancyId]
-        );
-        const tenancy = tenancyResult.rows[0];
-
-        // Auto-promote if tenancy is in 'awaiting_signatures' and all tenants + guarantors have signed
-        if (tenancy?.status === 'awaiting_signatures') {
-          const allComplete = await checkTenancySigningComplete(tenancyId, tenancy.agency_id);
-
-          if (allComplete) {
-            await db.query(
-              'UPDATE tenancies SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND agency_id = $3',
-              ['approval', tenancyId, tenancy.agency_id],
-              tenancy.agency_id
-            );
-
-            const paymentResult = await generatePaymentSchedulesForTenancy(tenancyId, tenancy.agency_id);
-            console.log(`Auto-approval: All tenants + guarantors signed. Generated payment schedules for tenancy ${tenancyId}:`, paymentResult);
-          }
-        }
-      }
-    } catch (approvalError) {
-      console.error('Error checking auto-approval after guarantor signing:', approvalError);
-      // Don't fail the guarantor signing response
-    }
-
-    res.json({
-      message: 'Guarantor agreement signed successfully',
-      agreement: {
-        id: signedAgreement.id,
-        is_signed: Boolean(signedAgreement.is_signed),
-        signed_at: signedAgreement.signed_at
-      }
-    });
+    signedAgreement = await signGuarantorAgreement(token, signature_data.trim(), agencyId);
   } catch (err) {
     if (err.message === 'Guarantor agreement not found') {
       return res.status(404).json({ error: 'Agreement not found' });
     }
-
     if (err.message === 'This guarantor agreement has already been signed') {
       return res.status(400).json({ error: err.message });
     }
-
-    handleError(res, err, 'sign guarantor agreement');
+    throw err;
   }
-};
+
+  // Check if all guarantor agreements for this tenancy are now signed
+  // If so, auto-promote the tenancy to 'approval' status
+  try {
+    // Get tenancy_id from the signed agreement's member
+    const memberResult = await db.query(
+      'SELECT tenancy_id FROM tenancy_members WHERE id = $1',
+      [signedAgreement.tenancy_member_id]
+    );
+    const tenancyId = memberResult.rows[0]?.tenancy_id;
+
+    if (tenancyId) {
+      // Get tenancy status and agency_id
+      const tenancyResult = await db.query(
+        'SELECT status, agency_id FROM tenancies WHERE id = $1',
+        [tenancyId]
+      );
+      const tenancy = tenancyResult.rows[0];
+
+      // Auto-promote if tenancy is in 'awaiting_signatures' and all tenants + guarantors have signed
+      if (tenancy?.status === 'awaiting_signatures') {
+        const allComplete = await checkTenancySigningComplete(tenancyId, tenancy.agency_id);
+
+        if (allComplete) {
+          await db.query(
+            'UPDATE tenancies SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND agency_id = $3',
+            ['approval', tenancyId, tenancy.agency_id],
+            tenancy.agency_id
+          );
+
+          const paymentResult = await generatePaymentSchedulesForTenancy(tenancyId, tenancy.agency_id);
+          console.log(`Auto-approval: All tenants + guarantors signed. Generated payment schedules for tenancy ${tenancyId}:`, paymentResult);
+        }
+      }
+    }
+  } catch (approvalError) {
+    console.error('Error checking auto-approval after guarantor signing:', approvalError);
+    // Don't fail the guarantor signing response
+  }
+
+  res.json({
+    message: 'Guarantor agreement signed successfully',
+    agreement: {
+      id: signedAgreement.id,
+      is_signed: Boolean(signedAgreement.is_signed),
+      signed_at: signedAgreement.signed_at
+    }
+  });
+}, 'sign guarantor agreement');
 
 /**
  * Get signed agreement HTML (public endpoint)

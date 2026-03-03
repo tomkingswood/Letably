@@ -319,8 +319,8 @@ const calculateReminders = async (agencyId) => {
 
   // Get threshold configurations
   const thresholdsResult = await db.query(
-    'SELECT * FROM reminder_thresholds WHERE enabled = true',
-    [],
+    'SELECT * FROM reminder_thresholds WHERE enabled = true AND agency_id = $1',
+    [agencyId],
     agencyId
   );
   const thresholds = thresholdsResult.rows;

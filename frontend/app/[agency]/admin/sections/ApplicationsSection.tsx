@@ -44,7 +44,7 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [listMessage, setListMessage] = useState<string | null>(null);
+  const [listMessage, setListMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Create form state
   const [creating, setCreating] = useState(false);
@@ -264,7 +264,7 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
         id={itemId}
         onBack={() => onNavigate?.('applications')}
         onDeleted={() => {
-          setListMessage('Application deleted successfully');
+          setListMessage({ type: 'success', text: 'Application deleted successfully' });
           onNavigate?.('applications');
         }}
         onNavigate={onNavigate}
@@ -551,10 +551,9 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
     try {
       await applicationsApi.delete(appId.toString());
       setApplications(prev => prev.filter(a => a.id !== appId));
-      setListMessage('Application deleted successfully');
+      setListMessage({ type: 'success', text: 'Application deleted successfully' });
     } catch (err: unknown) {
-      setListMessage(null);
-      alert(getErrorMessage(err, 'Failed to delete application'));
+      setListMessage({ type: 'error', text: getErrorMessage(err, 'Failed to delete application') });
     } finally {
       setDeletingId(null);
     }
@@ -570,7 +569,7 @@ export default function ApplicationsSection({ onNavigate, action, itemId, onBack
 
   return (
     <div>
-      <MessageAlert type="success" message={listMessage} className="mb-6" />
+      {listMessage && <MessageAlert type={listMessage.type} message={listMessage.text} className="mb-6" onDismiss={() => setListMessage(null)} />}
 
       {/* Section Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
