@@ -210,7 +210,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
         const attrs: Record<number, string | number | boolean | null> = {};
         for (const attr of prop.custom_attributes) {
           if (attr.attribute_type === 'boolean') {
-            attrs[attr.attribute_definition_id] = attr.value_boolean;
+            attrs[attr.attribute_definition_id] = attr.value_boolean ?? null;
           } else if (attr.attribute_type === 'number') {
             attrs[attr.attribute_definition_id] = attr.value_number != null ? Number(attr.value_number) : null;
           } else {
@@ -295,7 +295,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     if (room.custom_attributes) {
       for (const attr of room.custom_attributes) {
         if (attr.attribute_type === 'boolean') {
-          attrs[attr.attribute_definition_id] = attr.value_boolean ?? false;
+          attrs[attr.attribute_definition_id] = attr.value_boolean ?? null;
         } else if (attr.attribute_type === 'number') {
           attrs[attr.attribute_definition_id] = attr.value_number != null ? Number(attr.value_number) : null;
         } else {

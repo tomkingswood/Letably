@@ -46,10 +46,12 @@ async function fetchCustomAttributes(propertyIds, agencyId) {
  * @param {number} agencyId
  * @param {Object} attributes - { definitionId: value, ... }
  */
-async function saveCustomAttributes(propertyId, agencyId, attributes) {
-  if (!attributes || Object.keys(attributes).length === 0) return;
+async function saveCustomAttributes(propertyId, agencyId, attributes, txClient) {
+  // Guard: only accept plain objects
+  if (!attributes || typeof attributes !== 'object' || Array.isArray(attributes)) return;
+  if (Object.keys(attributes).length === 0) return;
 
-  await db.transaction(async (client) => {
+  const doWork = async (client) => {
     // Fetch definitions to know each attribute's type — filter to valid integers only
     const defIds = Object.keys(attributes).map(Number).filter(n => Number.isInteger(n) && n > 0);
     if (defIds.length === 0) return;
@@ -92,7 +94,13 @@ async function saveCustomAttributes(propertyId, agencyId, attributes) {
         WHERE property_attribute_values.agency_id = $3
       `, [propertyId, numDefId, agencyId, valueText, valueNumber, valueBoolean]);
     }
-  }, agencyId);
+  };
+
+  if (txClient) {
+    await doWork(txClient);
+  } else {
+    await db.transaction(doWork, agencyId);
+  }
 }
 
 // Get all properties with optional filters
@@ -341,41 +349,45 @@ exports.createProperty = asyncHandler(async (req, res) => {
 
   validateRequiredFields(req.body, ['address_line1', 'city', 'postcode']);
 
-  const result = await db.query(`
-    INSERT INTO properties (
-      address_line1, address_line2, city, postcode, location,
-      available_from, description,
-      letting_type, landlord_id, is_live, agency_id
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-    RETURNING *
-  `, [
-    address_line1,
-    address_line2 || null,
-    city,
-    postcode,
-    location || null,
-    available_from || null,
-    description || null,
-    letting_type || 'Whole House',
-    landlord_id || null,
-    is_live ? true : false,
-    agencyId
-  ], agencyId);
+  const { property: createdProperty, customAttrs } = await db.transaction(async (client) => {
+    const result = await client.query(`
+      INSERT INTO properties (
+        address_line1, address_line2, city, postcode, location,
+        available_from, description,
+        letting_type, landlord_id, is_live, agency_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *
+    `, [
+      address_line1,
+      address_line2 || null,
+      city,
+      postcode,
+      location || null,
+      available_from || null,
+      description || null,
+      letting_type || 'Whole House',
+      landlord_id || null,
+      is_live ? true : false,
+      agencyId
+    ]);
 
-  const property = result.rows[0];
+    const prop = result.rows[0];
 
-  // Save custom attributes if provided
-  await saveCustomAttributes(property.id, agencyId, custom_attributes);
+    // Save custom attributes within same transaction
+    await saveCustomAttributes(prop.id, agencyId, custom_attributes, client);
 
-  // Fetch saved custom attributes to include in response
-  const customAttrsByProperty = await fetchCustomAttributes([property.id], agencyId);
+    return { property: prop, customAttrs: null };
+  }, agencyId);
+
+  // Fetch saved custom attributes after commit for response
+  const customAttrsByProperty = await fetchCustomAttributes([createdProperty.id], agencyId);
 
   res.status(201).json({
     message: 'Property created successfully',
     property: {
-      ...property,
-      title: computeTitle(property),
-      custom_attributes: customAttrsByProperty[property.id] || [],
+      ...createdProperty,
+      title: computeTitle(createdProperty),
+      custom_attributes: customAttrsByProperty[createdProperty.id] || [],
     }
   });
 }, 'create property');
@@ -404,47 +416,51 @@ exports.updateProperty = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: 'Property not found' });
   }
 
-  const result = await db.query(`
-    UPDATE properties SET
-      address_line1 = $1,
-      address_line2 = $2,
-      city = $3,
-      postcode = $4,
-      location = $5,
-      available_from = $6,
-      description = $7,
-      letting_type = $8,
-      landlord_id = $9,
-      is_live = $10,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = $11 AND agency_id = $12
-    RETURNING *
-  `, [
-    address_line1,
-    address_line2 || null,
-    city,
-    postcode,
-    location || null,
-    available_from || null,
-    description,
-    letting_type,
-    landlord_id || null,
-    is_live ? true : false,
-    id,
-    agencyId
-  ], agencyId);
+  const updatedProperty = await db.transaction(async (client) => {
+    const result = await client.query(`
+      UPDATE properties SET
+        address_line1 = $1,
+        address_line2 = $2,
+        city = $3,
+        postcode = $4,
+        location = $5,
+        available_from = $6,
+        description = $7,
+        letting_type = $8,
+        landlord_id = $9,
+        is_live = $10,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $11 AND agency_id = $12
+      RETURNING *
+    `, [
+      address_line1,
+      address_line2 || null,
+      city,
+      postcode,
+      location || null,
+      available_from || null,
+      description,
+      letting_type,
+      landlord_id || null,
+      is_live ? true : false,
+      id,
+      agencyId
+    ]);
 
-  // Save custom attributes if provided
-  await saveCustomAttributes(Number(id), agencyId, custom_attributes);
+    // Save custom attributes within same transaction
+    await saveCustomAttributes(Number(id), agencyId, custom_attributes, client);
 
-  // Fetch saved custom attributes to include in response
+    return result.rows[0];
+  }, agencyId);
+
+  // Fetch saved custom attributes after commit for response
   const customAttrsByProperty = await fetchCustomAttributes([Number(id)], agencyId);
 
   res.json({
     message: 'Property updated successfully',
     property: {
-      ...result.rows[0],
-      title: computeTitle(result.rows[0]),
+      ...updatedProperty,
+      title: computeTitle(updatedProperty),
       custom_attributes: customAttrsByProperty[Number(id)] || [],
     }
   });
@@ -495,14 +511,21 @@ exports.updateDisplayOrder = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'propertyIds must be a non-empty array' });
   }
 
+  // Reject duplicate IDs
+  const uniqueIds = new Set(propertyIds.map(Number));
+  if (uniqueIds.size !== propertyIds.length) {
+    return res.status(400).json({ error: 'propertyIds must not contain duplicates' });
+  }
+
   await db.transaction(async (client) => {
-    // Validate all IDs belong to this agency
-    const check = await client.query(
-      'SELECT COUNT(*)::int AS cnt FROM properties WHERE id = ANY($1) AND agency_id = $2',
-      [propertyIds, agencyId]
+    // Validate submitted list is the full set for this agency
+    const allProps = await client.query(
+      'SELECT id FROM properties WHERE agency_id = $1',
+      [agencyId]
     );
-    if (check.rows[0].cnt !== propertyIds.length) {
-      throw Object.assign(new Error('One or more property IDs do not belong to this agency'), { statusCode: 400 });
+    const storedIds = new Set(allProps.rows.map(r => r.id));
+    if (storedIds.size !== uniqueIds.size || ![...storedIds].every(id => uniqueIds.has(id))) {
+      throw Object.assign(new Error('propertyIds must contain exactly all properties for this agency'), { statusCode: 400 });
     }
 
     for (let i = 0; i < propertyIds.length; i++) {
