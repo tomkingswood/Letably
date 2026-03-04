@@ -40,8 +40,10 @@ async function saveCustomAttributes(bedroomId, agencyId, attributes) {
   if (!attributes || Object.keys(attributes).length === 0) return;
 
   await db.transaction(async (client) => {
-    // Fetch definitions to know each attribute's type
-    const defIds = Object.keys(attributes).map(Number);
+    // Fetch definitions to know each attribute's type — filter to valid integers only
+    const defIds = Object.keys(attributes).map(Number).filter(n => Number.isInteger(n) && n > 0);
+    if (defIds.length === 0) return;
+
     const defsResult = await client.query(
       'SELECT id, attribute_type FROM bedroom_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
       [defIds, agencyId]
@@ -54,6 +56,7 @@ async function saveCustomAttributes(bedroomId, agencyId, attributes) {
 
     for (const [defId, value] of Object.entries(attributes)) {
       const numDefId = Number(defId);
+      if (!Number.isInteger(numDefId) || numDefId <= 0) continue;
       const attrType = defTypes[numDefId];
       if (!attrType) continue; // Skip unknown definitions
 

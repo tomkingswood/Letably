@@ -142,6 +142,12 @@ exports.reorderDefinitions = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'definitionIds must be a non-empty array' });
   }
 
+  // Reject duplicate IDs before entering transaction
+  const uniqueIds = new Set(definitionIds.map(Number));
+  if (uniqueIds.size !== definitionIds.length) {
+    return res.status(400).json({ error: 'definitionIds must not contain duplicates' });
+  }
+
   await db.transaction(async (client) => {
     // Validate submitted list is the full set for this agency
     const allDefs = await client.query(
@@ -149,8 +155,7 @@ exports.reorderDefinitions = asyncHandler(async (req, res) => {
       [agencyId]
     );
     const storedIds = new Set(allDefs.rows.map(r => r.id));
-    const submittedIds = new Set(definitionIds.map(Number));
-    if (storedIds.size !== submittedIds.size || ![...storedIds].every(id => submittedIds.has(id))) {
+    if (storedIds.size !== uniqueIds.size || ![...storedIds].every(id => uniqueIds.has(id))) {
       throw Object.assign(new Error('definitionIds must contain exactly all definitions for this agency'), { statusCode: 400 });
     }
 
