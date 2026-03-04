@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { properties as propertiesApi, landlords as landlordsApi } from '@/lib/api';
-import { Property, Landlord, LETTING_TYPES, getErrorMessage } from '@/lib/types';
+import { properties as propertiesApi, landlords as landlordsApi, propertyAttributes as propertyAttributesApi } from '@/lib/api';
+import { Property, Landlord, LETTING_TYPES, PropertyAttributeDefinition, getErrorMessage } from '@/lib/types';
+import CustomAttributeField from '@/components/admin/CustomAttributeField';
 import { getStatusBadge, getStatusLabel } from '@/lib/statusBadges';
 import { useAuth } from '@/lib/auth-context';
 import { useAgency } from '@/lib/agency-context';
@@ -43,22 +44,16 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
     city: '',
     postcode: '',
     location: '',
-    bathrooms: '',
-    communal_areas: '',
     available_from: '',
-    property_type: 'House',
-    has_parking: false,
-    has_garden: false,
-    bills_included: true,
-    broadband_speed: '',
     description: '',
-    map_embed: '',
-    street_view_embed: '',
     letting_type: 'Whole House' as 'Whole House' | 'Room Only',
     is_live: true,
     landlord_id: '',
-    youtube_url: '',
   });
+
+  // Custom attributes
+  const [attributeDefinitions, setAttributeDefinitions] = useState<PropertyAttributeDefinition[]>([]);
+  const [customAttributes, setCustomAttributes] = useState<Record<number, string | number | boolean | null>>({});
 
   const isCreateMode = action === 'new';
   const isEditMode = !!itemId;
@@ -67,7 +62,17 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
   useEffect(() => {
     fetchProperties();
     fetchLandlords();
+    fetchAttributeDefinitions();
   }, []);
+
+  const fetchAttributeDefinitions = async () => {
+    try {
+      const response = await propertyAttributesApi.getDefinitions();
+      setAttributeDefinitions(response.data.definitions);
+    } catch (err: unknown) {
+      console.error('Error fetching attribute definitions:', err);
+    }
+  };
 
   // Re-fetch properties when returning to list mode (e.g. after editing)
   useEffect(() => {
@@ -95,9 +100,8 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
     try {
       const response = await propertiesApi.create({
         ...formData,
-        bathrooms: parseInt(formData.bathrooms),
-        communal_areas: parseInt(formData.communal_areas) || 0,
         landlord_id: formData.landlord_id ? parseInt(formData.landlord_id) : null,
+        custom_attributes: customAttributes,
       });
 
       resetForm();
@@ -118,22 +122,13 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
       city: '',
       postcode: '',
       location: '',
-      bathrooms: '',
-      communal_areas: '',
       available_from: '',
-      property_type: 'House',
-      has_parking: false,
-      has_garden: false,
-      bills_included: true,
-      broadband_speed: '',
       description: '',
-      map_embed: '',
-      street_view_embed: '',
       letting_type: 'Whole House',
       is_live: true,
       landlord_id: '',
-      youtube_url: '',
     });
+    setCustomAttributes({});
     setError('');
     setSuccess('');
   };
@@ -317,23 +312,6 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Property Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="property_type"
-                value={formData.property_type}
-                onChange={handleFormChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="House">House</option>
-                <option value="Flat">Flat</option>
-                <option value="Apartment">Apartment</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Letting Type <span className="text-red-500">*</span>
               </label>
               <select
@@ -381,76 +359,15 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
             </div>
 
             <Input
-              label="Bathrooms"
-              name="bathrooms"
-              type="number"
-              min="1"
-              value={formData.bathrooms}
-              onChange={handleFormChange}
-              required
-            />
-
-            <Input
-              label="Communal Areas"
-              name="communal_areas"
-              type="number"
-              min="0"
-              value={formData.communal_areas}
-              onChange={handleFormChange}
-              placeholder="e.g., 2"
-            />
-
-            <Input
               label="Available From"
               name="available_from"
               type="date"
               value={formData.available_from}
               onChange={handleFormChange}
             />
-
-            <Input
-              label="Broadband Speed"
-              name="broadband_speed"
-              value={formData.broadband_speed}
-              onChange={handleFormChange}
-              placeholder="e.g., 100Mbps"
-            />
           </div>
 
           <div className="space-y-3">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="has_parking"
-                checked={formData.has_parking}
-                onChange={handleFormChange}
-                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              <span className="ml-2 text-gray-700">Has Parking</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="has_garden"
-                checked={formData.has_garden}
-                onChange={handleFormChange}
-                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              <span className="ml-2 text-gray-700">Has Garden</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="bills_included"
-                checked={formData.bills_included}
-                onChange={handleFormChange}
-                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              <span className="ml-2 text-gray-700">Bills Included</span>
-            </label>
-
             <label className="flex items-center">
               <input
                 type="checkbox"
@@ -472,62 +389,22 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
             />
           </div>
 
-          {/* Google Maps, Street View & YouTube */}
-          <div>
-            <h3 className="text-xl font-bold mb-4">Media Embeds</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  YouTube Video URL
-                </label>
-                <input
-                  type="url"
-                  name="youtube_url"
-                  value={formData.youtube_url}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="https://www.youtube.com/watch?v=..."
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Paste the YouTube video URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Google Maps Embed Code
-                </label>
-                <textarea
-                  name="map_embed"
-                  value={formData.map_embed}
-                  onChange={handleFormChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-                  placeholder='<iframe src="https://www.google.com/maps/embed?pb=..." width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>'
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Get embed code from Google Maps &rarr; Share &rarr; Embed a map
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Google Street View Embed Code
-                </label>
-                <textarea
-                  name="street_view_embed"
-                  value={formData.street_view_embed}
-                  onChange={handleFormChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-                  placeholder='<iframe src="https://www.google.com/maps/embed?pb=!4v..." width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>'
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Get embed code from Google Maps Street View &rarr; Share &rarr; Embed a map
-                </p>
+          {/* Custom Property Attributes */}
+          {attributeDefinitions.length > 0 && (
+            <div>
+              <h3 className="text-xl font-bold mb-4">Property Attributes</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {attributeDefinitions.map((def) => (
+                  <CustomAttributeField
+                    key={def.id}
+                    definition={def}
+                    value={customAttributes[def.id]}
+                    onChange={(defId, value) => setCustomAttributes(prev => ({ ...prev, [defId]: value }))}
+                  />
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-end">
             <Button type="submit" disabled={saving}>

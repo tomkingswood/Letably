@@ -197,7 +197,7 @@ exports.createApplication = asyncHandler(async (req, res) => {
 
   if (is_new_user && setupToken) {
     // Send a SINGLE combined email: welcome + application notification
-    const setupUrl = `${buildPublicUrl(`setup-password/${setupToken}`)}`;
+    const setupUrl = buildAgencyUrl(req.agency.slug, `setup-password/${setupToken}`);
 
     const bodyContent = `
       <h1>Welcome to ${escapeHtml(companyName)}!</h1>

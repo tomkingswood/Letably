@@ -90,7 +90,7 @@ export function middleware(request: NextRequest) {
     'signup', 'api', '_next', 'static',
     'complaints',
     'cookie-policy', 'forgot-password', 'login',
-    'redress-scheme', 'reset-password', 'setup-password',
+    'redress-scheme', 'reset-password',
     'terms-and-conditions', 'robots.txt', 'sitemap.xml',
   ];
   if (reservedPaths.includes(agencySlug)) {

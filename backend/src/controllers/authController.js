@@ -821,7 +821,7 @@ exports.adminResetPassword = asyncHandler(async (req, res) => {
 
     // Build and queue password reset email
     try {
-      const setupUrl = buildPublicUrl(`setup-password/${setupToken}`);
+      const setupUrl = buildAgencyUrl(req.agency.slug, `setup-password/${setupToken}`);
       const branding = await getAgencyBranding(agencyId);
       const companyName = branding?.companyName || 'Letably';
 

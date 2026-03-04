@@ -40,15 +40,8 @@ const defaultPropertyData = {
   city: 'Sheffield',
   postcode: 'S1 2AB',
   location: 'Broomhill',
-  bedrooms: 5,
-  bathrooms: 2,
-  communal_areas: 1,
   available_from: '2025-09-01',
-  property_type: 'Terraced House',
-  has_parking: true,
-  has_garden: true,
   description: 'Beautiful 5-bedroom student house',
-  bills_included: true
 };
 
 /**
@@ -104,31 +97,21 @@ async function createPreviewData(options, agencyId) {
 
     // Create property
     const lettingType = tenancyType === 'room_only' ? 'Room Only' : 'Whole House';
-    const propertyTitle = propertyData.title || `${propertyData.address_line1}, ${propertyData.city}`;
     const propertyResult = await client.query(`
       INSERT INTO properties (
-        agency_id, title, address_line1, address_line2, city, postcode, location,
-        bathrooms, communal_areas,
-        available_from, property_type, has_parking, has_garden,
-        description, bills_included, letting_type, landlord_id, is_live
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        agency_id, address_line1, address_line2, city, postcode, location,
+        available_from, description, letting_type, landlord_id, is_live
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `, [
       agencyId,
-      propertyTitle,
       propertyData.address_line1,
       propertyData.address_line2 || null,
       propertyData.city,
       propertyData.postcode,
       propertyData.location,
-      propertyData.bathrooms,
-      propertyData.communal_areas,
       propertyData.available_from,
-      propertyData.property_type,
-      propertyData.has_parking,
-      propertyData.has_garden,
       propertyData.description,
-      propertyData.bills_included,
       lettingType,
       landlordId,
       false // Not live - preview only

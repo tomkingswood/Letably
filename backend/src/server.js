@@ -153,6 +153,8 @@ const tenancyCommunicationRoutes = require('./routes/tenancyCommunication');
 const idDocumentsRoutes = require('./routes/idDocuments');
 const dataExportRoutes = require('./routes/dataExport');
 const holdingDepositsRoutes = require('./routes/holdingDeposits');
+const propertyAttributesRoutes = require('./routes/propertyAttributes');
+const bedroomAttributesRoutes = require('./routes/bedroomAttributes');
 
 // Health check (no auth required)
 app.get('/api/health', (req, res) => {
@@ -200,6 +202,8 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/data-export', dataExportRoutes);
 app.use('/api/holding-deposits', holdingDepositsRoutes);
+app.use('/api/property-attributes', propertyAttributesRoutes);
+app.use('/api/bedroom-attributes', bedroomAttributesRoutes);
 
 // Public/external
 app.use('/api/guarantor', guarantorRoutes);

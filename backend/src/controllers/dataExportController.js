@@ -88,7 +88,7 @@ exports.getOptions = asyncHandler(async (req, res) => {
   // Defense-in-depth: explicit agency_id filtering
   const [landlords, properties, locations] = await Promise.all([
     db.query('SELECT id, name FROM landlords WHERE agency_id = $1 ORDER BY name', [agencyId], agencyId),
-    db.query('SELECT id, title, address_line1, city FROM properties WHERE agency_id = $1 ORDER BY title', [agencyId], agencyId),
+    db.query('SELECT id, address_line1, city, postcode FROM properties WHERE agency_id = $1 ORDER BY address_line1', [agencyId], agencyId),
     db.query('SELECT DISTINCT location FROM properties WHERE agency_id = $1 AND location IS NOT NULL ORDER BY location', [agencyId], agencyId),
   ]);
 
@@ -98,7 +98,7 @@ exports.getOptions = asyncHandler(async (req, res) => {
       landlords: landlords.rows,
       properties: properties.rows.map(p => ({
         id: p.id,
-        name: p.title || `${p.address_line1}, ${p.city}`,
+        name: [p.address_line1, p.city, p.postcode].filter(Boolean).join(', '),
       })),
       locations: locations.rows.map(row => ({ name: row.location })),
       statuses: {

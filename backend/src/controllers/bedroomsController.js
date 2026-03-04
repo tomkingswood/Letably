@@ -1,6 +1,98 @@
 const db = require('../db');
 const asyncHandler = require('../utils/asyncHandler');
 
+/**
+ * Fetch custom attribute values for an array of bedroom IDs
+ */
+async function fetchCustomAttributes(bedroomIds, agencyId) {
+  if (bedroomIds.length === 0) return {};
+
+  const result = await db.query(`
+    SELECT bav.bedroom_id, bav.attribute_definition_id, bav.value_text, bav.value_number, bav.value_boolean,
+           bad.name, bad.attribute_type
+    FROM bedroom_attribute_values bav
+    JOIN bedroom_attribute_definitions bad ON bad.id = bav.attribute_definition_id AND bad.agency_id = $2
+    WHERE bav.bedroom_id = ANY($1) AND bav.agency_id = $2
+    ORDER BY bad.display_order ASC
+  `, [bedroomIds, agencyId], agencyId);
+
+  const byBedroom = {};
+  for (const row of result.rows) {
+    (byBedroom[row.bedroom_id] ||= []).push({
+      attribute_definition_id: row.attribute_definition_id,
+      name: row.name,
+      attribute_type: row.attribute_type,
+      value_text: row.value_text,
+      value_number: row.value_number,
+      value_boolean: row.value_boolean,
+    });
+  }
+  return byBedroom;
+}
+
+/**
+ * Save custom attributes for a bedroom (UPSERT)
+ * @param {number} bedroomId
+ * @param {number} agencyId
+ * @param {Object} attributes - { definitionId: value, ... }
+ */
+async function saveCustomAttributes(bedroomId, agencyId, attributes, txClient) {
+  // Guard: only accept plain objects
+  if (!attributes || typeof attributes !== 'object' || Array.isArray(attributes)) return;
+  if (Object.keys(attributes).length === 0) return;
+
+  const doWork = async (client) => {
+    // Fetch definitions to know each attribute's type — filter to valid integers only
+    const defIds = Object.keys(attributes).map(Number).filter(n => Number.isInteger(n) && n > 0);
+    if (defIds.length === 0) return;
+
+    const defsResult = await client.query(
+      'SELECT id, attribute_type FROM bedroom_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
+      [defIds, agencyId]
+    );
+
+    const defTypes = {};
+    for (const def of defsResult.rows) {
+      defTypes[def.id] = def.attribute_type;
+    }
+
+    for (const [defId, value] of Object.entries(attributes)) {
+      const numDefId = Number(defId);
+      if (!Number.isInteger(numDefId) || numDefId <= 0) continue;
+      const attrType = defTypes[numDefId];
+      if (!attrType) continue; // Skip unknown definitions
+
+      let valueText = null, valueNumber = null, valueBoolean = null;
+      if (value === null || value === '' || value === undefined) {
+        // All nulls — effectively "no value"
+      } else if (attrType === 'text' || attrType === 'dropdown') {
+        valueText = String(value);
+      } else if (attrType === 'number') {
+        const num = Number(value);
+        valueNumber = Number.isFinite(num) ? num : null;
+      } else if (attrType === 'boolean') {
+        valueBoolean = (value === true || value === 'true') ? true
+          : (value === false || value === 'false') ? false
+          : null;
+      }
+
+      await client.query(`
+        INSERT INTO bedroom_attribute_values (bedroom_id, attribute_definition_id, agency_id, value_text, value_number, value_boolean)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (bedroom_id, attribute_definition_id)
+        DO UPDATE SET value_text = $4, value_number = $5, value_boolean = $6, updated_at = CURRENT_TIMESTAMP
+        WHERE bedroom_attribute_values.agency_id = $3
+      `, [bedroomId, numDefId, agencyId, valueText, valueNumber, valueBoolean]);
+    }
+  };
+
+  if (txClient) {
+    await doWork(txClient);
+  } else {
+    await db.transaction(doWork, agencyId);
+  }
+}
+
 // Get all bedrooms for a property
 exports.getBedroomsByProperty = asyncHandler(async (req, res) => {
   const { propertyId } = req.params;
@@ -14,18 +106,23 @@ exports.getBedroomsByProperty = asyncHandler(async (req, res) => {
   );
   const bedrooms = bedroomsResult.rows;
 
+  // Batch-fetch images and custom attributes
+  const bedroomIds = bedrooms.map(b => b.id);
+  const customAttrsByBedroom = await fetchCustomAttributes(bedroomIds, agencyId);
+
   const bedroomsWithImages = await Promise.all(bedrooms.map(async (bedroom) => {
     // Defense-in-depth: verify bedroom belongs to agency
     const imagesResult = await db.query(`
       SELECT i.file_path
       FROM images i
       WHERE i.bedroom_id = $1
-      AND i.bedroom_id IN (SELECT id FROM bedrooms WHERE agency_id = $2)
+      AND i.agency_id = $2
       ORDER BY i.created_at ASC
     `, [bedroom.id, agencyId], agencyId);
     return {
       ...bedroom,
-      images: imagesResult.rows.map(img => img.file_path)
+      images: imagesResult.rows.map(img => img.file_path),
+      custom_attributes: customAttrsByBedroom[bedroom.id] || [],
     };
   }));
 
@@ -35,7 +132,7 @@ exports.getBedroomsByProperty = asyncHandler(async (req, res) => {
 // Create bedroom (admin only)
 exports.createBedroom = asyncHandler(async (req, res) => {
   const { propertyId } = req.params;
-  const { bedroom_name, price_pppw, bedroom_description, available_from, youtube_url } = req.body;
+  const { bedroom_name, price_pppw, bedroom_description, available_from, custom_attributes } = req.body;
   const agencyId = req.agencyId;
 
   if (!bedroom_name) {
@@ -60,30 +157,45 @@ exports.createBedroom = asyncHandler(async (req, res) => {
   );
   const displayOrder = (maxOrderResult.rows[0]?.max_order || 0) + 1;
 
-  const result = await db.query(`
-    INSERT INTO bedrooms (agency_id, property_id, bedroom_name, price_pppw, bedroom_description, available_from, youtube_url, display_order)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING *
-  `, [
-    agencyId,
-    propertyId,
-    bedroom_name,
-    price_pppw || null,
-    bedroom_description || null,
-    available_from || null,
-    youtube_url || null,
-    displayOrder
-  ], agencyId);
+  const createdBedroom = await db.transaction(async (client) => {
+    const result = await client.query(`
+      INSERT INTO bedrooms (agency_id, property_id, bedroom_name, price_pppw, bedroom_description, available_from, display_order)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `, [
+      agencyId,
+      propertyId,
+      bedroom_name,
+      price_pppw || null,
+      bedroom_description || null,
+      available_from || null,
+      displayOrder
+    ]);
 
-  const bedroom = result.rows[0];
+    const bedroom = result.rows[0];
 
-  res.status(201).json({ message: 'Bedroom created successfully', bedroom });
+    // Save custom attributes within same transaction
+    await saveCustomAttributes(bedroom.id, agencyId, custom_attributes, client);
+
+    return bedroom;
+  }, agencyId);
+
+  // Fetch saved custom attributes after commit for response
+  const customAttrsByBedroom = await fetchCustomAttributes([createdBedroom.id], agencyId);
+
+  res.status(201).json({
+    message: 'Bedroom created successfully',
+    bedroom: {
+      ...createdBedroom,
+      custom_attributes: customAttrsByBedroom[createdBedroom.id] || [],
+    }
+  });
 }, 'create bedroom');
 
 // Update bedroom (admin only)
 exports.updateBedroom = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { bedroom_name, price_pppw, bedroom_description, available_from, youtube_url } = req.body;
+  const { bedroom_name, price_pppw, bedroom_description, available_from, custom_attributes } = req.body;
   const agencyId = req.agencyId;
 
   // Defense-in-depth: explicit agency_id filtering
@@ -97,21 +209,34 @@ exports.updateBedroom = asyncHandler(async (req, res) => {
   }
 
   // Defense-in-depth: explicit agency_id in WHERE clause
-  const result = await db.query(`
-    UPDATE bedrooms SET
-      bedroom_name = $1,
-      price_pppw = $2,
-      bedroom_description = $3,
-      available_from = $4,
-      youtube_url = $5,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = $6 AND agency_id = $7
-    RETURNING *
-  `, [bedroom_name, price_pppw, bedroom_description, available_from, youtube_url, id, agencyId], agencyId);
+  const updatedBedroom = await db.transaction(async (client) => {
+    const result = await client.query(`
+      UPDATE bedrooms SET
+        bedroom_name = $1,
+        price_pppw = $2,
+        bedroom_description = $3,
+        available_from = $4,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5 AND agency_id = $6
+      RETURNING *
+    `, [bedroom_name, price_pppw, bedroom_description, available_from, id, agencyId]);
 
-  const updatedBedroom = result.rows[0];
+    // Save custom attributes within same transaction
+    await saveCustomAttributes(Number(id), agencyId, custom_attributes, client);
 
-  res.json({ message: 'Bedroom updated successfully', bedroom: updatedBedroom });
+    return result.rows[0];
+  }, agencyId);
+
+  // Fetch saved custom attributes after commit for response
+  const customAttrsByBedroom = await fetchCustomAttributes([Number(id)], agencyId);
+
+  res.json({
+    message: 'Bedroom updated successfully',
+    bedroom: {
+      ...updatedBedroom,
+      custom_attributes: customAttrsByBedroom[Number(id)] || [],
+    }
+  });
 }, 'update bedroom');
 
 // Delete bedroom (admin only)

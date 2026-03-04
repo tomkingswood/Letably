@@ -1,7 +1,7 @@
 /**
  * Seed Test Data Script
  *
- * Populates the "test" agency with comprehensive, realistic test data.
+ * Populates an agency with comprehensive, realistic test data.
  * Deletes existing seeded data then re-inserts, so it's always clean on re-run.
  *
  * Uses a seeded PRNG so output is deterministic across runs.
@@ -16,7 +16,9 @@
  *   - Payment schedules for active + recently expired tenancies
  *   - 20 maintenance requests with comments
  *
- * Usage: npm run seed:testdata
+ * Usage: npm run seed:testdata [agency-slug]
+ *   e.g. npm run seed:testdata steel-city-living
+ *   Defaults to "test" if no slug provided.
  */
 
 require('dotenv').config();
@@ -51,10 +53,11 @@ async function seedTestData() {
     console.log('\n=== Seeding Test Data ===\n');
     await client.query('BEGIN');
 
-    const agencyResult = await client.query(`SELECT id FROM agencies WHERE slug = 'test'`);
-    if (agencyResult.rows.length === 0) throw new Error('Test agency not found. Run "npm run seed:agency" first.');
+    const agencySlug = process.argv[2] || 'test';
+    const agencyResult = await client.query(`SELECT id FROM agencies WHERE slug = $1`, [agencySlug]);
+    if (agencyResult.rows.length === 0) throw new Error(`Agency "${agencySlug}" not found. Create it first or check the slug.`);
     const agencyId = agencyResult.rows[0].id;
-    console.log(`Found test agency (ID: ${agencyId})`);
+    console.log(`Found agency "${agencySlug}" (ID: ${agencyId})`);
 
     // ─── CLEAN ─────────────────────────────────────────────────
     console.log('Cleaning existing data...');
@@ -72,7 +75,11 @@ async function seedTestData() {
     await client.query(`DELETE FROM applications WHERE agency_id = $1`, [agencyId]);
     await client.query(`DELETE FROM viewing_requests WHERE property_id IN (SELECT id FROM properties WHERE agency_id = $1)`, [agencyId]);
     await client.query(`DELETE FROM images WHERE property_id IN (SELECT id FROM properties WHERE agency_id = $1)`, [agencyId]);
+    await client.query(`DELETE FROM bedroom_attribute_values WHERE agency_id = $1`, [agencyId]);
+    await client.query(`DELETE FROM bedroom_attribute_definitions WHERE agency_id = $1`, [agencyId]);
     await client.query(`DELETE FROM bedrooms WHERE agency_id = $1`, [agencyId]);
+    await client.query(`DELETE FROM property_attribute_values WHERE agency_id = $1`, [agencyId]);
+    await client.query(`DELETE FROM property_attribute_definitions WHERE agency_id = $1`, [agencyId]);
     await client.query(`DELETE FROM properties WHERE agency_id = $1`, [agencyId]);
     await client.query(`DELETE FROM agreement_sections WHERE landlord_id IN (SELECT id FROM landlords WHERE agency_id = $1)`, [agencyId]);
     await client.query(`DELETE FROM landlords WHERE agency_id = $1`, [agencyId]);
@@ -110,9 +117,8 @@ async function seedTestData() {
     }
 
     async function insertProperty(data) {
-      const title = data.address2 ? `${data.address1}, ${data.address2}, ${data.city}` : `${data.address1}, ${data.city}`;
-      const r = await client.query(`INSERT INTO properties (agency_id, title, address_line1, address_line2, city, postcode, location, bathrooms, communal_areas, property_type, letting_type, has_parking, has_garden, bills_included, description, landlord_id, is_live, available_from) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
-        [agencyId, title, data.address1, data.address2 || null, data.city, data.postcode, data.location || null, data.bathrooms, data.communal || 0, data.propertyType || 'House', data.lettingType || 'Whole House', data.parking || false, data.garden || false, data.bills || false, data.description || null, data.landlordId, data.isLive !== false, data.availableFrom || null]);
+      const r = await client.query(`INSERT INTO properties (agency_id, address_line1, address_line2, city, postcode, location, letting_type, description, landlord_id, is_live, available_from) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+        [agencyId, data.address1, data.address2 || null, data.city, data.postcode, data.location || null, data.lettingType || 'Whole House', data.description || null, data.landlordId, data.isLive !== false, data.availableFrom || null]);
       return r.rows[0].id;
     }
 
@@ -210,6 +216,58 @@ async function seedTestData() {
     console.log(`Created ${landlordIds.length} landlords`);
 
     // ═══════════════════════════════════════════════════════════
+    // 2b. PROPERTY ATTRIBUTE DEFINITIONS
+    // ═══════════════════════════════════════════════════════════
+
+    async function insertAttrDef(name, attrType, options, isRequired, order) {
+      const r = await client.query(
+        `INSERT INTO property_attribute_definitions (agency_id, name, attribute_type, options, is_required, display_order) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+        [agencyId, name, attrType, options ? JSON.stringify(options) : null, isRequired, order]
+      );
+      return r.rows[0].id;
+    }
+
+    async function insertAttrValue(propertyId, defId, valueText, valueNumber, valueBoolean) {
+      await client.query(
+        `INSERT INTO property_attribute_values (property_id, attribute_definition_id, agency_id, value_text, value_number, value_boolean) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [propertyId, defId, agencyId, valueText, valueNumber, valueBoolean]
+      );
+    }
+
+    const attrPropertyType = await insertAttrDef('Property Type', 'dropdown', ['House', 'Flat', 'Apartment', 'Terraced', 'Semi-Detached', 'Detached'], false, 0);
+    const attrBathrooms = await insertAttrDef('Bathrooms', 'number', null, true, 1);
+    const attrCommunalAreas = await insertAttrDef('Communal Areas', 'number', null, false, 2);
+    const attrHasParking = await insertAttrDef('Has Parking', 'boolean', null, false, 3);
+    const attrHasGarden = await insertAttrDef('Has Garden', 'boolean', null, false, 4);
+    const attrBillsIncluded = await insertAttrDef('Bills Included', 'boolean', null, false, 5);
+    const attrBroadband = await insertAttrDef('Broadband Speed', 'text', null, false, 6);
+    console.log('Created 7 property attribute definitions');
+
+    // ═══════════════════════════════════════════════════════════
+    // 2c. BEDROOM ATTRIBUTE DEFINITIONS
+    // ═══════════════════════════════════════════════════════════
+
+    async function insertBedroomAttrDef(name, attrType, options, isRequired, order) {
+      const r = await client.query(
+        `INSERT INTO bedroom_attribute_definitions (agency_id, name, attribute_type, options, is_required, display_order) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+        [agencyId, name, attrType, options ? JSON.stringify(options) : null, isRequired, order]
+      );
+      return r.rows[0].id;
+    }
+
+    async function insertBedroomAttrValue(bedroomId, defId, valueText, valueNumber, valueBoolean) {
+      await client.query(
+        `INSERT INTO bedroom_attribute_values (bedroom_id, attribute_definition_id, agency_id, value_text, value_number, value_boolean) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [bedroomId, defId, agencyId, valueText, valueNumber, valueBoolean]
+      );
+    }
+
+    const bedroomAttrYouTube = await insertBedroomAttrDef('YouTube Video URL', 'text', null, false, 0);
+    const bedroomAttrFurnished = await insertBedroomAttrDef('Furnished', 'boolean', null, false, 1);
+    const bedroomAttrSize = await insertBedroomAttrDef('Room Size', 'dropdown', ['Small', 'Medium', 'Large', 'Extra Large'], false, 2);
+    console.log('Created 3 bedroom attribute definitions');
+
+    // ═══════════════════════════════════════════════════════════
     // 3. PROPERTIES & BEDROOMS
     // ═══════════════════════════════════════════════════════════
 
@@ -234,25 +292,53 @@ async function seedTestData() {
         address1, city: 'Sheffield',
         postcode: `${pick(POSTCODES)}${randInt(1, 9)}${String.fromCharCode(65 + randInt(0, 25))}${String.fromCharCode(65 + randInt(0, 25))}`,
         location: LOCATIONS[i % LOCATIONS.length],
-        bathrooms, communal: isHMO ? 1 : 0,
-        propertyType: isFlat ? 'Flat' : 'House',
         lettingType: isHMO ? 'Room Only' : 'Whole House',
-        parking: rand() > 0.5, garden: rand() > 0.4, bills: !isHMO && rand() > 0.7,
         description: isHMO
           ? `${numBeds}-bed student house in ${LOCATIONS[i % LOCATIONS.length]}. Close to amenities.`
           : `${isFlat ? 'Modern' : 'Charming'} ${numBeds}-bed ${isFlat ? 'flat' : 'house'} in ${LOCATIONS[i % LOCATIONS.length]}.`,
         landlordId
       });
 
+      // Populate custom attribute values
+      const propertyType = isFlat ? 'Flat' : 'House';
+      const hasParking = rand() > 0.5;
+      const hasGarden = rand() > 0.4;
+      const hasBills = !isHMO && rand() > 0.7;
+      const broadbandSpeeds = ['50Mbps', '100Mbps', '200Mbps', '500Mbps', '1Gbps', null];
+      const broadband = pick(broadbandSpeeds);
+
+      await insertAttrValue(propId, attrPropertyType, propertyType, null, null);
+      await insertAttrValue(propId, attrBathrooms, null, bathrooms, null);
+      await insertAttrValue(propId, attrCommunalAreas, null, isHMO ? 1 : 0, null);
+      await insertAttrValue(propId, attrHasParking, null, null, hasParking);
+      await insertAttrValue(propId, attrHasGarden, null, null, hasGarden);
+      await insertAttrValue(propId, attrBillsIncluded, null, null, hasBills);
+      if (broadband) await insertAttrValue(propId, attrBroadband, broadband, null, null);
+
       const bedroomIds = [];
       const bedroomPrices = [];
       const roomTypes = ['Large Double', 'Double', 'Double', 'Double En-suite', 'Small Double', 'Single'];
+      const roomSizes = ['Small', 'Medium', 'Large', 'Extra Large'];
+      const youtubeUrls = ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://www.youtube.com/watch?v=abc123', 'https://www.youtube.com/watch?v=xyz789'];
       for (let b = 0; b < numBeds; b++) {
         const rType = isHMO ? roomTypes[b % roomTypes.length] : (numBeds === 1 ? 'Studio' : `Bedroom ${b + 1}`);
         const price = isHMO ? randInt(70, 120) : randInt(80, 150);
         const bedId = await insertBedroom(propId, isHMO ? `Room ${b + 1} - ${rType}` : rType, price, b + 1);
         bedroomIds.push(bedId);
         bedroomPrices.push(price);
+
+        // ~30% of bedrooms get a YouTube URL attribute
+        if (rand() < 0.3) {
+          await insertBedroomAttrValue(bedId, bedroomAttrYouTube, pick(youtubeUrls), null, null);
+        }
+        // ~60% get furnished attribute
+        if (rand() < 0.6) {
+          await insertBedroomAttrValue(bedId, bedroomAttrFurnished, null, null, rand() > 0.3);
+        }
+        // ~50% get room size attribute
+        if (rand() < 0.5) {
+          await insertBedroomAttrValue(bedId, bedroomAttrSize, pick(roomSizes), null, null);
+        }
       }
 
       properties.push({
@@ -564,7 +650,7 @@ async function seedTestData() {
     console.log(`  ${appCount} applications`);
     console.log(`  ${activeCount} active + ${expiredCount} expired + 1 pending + 1 awaiting_signatures = ${allTenancies.length} tenancies`);
     console.log(`  ${maintCount} maintenance requests`);
-    console.log(`\nLogin: http://localhost:3000/test/admin (admin@test.com / password123)\n`);
+    console.log(`\nLogin: http://localhost:3000/${agencySlug}/admin (admin@test.com / password123)\n`);
 
   } catch (error) {
     await client.query('ROLLBACK');
