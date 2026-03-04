@@ -196,6 +196,9 @@ exports.setupCustomDomain = asyncHandler(async (req, res) => {
 
   // Check premium subscription
   const agency = await AgencyModel.findById(req.agencyId);
+  if (!agency) {
+    return res.status(404).json({ error: 'Agency not found' });
+  }
   if (agency.subscription_tier !== 'premium') {
     return res.status(403).json({ error: 'Custom domains require a premium subscription' });
   }

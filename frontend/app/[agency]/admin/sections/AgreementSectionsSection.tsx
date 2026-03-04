@@ -586,7 +586,7 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
                 </div>
               )}
 
-              <MessageAlert type="error" message={previewError} />
+              {previewError && <MessageAlert type="error" message={previewError} />}
 
               {previewAgreement && !previewLoading && (
                 <>

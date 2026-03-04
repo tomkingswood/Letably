@@ -122,11 +122,10 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
       });
       await fetchApplication();
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { holding_deposit_required?: boolean; deposit_awaiting_payment?: boolean; error?: string } } };
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: err.response?.data?.error || 'Failed to approve application'
+        text: getErrorMessage(err, 'Failed to approve application')
       });
     } finally {
       setApproving(false);
@@ -148,9 +147,8 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
       setMessage({ type: 'success', text: 'Deposit payment undone successfully.' });
       const depositRes = await holdingDeposits.getByApplication(id);
       setExistingDeposit(depositRes.data.deposit || null);
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to undo payment' });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to undo payment') });
     } finally {
       setIsUndoing(false);
     }

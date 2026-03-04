@@ -149,6 +149,8 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
   // Reset password handler
   const handleResetPassword = async () => {
     if (!resettingUser) return;
+    setResetError(null);
+    setResetSuccess(null);
     setResetSending(true);
 
     try {

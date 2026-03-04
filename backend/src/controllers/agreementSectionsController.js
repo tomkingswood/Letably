@@ -316,7 +316,8 @@ exports.duplicateSection = asyncHandler(async (req, res) => {
 // Preview default agreement sections with dummy data (no landlord overrides)
 exports.previewDefaultAgreement = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
-  const { tenancyType = 'room_only', testData = {} } = req.body;
+  const { tenancyType = 'room_only', testData } = req.body;
+  const safeTestData = testData && typeof testData === 'object' && !Array.isArray(testData) ? testData : {};
 
   // Validate tenancy type
   if (!['room_only', 'whole_house'].includes(tenancyType)) {
@@ -326,9 +327,9 @@ exports.previewDefaultAgreement = asyncHandler(async (req, res) => {
   const { defaultTenants, defaultPropertyData } = require('../services/previewDataService');
 
   // Merge custom test data with defaults
-  const primaryTenant = { ...defaultTenants.primary, ...testData.primaryTenant };
-  const secondTenant = { ...defaultTenants.secondary, ...testData.secondTenant };
-  const propertyData = { ...defaultPropertyData, ...testData.propertyData };
+  const primaryTenant = { ...defaultTenants.primary, ...(safeTestData.primaryTenant || {}) };
+  const secondTenant = { ...defaultTenants.secondary, ...(safeTestData.secondTenant || {}) };
+  const propertyData = { ...defaultPropertyData, ...(safeTestData.propertyData || {}) };
 
   const agreement = await generatePreview(
     {
@@ -337,9 +338,9 @@ exports.previewDefaultAgreement = asyncHandler(async (req, res) => {
       primaryTenant,
       secondTenant,
       propertyData,
-      startDate: testData.startDate || '2025-09-01',
-      endDate: testData.endDate || '2026-08-31',
-      isRollingMonthly: testData.isRollingMonthly || false,
+      startDate: safeTestData.startDate || '2025-09-01',
+      endDate: safeTestData.endDate || '2026-08-31',
+      isRollingMonthly: safeTestData.isRollingMonthly || false,
     },
     agencyId,
     generateAgreement

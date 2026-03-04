@@ -605,6 +605,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
         </div>
       </div>
 
+      {error && <MessageAlert type="error" message={error} className="mb-6" onDismiss={() => setError('')} />}
       <MessageAlert type="success" message={success} className="mb-6" />
 
       {/* Stats */}

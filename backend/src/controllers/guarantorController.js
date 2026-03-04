@@ -106,16 +106,18 @@ exports.signAgreement = asyncHandler(async (req, res) => {
   try {
     // Get tenancy_id from the signed agreement's member
     const memberResult = await db.query(
-      'SELECT tenancy_id FROM tenancy_members WHERE id = $1',
-      [signedAgreement.tenancy_member_id]
+      'SELECT tenancy_id FROM tenancy_members WHERE id = $1 AND agency_id = $2',
+      [signedAgreement.tenancy_member_id, agencyId],
+      agencyId
     );
     const tenancyId = memberResult.rows[0]?.tenancy_id;
 
     if (tenancyId) {
       // Get tenancy status and agency_id
       const tenancyResult = await db.query(
-        'SELECT status, agency_id FROM tenancies WHERE id = $1',
-        [tenancyId]
+        'SELECT status, agency_id FROM tenancies WHERE id = $1 AND agency_id = $2',
+        [tenancyId, agencyId],
+        agencyId
       );
       const tenancy = tenancyResult.rows[0];
 
