@@ -1086,13 +1086,13 @@ const deleteAgency = asyncHandler(async (req, res) => {
 
   // 8. Delete site_settings uploaded files (CMP/PRS certificates, ICO, privacy policy)
   const settingsResult = await db.systemQuery(
-    `SELECT value FROM site_settings
-     WHERE agency_id = $1 AND key IN ('cmp_certificate_filename', 'prs_certificate_filename', 'ico_registration_filename', 'privacy_policy_filename')`,
+    `SELECT setting_value FROM site_settings
+     WHERE agency_id = $1 AND setting_key IN ('cmp_certificate_filename', 'prs_certificate_filename', 'ico_registration_filename', 'privacy_policy_filename')`,
     [id]
   );
   for (const row of settingsResult.rows) {
-    if (row.value) {
-      await safeUnlink(path.join(uploadsDir, row.value));
+    if (row.setting_value) {
+      await safeUnlink(path.join(uploadsDir, row.setting_value));
     }
   }
 
