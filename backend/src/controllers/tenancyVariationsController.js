@@ -399,7 +399,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
 
         if (hasValidSetupToken) {
           // User hasn't set up their password yet - send setup email with tenancy context
-          const setupUrl = `${siteUrl}/setup-password/${member.setup_token}`;
+          const setupUrl = `${siteUrl}/${slug}/setup-password/${member.setup_token}`;
 
           const emailContent = createEmailTemplate(
             'Your Tenancy is Ready',

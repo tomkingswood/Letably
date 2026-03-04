@@ -15,14 +15,9 @@ const columns = [
   { key: 'address_line2', label: 'Address Line 2' },
   { key: 'city', label: 'City' },
   { key: 'postcode', label: 'Postcode' },
-  { key: 'property_type', label: 'Property Type' },
   { key: 'letting_type', label: 'Letting Type' },
   { key: 'bedroom_count', label: 'Bedrooms' },
-  { key: 'bathrooms', label: 'Bathrooms' },
   { key: 'is_live', label: 'Live', transform: (v) => v ? 'Yes' : 'No' },
-  { key: 'has_parking', label: 'Parking', transform: (v) => v ? 'Yes' : 'No' },
-  { key: 'has_garden', label: 'Garden', transform: (v) => v ? 'Yes' : 'No' },
-  { key: 'bills_included', label: 'Bills Included', transform: (v) => v ? 'Yes' : 'No' },
   { key: 'available_from', label: 'Available From', transform: formatDate },
   { key: 'landlord_name', label: 'Landlord Name' },
   { key: 'landlord_email', label: 'Landlord Email' },
@@ -42,14 +37,9 @@ const xmlSchema = {
     { key: 'address_line2', xmlName: 'addressLine2' },
     { key: 'city', xmlName: 'city' },
     { key: 'postcode', xmlName: 'postcode' },
-    { key: 'property_type', xmlName: 'propertyType' },
     { key: 'letting_type', xmlName: 'lettingType' },
     { key: 'bedroom_count', xmlName: 'bedrooms' },
-    { key: 'bathrooms', xmlName: 'bathrooms' },
     { key: 'is_live', xmlName: 'isLive', transform: (v) => v ? 'true' : 'false' },
-    { key: 'has_parking', xmlName: 'hasParking', transform: (v) => v ? 'true' : 'false' },
-    { key: 'has_garden', xmlName: 'hasGarden', transform: (v) => v ? 'true' : 'false' },
-    { key: 'bills_included', xmlName: 'billsIncluded', transform: (v) => v ? 'true' : 'false' },
     { key: 'available_from', xmlName: 'availableFrom', transform: formatDate },
     { key: 'landlord_name', xmlName: 'landlordName' },
     { key: 'landlord_email', xmlName: 'landlordEmail' },
@@ -70,19 +60,14 @@ const fetchData = async (agencyId, filters = {}, includeRelated = true) => {
   let query = `
     SELECT
       p.id,
-      p.title,
+      CONCAT_WS(', ', p.address_line1, p.city, p.postcode) as title,
       p.address_line1,
       p.address_line2,
       p.city,
       p.postcode,
-      p.property_type,
       p.letting_type,
       (SELECT COUNT(*) FROM bedrooms WHERE property_id = p.id) as bedroom_count,
-      p.bathrooms,
       p.is_live,
-      p.has_parking,
-      p.has_garden,
-      p.bills_included,
       p.available_from,
       p.created_at,
       p.updated_at
@@ -114,6 +99,43 @@ const fetchData = async (agencyId, filters = {}, includeRelated = true) => {
   query += ' ORDER BY p.id ASC';
 
   const result = await db.query(query, params, agencyId);
+
+  // Fetch custom attributes for export
+  const propertyIds = result.rows.map(r => r.id);
+  if (propertyIds.length > 0) {
+    const attrsResult = await db.query(`
+      SELECT pav.property_id, pad.name,
+        COALESCE(pav.value_text, pav.value_number::text, CASE WHEN pav.value_boolean THEN 'Yes' ELSE 'No' END) as value
+      FROM property_attribute_values pav
+      JOIN property_attribute_definitions pad ON pad.id = pav.attribute_definition_id
+      WHERE pav.property_id = ANY($1) AND pav.agency_id = $2
+      ORDER BY pad.display_order ASC
+    `, [propertyIds, agencyId], agencyId);
+
+    // Group by property_id
+    const attrsByProperty = {};
+    for (const row of attrsResult.rows) {
+      (attrsByProperty[row.property_id] ||= {})[row.name] = row.value;
+    }
+
+    // Spread custom attributes onto each row
+    for (const row of result.rows) {
+      const attrs = attrsByProperty[row.id] || {};
+      Object.assign(row, attrs);
+    }
+
+    // Add custom attribute columns dynamically
+    const allAttrNames = new Set();
+    for (const row of attrsResult.rows) {
+      allAttrNames.add(row.name);
+    }
+    for (const name of allAttrNames) {
+      if (!columns.find(c => c.key === name)) {
+        columns.push({ key: name, label: name });
+      }
+    }
+  }
+
   return result.rows;
 };
 

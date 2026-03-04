@@ -139,7 +139,7 @@ api.interceptors.response.use(
         const currentPath = window.location.pathname;
         const loginPath = effectiveSlug ? `/${effectiveSlug}/login` : '/login';
         // Don't redirect if already on a login or public page
-        if (!currentPath.includes('/login') && !currentPath.includes('/setup-password') && !currentPath.includes('/reset-password')) {
+        if (!currentPath.includes('/login') && !currentPath.includes('/setup-password') && !currentPath.includes('/reset-password') && !currentPath.includes('/forgot-password')) {
           window.location.href = `${loginPath}?returnUrl=${encodeURIComponent(currentPath)}`;
         }
       }
@@ -224,6 +224,30 @@ export const properties = {
   update: (id: string | number, data: Partial<PropertyFormData>) => api.put(`/properties/${id}`, data),
   delete: (id: string | number) => api.delete(`/properties/${id}`),
   updateDisplayOrder: (propertyIds: number[]) => api.patch('/properties/reorder', { propertyIds }),
+};
+
+// Property Attributes API
+export const propertyAttributes = {
+  getDefinitions: () => api.get('/property-attributes/definitions'),
+  createDefinition: (data: { name: string; attribute_type: string; options?: string[]; is_required?: boolean }) =>
+    api.post('/property-attributes/definitions', data),
+  updateDefinition: (id: number, data: { name?: string; attribute_type?: string; options?: string[]; is_required?: boolean }) =>
+    api.put(`/property-attributes/definitions/${id}`, data),
+  deleteDefinition: (id: number) => api.delete(`/property-attributes/definitions/${id}`),
+  reorderDefinitions: (definitionIds: number[]) =>
+    api.patch('/property-attributes/definitions/reorder', { definitionIds }),
+};
+
+// Bedroom Attributes API
+export const bedroomAttributes = {
+  getDefinitions: () => api.get('/bedroom-attributes/definitions'),
+  createDefinition: (data: { name: string; attribute_type: string; options?: string[]; is_required?: boolean }) =>
+    api.post('/bedroom-attributes/definitions', data),
+  updateDefinition: (id: number, data: { name?: string; attribute_type?: string; options?: string[]; is_required?: boolean }) =>
+    api.put(`/bedroom-attributes/definitions/${id}`, data),
+  deleteDefinition: (id: number) => api.delete(`/bedroom-attributes/definitions/${id}`),
+  reorderDefinitions: (definitionIds: number[]) =>
+    api.patch('/bedroom-attributes/definitions/reorder', { definitionIds }),
 };
 
 // Bedrooms API

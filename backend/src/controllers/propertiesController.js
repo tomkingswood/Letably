@@ -4,13 +4,97 @@ const path = require('path');
 const asyncHandler = require('../utils/asyncHandler');
 const { validateRequiredFields } = require('../utils/validators');
 
+/**
+ * Compute title from address fields
+ */
+function computeTitle(property) {
+  return [property.address_line1, property.city, property.postcode].filter(Boolean).join(', ');
+}
+
+/**
+ * Fetch custom attribute values for an array of property IDs
+ */
+async function fetchCustomAttributes(propertyIds, agencyId) {
+  if (propertyIds.length === 0) return {};
+
+  const result = await db.query(`
+    SELECT pav.property_id, pav.attribute_definition_id, pav.value_text, pav.value_number, pav.value_boolean,
+           pad.name, pad.attribute_type
+    FROM property_attribute_values pav
+    JOIN property_attribute_definitions pad ON pad.id = pav.attribute_definition_id
+    WHERE pav.property_id = ANY($1) AND pav.agency_id = $2
+    ORDER BY pad.display_order ASC
+  `, [propertyIds, agencyId], agencyId);
+
+  const byProperty = {};
+  for (const row of result.rows) {
+    (byProperty[row.property_id] ||= []).push({
+      attribute_definition_id: row.attribute_definition_id,
+      name: row.name,
+      attribute_type: row.attribute_type,
+      value_text: row.value_text,
+      value_number: row.value_number,
+      value_boolean: row.value_boolean,
+    });
+  }
+  return byProperty;
+}
+
+/**
+ * Save custom attributes for a property (UPSERT)
+ * @param {number} propertyId
+ * @param {number} agencyId
+ * @param {Object} attributes - { definitionId: value, ... }
+ */
+async function saveCustomAttributes(propertyId, agencyId, attributes) {
+  if (!attributes || Object.keys(attributes).length === 0) return;
+
+  // Fetch definitions to know each attribute's type
+  const defIds = Object.keys(attributes).map(Number);
+  const defsResult = await db.query(
+    'SELECT id, attribute_type FROM property_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
+    [defIds, agencyId],
+    agencyId
+  );
+
+  const defTypes = {};
+  for (const def of defsResult.rows) {
+    defTypes[def.id] = def.attribute_type;
+  }
+
+  for (const [defId, value] of Object.entries(attributes)) {
+    const numDefId = Number(defId);
+    const attrType = defTypes[numDefId];
+    if (!attrType) continue; // Skip unknown definitions
+
+    let valueText = null, valueNumber = null, valueBoolean = null;
+    if (value === null || value === '' || value === undefined) {
+      // All nulls — effectively "no value"
+    } else if (attrType === 'text' || attrType === 'dropdown') {
+      valueText = String(value);
+    } else if (attrType === 'number') {
+      valueNumber = Number(value);
+    } else if (attrType === 'boolean') {
+      valueBoolean = value ? true : false;
+    }
+
+    await db.query(`
+      INSERT INTO property_attribute_values (property_id, attribute_definition_id, agency_id, value_text, value_number, value_boolean)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (property_id, attribute_definition_id)
+      DO UPDATE SET value_text = $4, value_number = $5, value_boolean = $6, updated_at = CURRENT_TIMESTAMP
+    `, [propertyId, numDefId, agencyId, valueText, valueNumber, valueBoolean], agencyId);
+  }
+}
+
 // Get all properties with optional filters
 exports.getAllProperties = asyncHandler(async (req, res) => {
   const { location, bedrooms: bedroomsFilter, letting_type } = req.query;
   const agencyId = req.agencyId;
 
-  // Defense-in-depth: explicit agency_id filtering
-  let query = 'SELECT * FROM properties WHERE agency_id = $1';
+  let query = `SELECT id, agency_id, address_line1, address_line2, city, postcode, location,
+    description, letting_type, landlord_id, is_live, available_from, created_at, updated_at
+    FROM properties WHERE agency_id = $1`;
   const params = [agencyId];
   let paramIndex = 2;
 
@@ -44,12 +128,12 @@ exports.getAllProperties = asyncHandler(async (req, res) => {
     return res.json({ properties: [] });
   }
 
-  // Batch-fetch images and bedrooms for all properties (eliminates N+1)
+  // Batch-fetch images, bedrooms, occupancy, and custom attributes
   const propertyIds = properties.map(p => p.id);
 
   const today = new Date().toISOString().split('T')[0];
 
-  const [imagesResult, bedroomsResult, occupiedResult] = await Promise.all([
+  const [imagesResult, bedroomsResult, occupiedResult, customAttrsByProperty] = await Promise.all([
     db.query(`
       SELECT id, property_id, file_path, is_primary
       FROM images
@@ -63,7 +147,6 @@ exports.getAllProperties = asyncHandler(async (req, res) => {
       [propertyIds, agencyId],
       agencyId
     ),
-    // Find which bedrooms have an active tenancy (started and not yet ended)
     db.query(`
       SELECT DISTINCT tm.bedroom_id
       FROM tenancy_members tm
@@ -74,6 +157,7 @@ exports.getAllProperties = asyncHandler(async (req, res) => {
       AND (t.end_date IS NULL OR t.end_date >= $3)
       AND t.status IN ('active', 'approved', 'awaiting_signatures', 'approval')
     `, [propertyIds, agencyId, today], agencyId),
+    fetchCustomAttributes(propertyIds, agencyId),
   ]);
 
   // Group by property_id
@@ -90,11 +174,10 @@ exports.getAllProperties = asyncHandler(async (req, res) => {
 
   const formattedProperties = properties.map(property => ({
     ...property,
+    title: computeTitle(property),
     images: imagesByProperty[property.id] || [],
-    has_parking: Boolean(property.has_parking),
-    has_garden: Boolean(property.has_garden),
-    bills_included: Boolean(property.bills_included),
     bedrooms: bedroomsByProperty[property.id] || [],
+    custom_attributes: customAttrsByProperty[property.id] || [],
   }));
 
   res.json({ properties: formattedProperties });
@@ -105,8 +188,13 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const agencyId = req.agencyId;
 
-  // Get property - defense-in-depth: explicit agency_id filtering
-  const propertyResult = await db.query('SELECT * FROM properties WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);
+  const propertyResult = await db.query(
+    `SELECT id, agency_id, address_line1, address_line2, city, postcode, location,
+      description, letting_type, landlord_id, is_live, available_from, created_at, updated_at
+    FROM properties WHERE id = $1 AND agency_id = $2`,
+    [id, agencyId],
+    agencyId
+  );
   const property = propertyResult.rows[0];
 
   if (!property) {
@@ -119,8 +207,7 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: 'Property not found' });
   }
 
-  // Get property-level images (bedroom_id IS NULL)
-  // Defense-in-depth: verify property belongs to agency
+  // Get property-level images
   const propertyImagesResult = await db.query(`
     SELECT id, file_path, is_primary
     FROM images
@@ -130,7 +217,7 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
     ORDER BY is_primary DESC, id ASC
   `, [id, agencyId], agencyId);
 
-  // Get bedrooms ordered by id - defense-in-depth: explicit agency_id filtering
+  // Get bedrooms
   const bedroomsResult = await db.query(
     'SELECT * FROM bedrooms WHERE property_id = $1 AND agency_id = $2 ORDER BY id ASC',
     [id, agencyId],
@@ -152,8 +239,31 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
   `, [bedroomIds, agencyId, singlePropToday], agencyId) : { rows: [] };
   const occupiedBedroomIds = new Set(occupiedResult.rows.map(r => r.bedroom_id));
 
-  // Get images for each bedroom directly via images.bedroom_id
-  // Defense-in-depth: verify bedroom belongs to agency
+  // Batch-fetch bedroom custom attributes
+  const bedroomCustomAttrs = bedroomIds.length > 0 ? await (async () => {
+    const bavResult = await db.query(`
+      SELECT bav.bedroom_id, bav.attribute_definition_id, bav.value_text, bav.value_number, bav.value_boolean,
+             bad.name, bad.attribute_type
+      FROM bedroom_attribute_values bav
+      JOIN bedroom_attribute_definitions bad ON bad.id = bav.attribute_definition_id
+      WHERE bav.bedroom_id = ANY($1) AND bav.agency_id = $2
+      ORDER BY bad.display_order ASC
+    `, [bedroomIds, agencyId], agencyId);
+    const byBedroom = {};
+    for (const row of bavResult.rows) {
+      (byBedroom[row.bedroom_id] ||= []).push({
+        attribute_definition_id: row.attribute_definition_id,
+        name: row.name,
+        attribute_type: row.attribute_type,
+        value_text: row.value_text,
+        value_number: row.value_number,
+        value_boolean: row.value_boolean,
+      });
+    }
+    return byBedroom;
+  })() : {};
+
+  // Get images for each bedroom
   const bedroomsWithImages = await Promise.all(bedroomsResult.rows.map(async (bedroom) => {
     const bedroomImagesResult = await db.query(`
       SELECT i.file_path, i.id as image_id
@@ -167,12 +277,12 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
       ...bedroom,
       is_occupied: occupiedBedroomIds.has(bedroom.id),
       images: bedroomImagesResult.rows || [],
-      imageUrls: bedroomImagesResult.rows ? bedroomImagesResult.rows.map(img => img.file_path) : []
+      imageUrls: bedroomImagesResult.rows ? bedroomImagesResult.rows.map(img => img.file_path) : [],
+      custom_attributes: bedroomCustomAttrs[bedroom.id] || [],
     };
   }));
 
-  // Get public certificates for this property (visibility = 'public')
-  // Defense-in-depth: explicit agency_id filtering
+  // Get public certificates for this property
   const publicCertificatesResult = await db.query(`
     SELECT
       c.id,
@@ -189,15 +299,17 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
     ORDER BY ct.name ASC, c.uploaded_at DESC
   `, [id, agencyId], agencyId);
 
+  // Fetch custom attributes
+  const customAttrsByProperty = await fetchCustomAttributes([property.id], agencyId);
+
   res.json({
     property: {
       ...property,
+      title: computeTitle(property),
       images: propertyImagesResult.rows,
-      has_parking: Boolean(property.has_parking),
-      has_garden: Boolean(property.has_garden),
-      bills_included: Boolean(property.bills_included),
       bedrooms: bedroomsWithImages,
-      publicCertificates: publicCertificatesResult.rows || []
+      publicCertificates: publicCertificatesResult.rows || [],
+      custom_attributes: customAttrsByProperty[property.id] || [],
     }
   });
 }, 'fetch property');
@@ -211,64 +323,53 @@ exports.createProperty = asyncHandler(async (req, res) => {
     city,
     postcode,
     location,
-    bathrooms,
-    communal_areas,
     available_from,
-    property_type,
-    has_parking,
-    has_garden,
     description,
-    bills_included,
-    broadband_speed,
-    map_embed,
-    street_view_embed,
     letting_type,
     landlord_id,
     is_live,
-    youtube_url
+    custom_attributes,
   } = req.body;
 
-  // Validation - all NOT NULL columns must be present
-  validateRequiredFields(req.body, ['address_line1', 'city', 'postcode', 'bathrooms']);
-
-  // Auto-generate title from address
-  const title = [address_line1, city, postcode].filter(Boolean).join(', ');
+  validateRequiredFields(req.body, ['address_line1', 'city', 'postcode']);
 
   const result = await db.query(`
     INSERT INTO properties (
-      title, address_line1, address_line2, city, postcode, location, bathrooms, communal_areas,
-      available_from, property_type, has_parking, has_garden,
-      description, bills_included, broadband_speed, map_embed, street_view_embed,
-      letting_type, landlord_id, is_live,
-      youtube_url, agency_id
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+      address_line1, address_line2, city, postcode, location,
+      available_from, description,
+      letting_type, landlord_id, is_live, agency_id
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     RETURNING *
   `, [
-    title,
     address_line1,
     address_line2 || null,
     city,
     postcode,
     location || null,
-    bathrooms,
-    communal_areas || 0,
     available_from || null,
-    property_type || 'House',
-    has_parking ? true : false,
-    has_garden ? true : false,
     description || null,
-    bills_included ? true : false,
-    broadband_speed || null,
-    map_embed || null,
-    street_view_embed || null,
     letting_type || 'Whole House',
     landlord_id || null,
     is_live ? true : false,
-    youtube_url || null,
     agencyId
   ], agencyId);
 
-  res.status(201).json({ message: 'Property created successfully', property: result.rows[0] });
+  const property = result.rows[0];
+
+  // Save custom attributes if provided
+  await saveCustomAttributes(property.id, agencyId, custom_attributes);
+
+  // Fetch saved custom attributes to include in response
+  const customAttrsByProperty = await fetchCustomAttributes([property.id], agencyId);
+
+  res.status(201).json({
+    message: 'Property created successfully',
+    property: {
+      ...property,
+      title: computeTitle(property),
+      custom_attributes: customAttrsByProperty[property.id] || [],
+    }
+  });
 }, 'create property');
 
 // Update property (admin only)
@@ -281,87 +382,64 @@ exports.updateProperty = asyncHandler(async (req, res) => {
     city,
     postcode,
     location,
-    bathrooms,
-    communal_areas,
     available_from,
-    property_type,
-    has_parking,
-    has_garden,
     description,
-    bills_included,
-    broadband_speed,
-    map_embed,
-    street_view_embed,
     letting_type,
     landlord_id,
     is_live,
-    youtube_url
+    custom_attributes,
   } = req.body;
 
-  // Defense-in-depth: explicit agency_id filtering
   const propertyResult = await db.query('SELECT id FROM properties WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);
 
   if (propertyResult.rows.length === 0) {
     return res.status(404).json({ error: 'Property not found' });
   }
 
-  // Auto-generate title from address
-  const title = [address_line1, city, postcode].filter(Boolean).join(', ');
-
-  // Defense-in-depth: explicit agency_id in WHERE clause
   const result = await db.query(`
     UPDATE properties SET
-      title = $1,
-      address_line1 = $2,
-      address_line2 = $3,
-      city = $4,
-      postcode = $5,
-      location = $6,
-      bathrooms = $7,
-      communal_areas = $8,
-      available_from = $9,
-      property_type = $10,
-      has_parking = $11,
-      has_garden = $12,
-      description = $13,
-      bills_included = $14,
-      broadband_speed = $15,
-      map_embed = $16,
-      street_view_embed = $17,
-      letting_type = $18,
-      landlord_id = $19,
-      is_live = $20,
-      youtube_url = $21,
+      address_line1 = $1,
+      address_line2 = $2,
+      city = $3,
+      postcode = $4,
+      location = $5,
+      available_from = $6,
+      description = $7,
+      letting_type = $8,
+      landlord_id = $9,
+      is_live = $10,
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $22 AND agency_id = $23
+    WHERE id = $11 AND agency_id = $12
     RETURNING *
   `, [
-    title,
     address_line1,
     address_line2 || null,
     city,
     postcode,
     location || null,
-    bathrooms,
-    communal_areas,
     available_from || null,
-    property_type,
-    has_parking ? true : false,
-    has_garden ? true : false,
     description,
-    bills_included ? true : false,
-    broadband_speed || null,
-    map_embed || null,
-    street_view_embed || null,
     letting_type,
     landlord_id || null,
     is_live ? true : false,
-    youtube_url || null,
     id,
     agencyId
   ], agencyId);
 
-  res.json({ message: 'Property updated successfully', property: result.rows[0] });
+  // Save custom attributes if provided
+  await saveCustomAttributes(Number(id), agencyId, custom_attributes);
+
+  // Fetch saved custom attributes to include in response
+  const customAttrsByProperty = await fetchCustomAttributes([Number(id)], agencyId);
+
+  res.json({
+    message: 'Property updated successfully',
+    property: {
+      ...result.rows[0],
+      title: computeTitle(result.rows[0]),
+      custom_attributes: customAttrsByProperty[Number(id)] || [],
+    }
+  });
 }, 'update property');
 
 // Delete property (admin only)
@@ -369,7 +447,6 @@ exports.deleteProperty = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const agencyId = req.agencyId;
 
-  // Defense-in-depth: explicit agency_id filtering
   const propertyResult = await db.query('SELECT id FROM properties WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);
 
   if (propertyResult.rows.length === 0) {
@@ -382,22 +459,19 @@ exports.deleteProperty = asyncHandler(async (req, res) => {
     ['property', id, agencyId], agencyId
   );
 
-  // Delete DB records first (inside the try block), then clean up files best-effort
+  // Delete DB records first, then clean up files best-effort
   await db.query(
     'DELETE FROM certificates WHERE entity_type = $1 AND entity_id = $2 AND agency_id = $3',
     ['property', id, agencyId], agencyId
   );
 
-  // Defense-in-depth: explicit agency_id filtering
   await db.query('DELETE FROM properties WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);
 
-  // Clean up certificate files asynchronously (best-effort, don't block response)
+  // Clean up certificate files asynchronously (best-effort)
   for (const cert of certs.rows) {
     if (cert.file_path) {
       const fullPath = path.join(__dirname, '../../uploads', cert.file_path);
-      fs.promises.unlink(fullPath).catch(() => {
-        // File may already be deleted or missing - not critical
-      });
+      fs.promises.unlink(fullPath).catch(() => {});
     }
   }
 
@@ -405,7 +479,6 @@ exports.deleteProperty = asyncHandler(async (req, res) => {
 }, 'delete property');
 
 // Update property display order (admin only)
-// Note: display_order column not currently in schema - this endpoint is a placeholder
 exports.updateDisplayOrder = asyncHandler(async (req, res) => {
   const { propertyIds } = req.body;
 
@@ -413,7 +486,5 @@ exports.updateDisplayOrder = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'propertyIds must be a non-empty array' });
   }
 
-  // Display order functionality not yet implemented in database schema
-  // For now, just acknowledge the request
   res.json({ message: 'Display order updated successfully' });
 }, 'update display order');

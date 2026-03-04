@@ -112,7 +112,6 @@ const propertyFactory = {
       address_line2: null,
       city: 'London',
       postcode: `SW1A ${String(id).slice(-1)}AA`,
-      property_type: 'hmo',
       agency_id: TEST_AGENCY_ID,
       created_at: new Date(),
       ...overrides
@@ -127,11 +126,11 @@ const propertyFactory = {
       property.landlord_id = landlord.id;
     }
     const result = await testQuery(
-      `INSERT INTO properties (title, address_line1, address_line2, city, postcode, property_type, landlord_id, agency_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO properties (address_line1, address_line2, city, postcode, landlord_id, agency_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [property.title || `${property.address_line1}, ${property.city}`, property.address_line1, property.address_line2, property.city, property.postcode,
-       property.property_type, property.landlord_id, property.agency_id]
+      [property.address_line1, property.address_line2, property.city, property.postcode,
+       property.landlord_id, property.agency_id]
     );
     return result.rows[0];
   }

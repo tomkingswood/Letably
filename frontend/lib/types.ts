@@ -8,31 +8,41 @@ export interface User {
   created_at: string;
 }
 
+export interface PropertyAttributeDefinition {
+  id: number;
+  name: string;
+  attribute_type: 'text' | 'number' | 'boolean' | 'dropdown';
+  options?: string[];
+  is_required: boolean;
+  display_order: number;
+}
+
+export interface PropertyAttributeValue {
+  attribute_definition_id: number;
+  name: string;
+  attribute_type: string;
+  value_text?: string | null;
+  value_number?: number | null;
+  value_boolean?: boolean | null;
+}
+
 export interface Property {
   id: number;
+  title?: string;
   address_line1: string;
   address_line2?: string;
   city?: string;
   postcode?: string;
   location?: string;
-  bathrooms: number;
-  communal_areas: number;
   available_from: string;
-  property_type: string;
-  has_parking: boolean;
-  has_garden: boolean;
   description?: string;
-  bills_included: boolean;
-  broadband_speed?: string;
-  map_embed?: string;
-  street_view_embed?: string;
-  youtube_url?: string;
   letting_type: 'Whole House' | 'Room Only';
   landlord_id?: number;
   landlord?: Landlord;
   is_live: boolean;
   images: Array<{ id: number; file_path: string; is_primary: boolean }> | string[];
   bedrooms?: Bedroom[];
+  custom_attributes?: PropertyAttributeValue[];
   created_at: string;
   updated_at: string;
 }
@@ -45,7 +55,7 @@ export interface Bedroom {
   price_pppw?: number;
   bedroom_description?: string;
   available_from?: string;
-  youtube_url?: string;
+  custom_attributes?: PropertyAttributeValue[];
   images: string[];
   created_at: string;
   updated_at: string;
@@ -418,21 +428,12 @@ export interface PropertyFormData {
   city?: string;
   postcode?: string;
   location?: string;
-  bathrooms?: number;
-  communal_areas?: number;
   available_from?: string;
-  property_type?: string;
-  has_parking?: boolean;
-  has_garden?: boolean;
   description?: string;
-  bills_included?: boolean;
-  broadband_speed?: string;
-  map_embed?: string;
-  street_view_embed?: string;
-  youtube_url?: string;
   letting_type?: 'Whole House' | 'Room Only';
   landlord_id?: number | null;
   is_live?: boolean;
+  custom_attributes?: Record<number, string | number | boolean | null>;
 }
 
 export interface BedroomFormData {
@@ -440,7 +441,7 @@ export interface BedroomFormData {
   price_pppw?: number | string | null;
   bedroom_description?: string;
   available_from?: string;
-  youtube_url?: string;
+  custom_attributes?: Record<number, string | number | boolean | null>;
 }
 
 export interface LandlordFormData {

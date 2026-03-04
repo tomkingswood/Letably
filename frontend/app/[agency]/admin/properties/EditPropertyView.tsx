@@ -5,8 +5,9 @@ import { useAgency } from '@/lib/agency-context';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import RichTextEditor from '@/components/ui/RichTextEditor';
-import { properties as propertiesApi, bedrooms as bedroomsApi, images as imagesApi, landlords as landlordsApi, certificateTypes as certificateTypesApi, certificates as certificatesApi } from '@/lib/api';
-import { LETTING_TYPES, Property, Bedroom, Landlord, getErrorMessage } from '@/lib/types';
+import { properties as propertiesApi, bedrooms as bedroomsApi, images as imagesApi, landlords as landlordsApi, certificateTypes as certificateTypesApi, certificates as certificatesApi, propertyAttributes as propertyAttributesApi, bedroomAttributes as bedroomAttributesApi } from '@/lib/api';
+import { LETTING_TYPES, Property, Bedroom, Landlord, PropertyAttributeDefinition, PropertyAttributeValue, getErrorMessage } from '@/lib/types';
+import CustomAttributeField from '@/components/admin/CustomAttributeField';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { getImageUrl as getFullImageUrl } from '@/lib/image-url';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
@@ -34,22 +35,16 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     city: '',
     postcode: '',
     location: '',
-    bathrooms: '',
-    communal_areas: '',
     available_from: '',
-    property_type: 'House',
-    has_parking: false,
-    has_garden: false,
-    bills_included: true,
-    broadband_speed: '',
     description: '',
-    map_embed: '',
-    street_view_embed: '',
-    youtube_url: '',
     letting_type: 'Whole House' as 'Whole House' | 'Room Only',
     landlord_id: '',
     is_live: true,
   });
+
+  // Custom attributes
+  const [attributeDefinitions, setAttributeDefinitions] = useState<PropertyAttributeDefinition[]>([]);
+  const [customAttributes, setCustomAttributes] = useState<Record<number, string | number | boolean | null>>({});
 
   // Unsaved changes tracking
   const initialFormData = useRef<string | null>(null);
@@ -68,8 +63,11 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     price_pppw: '',
     bedroom_description: '',
     available_from: '',
-    youtube_url: '',
   });
+
+  // Bedroom custom attributes
+  const [bedroomAttributeDefinitions, setBedroomAttributeDefinitions] = useState<PropertyAttributeDefinition[]>([]);
+  const [bedroomCustomAttributes, setBedroomCustomAttributes] = useState<Record<number, string | number | boolean | null>>({});
 
   // Image upload state
   const [uploadingPropertyImage, setUploadingPropertyImage] = useState(false);
@@ -97,8 +95,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     if (property) {
       const propertyTitle = property.address_line1 || 'Property';
       const bedroomInfo = property.bedrooms?.length ? `${property.bedrooms.length} Bed` : '';
-      const propertyType = property.property_type || 'Property';
-      document.title = `${propertyTitle} - ${bedroomInfo} ${propertyType}`.trim();
+      document.title = `${propertyTitle} - ${bedroomInfo} Property`.trim();
     } else {
       document.title = 'Edit Property';
     }
@@ -132,7 +129,27 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     fetchLandlords();
     fetchCertificateTypes();
     fetchPropertyCertificates();
+    fetchAttributeDefinitions();
+    fetchBedroomAttributeDefinitions();
   }, [id]);
+
+  const fetchAttributeDefinitions = async () => {
+    try {
+      const response = await propertyAttributesApi.getDefinitions();
+      setAttributeDefinitions(response.data.definitions);
+    } catch (err: unknown) {
+      console.error('Error fetching attribute definitions:', err);
+    }
+  };
+
+  const fetchBedroomAttributeDefinitions = async () => {
+    try {
+      const response = await bedroomAttributesApi.getDefinitions();
+      setBedroomAttributeDefinitions(response.data.definitions);
+    } catch (err: unknown) {
+      console.error('Error fetching bedroom attribute definitions:', err);
+    }
+  };
 
   const fetchLandlords = async () => {
     try {
@@ -176,24 +193,29 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
         city: prop.city || '',
         postcode: prop.postcode || '',
         location: prop.location,
-        bathrooms: prop.bathrooms?.toString() || '',
-        communal_areas: prop.communal_areas?.toString() || '0',
         available_from: prop.available_from ? prop.available_from.split('T')[0] : '',
-        property_type: prop.property_type,
-        has_parking: prop.has_parking,
-        has_garden: prop.has_garden,
-        bills_included: prop.bills_included,
-        broadband_speed: prop.broadband_speed || '',
         description: prop.description || '',
-        map_embed: prop.map_embed || '',
-        street_view_embed: prop.street_view_embed || '',
-        youtube_url: prop.youtube_url || '',
         letting_type: prop.letting_type || 'Whole House',
         landlord_id: prop.landlord_id ? prop.landlord_id.toString() : '',
         is_live: prop.is_live !== undefined ? prop.is_live : true,
       };
       setFormData(loadedFormData);
       initialFormData.current = JSON.stringify(loadedFormData);
+
+      // Load custom attribute values
+      if (prop.custom_attributes) {
+        const attrs: Record<number, string | number | boolean | null> = {};
+        for (const attr of prop.custom_attributes) {
+          if (attr.attribute_type === 'boolean') {
+            attrs[attr.attribute_definition_id] = attr.value_boolean ?? false;
+          } else if (attr.attribute_type === 'number') {
+            attrs[attr.attribute_definition_id] = attr.value_number;
+          } else {
+            attrs[attr.attribute_definition_id] = attr.value_text;
+          }
+        }
+        setCustomAttributes(attrs);
+      }
     } catch (err: unknown) {
       setError('Failed to load property');
     } finally {
@@ -220,9 +242,8 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     try {
       await propertiesApi.update(id, {
         ...formData,
-        bathrooms: parseInt(formData.bathrooms),
-        communal_areas: parseInt(formData.communal_areas) || 0,
         landlord_id: formData.landlord_id ? parseInt(formData.landlord_id) : null,
+        custom_attributes: customAttributes,
       });
       setSuccess('Property updated successfully!');
       initialFormData.current = JSON.stringify(formData);
@@ -248,8 +269,8 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
       price_pppw: '',
       bedroom_description: '',
       available_from: '',
-      youtube_url: '',
     });
+    setBedroomCustomAttributes({});
     setShowBedroomForm(true);
   };
 
@@ -260,8 +281,21 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
       price_pppw: room.price_pppw?.toString() || '',
       bedroom_description: room.bedroom_description || '',
       available_from: room.available_from ? room.available_from.split('T')[0] : '',
-      youtube_url: room.youtube_url || '',
     });
+    // Load existing custom attribute values
+    const attrs: Record<number, string | number | boolean | null> = {};
+    if (room.custom_attributes) {
+      for (const attr of room.custom_attributes) {
+        if (attr.attribute_type === 'boolean') {
+          attrs[attr.attribute_definition_id] = attr.value_boolean ?? false;
+        } else if (attr.attribute_type === 'number') {
+          attrs[attr.attribute_definition_id] = attr.value_number ?? null;
+        } else {
+          attrs[attr.attribute_definition_id] = attr.value_text ?? null;
+        }
+      }
+    }
+    setBedroomCustomAttributes(attrs);
     setShowBedroomForm(false);
   };
 
@@ -272,28 +306,28 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
       price_pppw: '',
       bedroom_description: '',
       available_from: '',
-      youtube_url: '',
     });
+    setBedroomCustomAttributes({});
   };
 
   const handleSaveBedroom = async (roomId?: number) => {
     setError('');
     try {
+      const payload = {
+        ...bedroomFormData,
+        price_pppw: bedroomFormData.price_pppw ? parseFloat(bedroomFormData.price_pppw) : null,
+        custom_attributes: bedroomCustomAttributes,
+      };
       if (roomId) {
-        await bedroomsApi.update(roomId, {
-          ...bedroomFormData,
-          price_pppw: bedroomFormData.price_pppw ? parseFloat(bedroomFormData.price_pppw) : null,
-        });
+        await bedroomsApi.update(roomId, payload);
         setSuccess('Bedroom updated successfully!');
         setEditingBedroomId(null);
       } else {
-        await bedroomsApi.create(id, {
-          ...bedroomFormData,
-          price_pppw: bedroomFormData.price_pppw ? parseFloat(bedroomFormData.price_pppw) : null,
-        });
+        await bedroomsApi.create(id, payload);
         setSuccess('Bedroom added successfully!');
         setShowBedroomForm(false);
       }
+      setBedroomCustomAttributes({});
       fetchProperty();
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to save bedroom'));
@@ -612,23 +646,6 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Property Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="property_type"
-              value={formData.property_type}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="House">House</option>
-              <option value="Flat">Flat</option>
-              <option value="Apartment">Apartment</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
               Letting Type <span className="text-red-500">*</span>
             </label>
             <select
@@ -676,79 +693,15 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
           </div>
 
           <Input
-            label="Bathrooms"
-            name="bathrooms"
-            type="number"
-            min="1"
-            value={formData.bathrooms}
-            onChange={handleChange}
-            required
-          />
-
-          <Input
-            label="Communal Areas"
-            name="communal_areas"
-            type="number"
-            min="0"
-            value={formData.communal_areas}
-            onChange={handleChange}
-            placeholder="e.g., 2"
-          />
-
-          <Input
             label="Available From"
             name="available_from"
             type="date"
             value={formData.available_from}
             onChange={handleChange}
           />
-
-          <Input
-            label="Broadband Speed"
-            name="broadband_speed"
-            value={formData.broadband_speed}
-            onChange={handleChange}
-            placeholder="e.g., 100Mbps"
-          />
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="has_parking"
-              name="has_parking"
-              checked={formData.has_parking}
-              onChange={handleChange}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-            />
-            <label htmlFor="has_parking" className="ml-2 block text-sm text-gray-700">Has Parking</label>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="has_garden"
-              name="has_garden"
-              checked={formData.has_garden}
-              onChange={handleChange}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-            />
-            <label htmlFor="has_garden" className="ml-2 block text-sm text-gray-700">Has Garden</label>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="bills_included"
-              name="bills_included"
-              checked={formData.bills_included}
-              onChange={handleChange}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-            />
-            <label htmlFor="bills_included" className="ml-2 block text-sm text-gray-700">Bills Included</label>
-          </div>
-
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -772,62 +725,22 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
           />
         </div>
 
-        {/* Google Maps, Street View & YouTube */}
-        <div>
-          <h3 className="text-xl font-bold mb-4">Media Embeds</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                YouTube Video URL
-              </label>
-              <input
-                type="url"
-                name="youtube_url"
-                value={formData.youtube_url}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="https://www.youtube.com/watch?v=..."
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Paste the YouTube video URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Google Maps Embed Code
-              </label>
-              <textarea
-                name="map_embed"
-                value={formData.map_embed}
-                onChange={handleChange}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-                placeholder='<iframe src="https://www.google.com/maps/embed?pb=..." width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>'
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Get embed code from Google Maps &rarr; Share &rarr; Embed a map
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Google Street View Embed Code
-              </label>
-              <textarea
-                name="street_view_embed"
-                value={formData.street_view_embed}
-                onChange={handleChange}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-                placeholder='<iframe src="https://www.google.com/maps/embed?pb=!4v..." width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>'
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Get embed code from Google Maps Street View &rarr; Share &rarr; Embed a map
-              </p>
+        {/* Custom Attributes */}
+        {attributeDefinitions.length > 0 && (
+          <div>
+            <h3 className="text-xl font-bold mb-4">Custom Attributes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {attributeDefinitions.map((def) => (
+                <CustomAttributeField
+                  key={def.id}
+                  definition={def}
+                  value={customAttributes[def.id]}
+                  onChange={(defId, value) => setCustomAttributes(prev => ({ ...prev, [defId]: value }))}
+                />
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
         <div className="flex justify-end">
           <Button type="submit" disabled={saving}>
@@ -1041,22 +954,21 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  YouTube Video URL (optional)
-                </label>
-                <input
-                  type="url"
-                  name="youtube_url"
-                  value={bedroomFormData.youtube_url}
-                  onChange={handleBedroomChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="https://www.youtube.com/watch?v=..."
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Paste the YouTube video URL for this specific bedroom
-                </p>
-              </div>
+              {bedroomAttributeDefinitions.length > 0 && (
+                <div className="md:col-span-2">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2 mt-1">Custom Attributes</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {bedroomAttributeDefinitions.map((def) => (
+                      <CustomAttributeField
+                        key={def.id}
+                        definition={def}
+                        value={bedroomCustomAttributes[def.id] ?? null}
+                        onChange={(defId, value) => setBedroomCustomAttributes(prev => ({ ...prev, [defId]: value }))}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -1134,22 +1046,21 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
                           />
                         </div>
 
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            YouTube Video URL (optional)
-                          </label>
-                          <input
-                            type="url"
-                            name="youtube_url"
-                            value={bedroomFormData.youtube_url}
-                            onChange={handleBedroomChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                            placeholder="https://www.youtube.com/watch?v=..."
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Paste the YouTube video URL for this specific bedroom
-                          </p>
-                        </div>
+                        {bedroomAttributeDefinitions.length > 0 && (
+                          <div className="md:col-span-2">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2 mt-1">Custom Attributes</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {bedroomAttributeDefinitions.map((def) => (
+                                <CustomAttributeField
+                                  key={def.id}
+                                  definition={def}
+                                  value={bedroomCustomAttributes[def.id] ?? null}
+                                  onChange={(defId, value) => setBedroomCustomAttributes(prev => ({ ...prev, [defId]: value }))}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex gap-2">
@@ -1194,17 +1105,24 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
                               dangerouslySetInnerHTML={{ __html: sanitizeHtml(room.bedroom_description) }}
                             />
                           )}
-                          {room.youtube_url && (
-                            <div className="text-sm text-gray-600 mt-1">
-                              <span className="font-medium">Video:</span>{' '}
-                              <a
-                                href={room.youtube_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                Watch on YouTube
-                              </a>
+                          {room.custom_attributes && room.custom_attributes.length > 0 && (
+                            <div className="text-sm text-gray-600 mt-2 space-y-0.5">
+                              <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Custom Attributes</h5>
+                              {room.custom_attributes.map((attr) => {
+                                let displayValue: string;
+                                if (attr.attribute_type === 'boolean') {
+                                  displayValue = attr.value_boolean ? 'Yes' : 'No';
+                                } else if (attr.attribute_type === 'number') {
+                                  displayValue = attr.value_number != null ? String(attr.value_number) : '-';
+                                } else {
+                                  displayValue = attr.value_text || '-';
+                                }
+                                return (
+                                  <div key={attr.attribute_definition_id}>
+                                    <span className="font-medium">{attr.name}:</span> {displayValue}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           </div>

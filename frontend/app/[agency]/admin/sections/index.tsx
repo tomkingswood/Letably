@@ -79,6 +79,16 @@ export const sections: Record<string, {
       bgColor: 'bg-teal-100',
     },
   },
+  'custom-attributes': {
+    component: dynamic(() => import('./PropertyAttributesSection'), { loading: SectionLoading }),
+    meta: {
+      title: 'Custom Attributes',
+      description: 'Define custom attributes for properties and rooms (e.g., Bathrooms, Parking, Room Size)',
+      group: 'properties',
+      iconColor: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
+    },
+  },
 
   // Lettings Management
   applications: {
