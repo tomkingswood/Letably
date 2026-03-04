@@ -640,7 +640,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
               <p className="text-gray-600 mb-1">Vacant Bedrooms</p>
               <p className="text-3xl font-bold text-blue-600">
                 {properties.reduce((sum, p) => {
-                  const vacantRooms = p.bedrooms?.filter(r => !r.is_occupied).length || 0;
+                  const vacantRooms = p.bedrooms?.filter(r => r.is_occupied === false).length || 0;
                   return sum + vacantRooms;
                 }, 0)}
               </p>
@@ -658,7 +658,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
               <p className="text-gray-600 mb-1">Occupied Bedrooms</p>
               <p className="text-3xl font-bold text-gray-600">
                 {properties.reduce((sum, p) => {
-                  const occupiedRooms = p.bedrooms?.filter(r => r.is_occupied).length || 0;
+                  const occupiedRooms = p.bedrooms?.filter(r => r.is_occupied === true).length || 0;
                   return sum + occupiedRooms;
                 }, 0)}
               </p>
@@ -752,7 +752,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                   {(reorderMode ? properties : filteredProperties).map((property, index) => {
                     const pricesAvailable = property.bedrooms?.filter(r => r.price_pppw != null).map(r => r.price_pppw!) ?? [];
                     const lowestPrice = pricesAvailable.length > 0 ? Math.min(...pricesAvailable) : null;
-                    const vacantCount = property.bedrooms?.filter(r => !r.is_occupied).length || 0;
+                    const vacantCount = property.bedrooms?.filter(r => r.is_occupied === false).length || 0;
 
                     return (
                       <tr
@@ -823,7 +823,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                 const lowestPrice = property.bedrooms && property.bedrooms.length > 0
                   ? Math.min(...property.bedrooms.filter(r => r.price_pppw != null).map(r => r.price_pppw!))
                   : null;
-                const vacantCount = property.bedrooms?.filter(r => !r.is_occupied).length || 0;
+                const vacantCount = property.bedrooms?.filter(r => r.is_occupied === false).length || 0;
 
                 return (
                   <div
