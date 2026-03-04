@@ -4,6 +4,7 @@ const { createEmailTemplate, createInfoBox } = require('../utils/emailTemplates'
 const { formatDateTime } = require('../utils/dateFormatter');
 const { getAgencyBranding } = require('../services/brandingService');
 const asyncHandler = require('../utils/asyncHandler');
+const { validateRequiredFields, validateEnum } = require('../utils/validators');
 
 // Get SMTP settings (without password for security)
 exports.getSmtpSettings = asyncHandler(async (req, res) => {
@@ -58,9 +59,7 @@ exports.updateEmailMode = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
   const { email_mode } = req.body;
 
-  if (!['platform', 'custom'].includes(email_mode)) {
-    return res.status(400).json({ error: 'Invalid email_mode. Must be "platform" or "custom"' });
-  }
+  validateEnum(email_mode, ['platform', 'custom'], 'email_mode');
 
   // Check if settings exist
   // Defense-in-depth: explicit agency_id filtering
@@ -108,9 +107,7 @@ exports.updateSmtpSettings = asyncHandler(async (req, res) => {
   } = req.body;
 
   // Validation
-  if (!host || !port || !username || !from_email) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+  validateRequiredFields(req.body, ['host', 'port', 'username', 'from_email']);
 
   // Check if settings exist
   // Defense-in-depth: explicit agency_id filtering
@@ -214,9 +211,7 @@ exports.sendTestEmail = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
   const { to_email } = req.body;
 
-  if (!to_email) {
-    return res.status(400).json({ error: 'Recipient email is required' });
-  }
+  validateRequiredFields(req.body, ['to_email']);
 
   const { queueEmail } = require('../services/emailService');
   const branding = await getAgencyBranding(agencyId);

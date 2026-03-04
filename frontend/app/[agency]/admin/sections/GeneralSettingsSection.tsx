@@ -5,6 +5,7 @@ import { settings, agencies } from '@/lib/api';
 import { useAgency } from '@/lib/agency-context';
 import { SectionProps } from './index';
 import { MessageAlert } from '@/components/ui/MessageAlert';
+import { getErrorMessage } from '@/lib/types';
 
 interface SettingsData {
   company_name: string;
@@ -85,10 +86,10 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
     try {
       const settingsRes = await settings.getAll();
       setFormData({ ...defaultSettings, ...settingsRes.data });
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to load settings',
+        text: getErrorMessage(err, 'Failed to load settings'),
       });
     } finally {
       setLoading(false);
@@ -108,10 +109,10 @@ export default function GeneralSettingsSection({ onNavigate, action, itemId, onB
       setMessage({ type: 'success', text: 'Settings updated successfully!' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
       try { await refreshAgency(); } catch { /* settings saved; context refresh is best-effort */ }
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to update settings',
+        text: getErrorMessage(err, 'Failed to update settings'),
       });
     } finally {
       setSaving(false);

@@ -5,6 +5,7 @@ import { emailQueue } from '@/lib/api';
 import { useAgency } from '@/lib/agency-context';
 import { SectionProps } from './index';
 import { MessageAlert } from '@/components/ui/MessageAlert';
+import { getErrorMessage } from '@/lib/types';
 
 interface QueuedEmail {
   id: number;
@@ -43,8 +44,8 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
     try {
       const response = await emailQueue.getAll();
       setEmails(response.data.emails || []);
-    } catch (error) {
-      console.error('Error fetching email queue:', error);
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to load email queue') });
     } finally {
       setLoading(false);
     }
@@ -55,9 +56,8 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
       await emailQueue.retry(id);
       setMessage({ type: 'success', text: 'Email queued for retry' });
       fetchEmails();
-    } catch (error) {
-      console.error('Error retrying email:', error);
-      setMessage({ type: 'error', text: 'Failed to retry email' });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to retry email') });
     }
   };
 
@@ -68,10 +68,10 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
       await emailQueue.deleteEmail(id);
       setMessage({ type: 'success', text: 'Email deleted successfully' });
       fetchEmails();
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to delete email',
+        text: getErrorMessage(err, 'Failed to delete email'),
       });
     }
   };
@@ -90,10 +90,10 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
       setShowDeleteAllModal(false);
       setDeleteAllConfirmStep(0);
       fetchEmails();
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to delete emails',
+        text: getErrorMessage(err, 'Failed to delete emails'),
       });
     } finally {
       setDeletingAll(false);

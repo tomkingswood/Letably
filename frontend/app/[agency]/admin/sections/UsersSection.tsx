@@ -45,6 +45,7 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
   const [resettingUser, setResettingUser] = useState<User | null>(null);
   const [resetSending, setResetSending] = useState(false);
   const [resetSuccess, setResetSuccess] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -148,6 +149,8 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
   // Reset password handler
   const handleResetPassword = async () => {
     if (!resettingUser) return;
+    setResetError(null);
+    setResetSuccess(null);
     setResetSending(true);
 
     try {
@@ -156,7 +159,8 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
       setResettingUser(null);
       setTimeout(() => setResetSuccess(null), 5000);
     } catch (err: unknown) {
-      alert(getErrorMessage(err, 'Failed to reset password'));
+      setResetError(getErrorMessage(err, 'Failed to reset password'));
+      setTimeout(() => setResetError(null), 5000);
     } finally {
       setResetSending(false);
     }
@@ -347,8 +351,9 @@ export default function UsersSection({ onNavigate, action, itemId, onBack }: Sec
         </div>
       </div>
 
-      {/* Success Toast */}
+      {/* Feedback Messages */}
       <MessageAlert type="success" message={resetSuccess} className="mb-4" />
+      <MessageAlert type="error" message={resetError} className="mb-4" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

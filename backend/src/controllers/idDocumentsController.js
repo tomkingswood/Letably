@@ -12,7 +12,6 @@ const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const { encryptFile, decryptFile } = require('../utils/encryption');
 const { validateFile } = require('../utils/fileValidation');
-const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 
 /**
@@ -211,8 +210,7 @@ exports.uploadGuarantorId = asyncHandler(async (req, res) => {
  * GET /api/applications/:id/id-document?type=applicant_id
  * Requires authentication, user must own application or be admin
  */
-exports.downloadApplicantId = async (req, res) => {
-  try {
+exports.downloadApplicantId = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { type } = req.query;
     const userId = req.user.id;
@@ -269,21 +267,14 @@ exports.downloadApplicantId = async (req, res) => {
 
     res.send(decryptedData);
 
-  } catch (err) {
-    if (err.message.includes('decrypt')) {
-      return handleError(res, err, 'decrypt ID - file may be corrupted');
-    }
-    handleError(res, err, 'retrieve ID document');
-  }
-};
+}, 'retrieve ID document');
 
 /**
  * Download/view guarantor ID document (via token)
  * GET /api/applications/guarantor/:token/id-document
  * Public access via guarantor token
  */
-exports.downloadGuarantorId = async (req, res) => {
-  try {
+exports.downloadGuarantorId = asyncHandler(async (req, res) => {
     const { token } = req.params;
     const agencyId = req.agencyId || await getAgencyIdFromGuarantorToken(token);
 
@@ -329,13 +320,7 @@ exports.downloadGuarantorId = async (req, res) => {
 
     res.send(decryptedData);
 
-  } catch (err) {
-    if (err.message.includes('decrypt')) {
-      return handleError(res, err, 'decrypt guarantor ID - file may be corrupted');
-    }
-    handleError(res, err, 'retrieve guarantor ID document');
-  }
-};
+}, 'retrieve guarantor ID document');
 
 /**
  * Check if guarantor ID document exists

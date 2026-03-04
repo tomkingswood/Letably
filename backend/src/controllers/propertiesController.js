@@ -2,6 +2,7 @@ const db = require('../db');
 const fs = require('fs');
 const path = require('path');
 const asyncHandler = require('../utils/asyncHandler');
+const { validateRequiredFields } = require('../utils/validators');
 
 // Get all properties with optional filters
 exports.getAllProperties = asyncHandler(async (req, res) => {
@@ -197,9 +198,7 @@ exports.createProperty = asyncHandler(async (req, res) => {
   } = req.body;
 
   // Validation - all NOT NULL columns must be present
-  if (!address_line1 || !city || !postcode || !bathrooms) {
-    return res.status(400).json({ error: 'Required fields missing: address, city, postcode, and bathrooms are required' });
-  }
+  validateRequiredFields(req.body, ['address_line1', 'city', 'postcode', 'bathrooms']);
 
   // Auto-generate title from address
   const title = [address_line1, city, postcode].filter(Boolean).join(', ');

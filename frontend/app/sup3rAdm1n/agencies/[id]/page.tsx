@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSuperAuth } from '@/lib/super-auth-context';
 import { superAgencies, Agency, AgencyUser, StorageUsage } from '@/lib/super-api';
+import { getErrorMessage } from '@/lib/types';
 
 export default function SuperAdminAgencyDetailPage() {
   const router = useRouter();
@@ -65,10 +66,10 @@ export default function SuperAdminAgencyDetailPage() {
         type: 'success',
         text: `Agency ${response.data.agency.is_active ? 'enabled' : 'disabled'} successfully`
       });
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to update status'
+        text: getErrorMessage(err, 'Failed to update status')
       });
     } finally {
       setUpdating(false);
@@ -88,10 +89,10 @@ export default function SuperAdminAgencyDetailPage() {
         type: 'success',
         text: `Property images ${response.data.agency.property_images_enabled ? 'enabled' : 'disabled'} successfully`
       });
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to update property images setting'
+        text: getErrorMessage(err, 'Failed to update property images setting')
       });
     } finally {
       setUpdating(false);
@@ -108,10 +109,10 @@ export default function SuperAdminAgencyDetailPage() {
       const response = await superAgencies.updateSubscription(agency.id, { subscription_tier: tier });
       setAgency({ ...agency, subscription_tier: response.data.agency.subscription_tier });
       setMessage({ type: 'success', text: `Subscription updated to ${tier}` });
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to update subscription'
+        text: getErrorMessage(err, 'Failed to update subscription')
       });
     } finally {
       setUpdating(false);
@@ -136,10 +137,10 @@ export default function SuperAdminAgencyDetailPage() {
       window.open(`/${agency.slug}/admin`, '_blank');
 
       setMessage({ type: 'success', text: 'Impersonation token generated. New tab opened.' });
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to impersonate user'
+        text: getErrorMessage(err, 'Failed to impersonate user')
       });
     } finally {
       setUpdating(false);

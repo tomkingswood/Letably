@@ -316,15 +316,32 @@ exports.duplicateSection = asyncHandler(async (req, res) => {
 // Preview default agreement sections with dummy data (no landlord overrides)
 exports.previewDefaultAgreement = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
-  const { tenancyType } = req.query; // 'room_only' or 'whole_house'
+  const { tenancyType = 'room_only', testData } = req.body;
+  const safeTestData = testData && typeof testData === 'object' && !Array.isArray(testData) ? testData : {};
 
   // Validate tenancy type
-  if (!tenancyType || !['room_only', 'whole_house'].includes(tenancyType)) {
-    return res.status(400).json({ error: 'Invalid or missing tenancyType query parameter. Must be "room_only" or "whole_house"' });
+  if (!['room_only', 'whole_house'].includes(tenancyType)) {
+    return res.status(400).json({ error: 'Invalid tenancyType. Must be "room_only" or "whole_house"' });
   }
 
+  const { defaultTenants, defaultPropertyData } = require('../services/previewDataService');
+
+  // Merge custom test data with defaults
+  const primaryTenant = { ...defaultTenants.primary, ...(safeTestData.primaryTenant || {}) };
+  const secondTenant = { ...defaultTenants.secondary, ...(safeTestData.secondTenant || {}) };
+  const propertyData = { ...defaultPropertyData, ...(safeTestData.propertyData || {}) };
+
   const agreement = await generatePreview(
-    { tenancyType, landlordId: null },
+    {
+      tenancyType,
+      landlordId: null,
+      primaryTenant,
+      secondTenant,
+      propertyData,
+      startDate: safeTestData.startDate || '2025-09-01',
+      endDate: safeTestData.endDate || '2026-08-31',
+      isRollingMonthly: safeTestData.isRollingMonthly || false,
+    },
     agencyId,
     generateAgreement
   );

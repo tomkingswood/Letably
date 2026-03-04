@@ -6,6 +6,7 @@ import { auth } from '@/lib/api';
 import Link from 'next/link';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import { validatePassword } from '@/lib/validation';
+import { getErrorMessage } from '@/lib/types';
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -73,10 +74,10 @@ function ResetPasswordForm() {
       setTimeout(() => {
         router.push('/login');
       }, 3000);
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to reset password'
+        text: getErrorMessage(err, 'Failed to reset password')
       });
     } finally {
       setLoading(false);

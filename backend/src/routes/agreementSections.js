@@ -10,7 +10,7 @@ router.use(authenticateToken, requireAdmin);
 router.get('/', agreementSectionsController.getAllSections);
 
 // Preview default sections only (no landlord overrides)
-router.get('/preview-default', agreementSectionsController.previewDefaultAgreement);
+router.post('/preview-default', agreementSectionsController.previewDefaultAgreement);
 
 // Get sections for a specific landlord (including defaults)
 router.get('/landlord/:landlord_id', agreementSectionsController.getSectionsForLandlord);

@@ -3,7 +3,6 @@ const statementService = require('../services/statementService');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const { getAgencyBranding } = require('../services/brandingService');
-const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 
 /**
@@ -580,8 +579,7 @@ exports.getAnnualSummary = asyncHandler(async (req, res) => {
 /**
  * Generate PDF statement for a month
  */
-exports.downloadMonthlyStatementPDF = async (req, res) => {
-  try {
+exports.downloadMonthlyStatementPDF = asyncHandler(async (req, res) => {
     const { year, month } = req.params;
     const landlord = req.landlord;
     const agencyId = req.agencyId;
@@ -748,19 +746,12 @@ exports.downloadMonthlyStatementPDF = async (req, res) => {
     );
 
     doc.end();
-  } catch (err) {
-    console.error('Generate PDF statement error:', err);
-    if (!res.headersSent) {
-      handleError(res, err, 'generate PDF statement');
-    }
-  }
-};
+}, 'generate PDF statement');
 
 /**
  * Generate PDF annual summary
  */
-exports.downloadAnnualStatementPDF = async (req, res) => {
-  try {
+exports.downloadAnnualStatementPDF = asyncHandler(async (req, res) => {
     const { year } = req.params;
     const landlord = req.landlord;
     const agencyId = req.agencyId;
@@ -922,10 +913,4 @@ exports.downloadAnnualStatementPDF = async (req, res) => {
     );
 
     doc.end();
-  } catch (err) {
-    console.error('Generate annual PDF statement error:', err);
-    if (!res.headersSent) {
-      handleError(res, err, 'generate annual PDF statement');
-    }
-  }
-};
+}, 'generate annual PDF statement');

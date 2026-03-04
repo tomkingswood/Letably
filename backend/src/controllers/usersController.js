@@ -1,6 +1,7 @@
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('../utils/asyncHandler');
+const { validateRequiredFields } = require('../utils/validators');
 
 // Get all users (admin only)
 exports.getAllUsers = asyncHandler(async (req, res) => {
@@ -69,9 +70,7 @@ exports.updateUser = asyncHandler(async (req, res) => {
   const { email, first_name, last_name, phone, password } = req.body;
 
   // Validation
-  if (!email || !first_name || !last_name) {
-    return res.status(400).json({ error: 'Email, first name, and last name are required' });
-  }
+  validateRequiredFields(req.body, ['email', 'first_name', 'last_name']);
 
   // Check if user exists - defense-in-depth: explicit agency_id filtering
   const userResult = await db.query('SELECT id FROM users WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);

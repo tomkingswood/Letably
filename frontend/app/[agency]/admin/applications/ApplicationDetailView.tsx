@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { applications, agencies, holdingDeposits, getAuthToken } from '@/lib/api';
 import type { ApplicationFormData, HoldingDeposit } from '@/lib/types';
+import { getErrorMessage } from '@/lib/types';
 import { useAgency } from '@/lib/agency-context';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import HoldingDepositApprovalModal from '@/components/admin/HoldingDepositApprovalModal';
@@ -73,10 +74,10 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
       setApplication(response.data);
       // Check ID document status after application is loaded, pass the application data
       await checkIdDocumentStatus(response.data);
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to load application'
+        text: getErrorMessage(err, 'Failed to load application')
       });
     } finally {
       setLoading(false);
@@ -96,10 +97,10 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
       } else {
         onBack();
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to delete application'
+        text: getErrorMessage(err, 'Failed to delete application')
       });
       setDeleting(false);
     }
@@ -121,11 +122,10 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
       });
       await fetchApplication();
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { holding_deposit_required?: boolean; deposit_awaiting_payment?: boolean; error?: string } } };
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: err.response?.data?.error || 'Failed to approve application'
+        text: getErrorMessage(err, 'Failed to approve application')
       });
     } finally {
       setApproving(false);
@@ -147,9 +147,8 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
       setMessage({ type: 'success', text: 'Deposit payment undone successfully.' });
       const depositRes = await holdingDeposits.getByApplication(id);
       setExistingDeposit(depositRes.data.deposit || null);
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to undo payment' });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to undo payment') });
     } finally {
       setIsUndoing(false);
     }
@@ -185,10 +184,10 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
       });
       // Refresh application data to get new token
       await fetchApplication();
-    } catch (error: any) {
+    } catch (err: unknown) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to regenerate guarantor link'
+        text: getErrorMessage(err, 'Failed to regenerate guarantor link')
       });
     } finally {
       setRegenerating(false);

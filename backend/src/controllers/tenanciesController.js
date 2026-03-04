@@ -189,12 +189,12 @@ exports.getTenancyById = asyncHandler(async (req, res) => {
  * Use getApprovedApplicants instead
  * GET /api/tenancies/completed-applications
  */
-exports.getCompletedApplicationsByProperty = async (req, res) => {
+exports.getCompletedApplicationsByProperty = asyncHandler(async (req, res) => {
   res.json({
     propertiesWithApplications: [],
     message: 'This endpoint is deprecated. Applications are no longer grouped by property. Use /approved-applicants instead.'
   });
-};
+}, 'fetch completed applications by property');
 
 /**
  * Get all approved applicants (not grouped by property)

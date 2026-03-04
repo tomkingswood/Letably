@@ -712,8 +712,8 @@ export const agreementSections = {
   delete: (id: string | number) => api.delete(`/agreement-sections/${id}`),
   duplicate: (id: string | number, landlordId?: number) =>
     api.post(`/agreement-sections/${id}/duplicate`, { landlord_id: landlordId }),
-  previewDefault: (tenancyType: 'room_only' | 'whole_house') =>
-    api.get('/agreement-sections/preview-default', { params: { tenancyType } }),
+  previewDefault: (tenancyType: 'room_only' | 'whole_house', testData?: Record<string, unknown>) =>
+    api.post('/agreement-sections/preview-default', { tenancyType, testData }),
 };
 
 // Certificate Types API (consolidated - handles property, agency, and future tenancy types)

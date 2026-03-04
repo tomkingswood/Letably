@@ -12,7 +12,7 @@ const fs = require('fs').promises;
 const sharp = require('sharp');
 const { decryptFile } = require('../utils/encryption');
 const { formatDate: formatDateUtil, formatDateTime: formatDateTimeUtil } = require('../utils/dateFormatter');
-const handleError = require('../utils/handleError');
+const asyncHandler = require('../utils/asyncHandler');
 const { parseJsonField } = require('../utils/parseJsonField');
 const { hydrateApplication } = require('../helpers/formData');
 
@@ -26,8 +26,7 @@ const LOGO_PATH = path.join(__dirname, '../../../frontend/public/logo.gif');
  * GET /api/applications/:id/generate-pdf
  * Requires admin authentication
  */
-exports.generateApplicationPDF = async (req, res) => {
-  try {
+exports.generateApplicationPDF = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const agencyId = req.agencyId;
 
@@ -306,13 +305,7 @@ exports.generateApplicationPDF = async (req, res) => {
     // Finalize PDF
     doc.end();
 
-  } catch (err) {
-    console.error('Generate PDF error:', err);
-    if (!res.headersSent) {
-      handleError(res, err, 'generate PDF');
-    }
-  }
-};
+}, 'generate PDF');
 
 // Helper functions
 
