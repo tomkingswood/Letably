@@ -48,12 +48,15 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
 
   // Unsaved changes tracking
   const initialFormData = useRef<string | null>(null);
+  const initialCustomAttrs = useRef<string | null>(null);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
 
   const isDirty = useCallback(() => {
     if (initialFormData.current === null) return false;
-    return JSON.stringify(formData) !== initialFormData.current;
-  }, [formData]);
+    if (JSON.stringify(formData) !== initialFormData.current) return true;
+    if (initialCustomAttrs.current !== null && JSON.stringify(customAttributes) !== initialCustomAttrs.current) return true;
+    return false;
+  }, [formData, customAttributes]);
 
   // Bedroom form state
   const [showBedroomForm, setShowBedroomForm] = useState(false);
@@ -203,18 +206,22 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
       initialFormData.current = JSON.stringify(loadedFormData);
 
       // Load custom attribute values
-      if (prop.custom_attributes) {
+      if (prop.custom_attributes && prop.custom_attributes.length > 0) {
         const attrs: Record<number, string | number | boolean | null> = {};
         for (const attr of prop.custom_attributes) {
           if (attr.attribute_type === 'boolean') {
             attrs[attr.attribute_definition_id] = attr.value_boolean ?? false;
           } else if (attr.attribute_type === 'number') {
-            attrs[attr.attribute_definition_id] = attr.value_number;
+            attrs[attr.attribute_definition_id] = attr.value_number != null ? Number(attr.value_number) : null;
           } else {
-            attrs[attr.attribute_definition_id] = attr.value_text;
+            attrs[attr.attribute_definition_id] = attr.value_text ?? null;
           }
         }
         setCustomAttributes(attrs);
+        initialCustomAttrs.current = JSON.stringify(attrs);
+      } else {
+        setCustomAttributes({});
+        initialCustomAttrs.current = JSON.stringify({});
       }
     } catch (err: unknown) {
       setError('Failed to load property');
@@ -247,6 +254,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
       });
       setSuccess('Property updated successfully!');
       initialFormData.current = JSON.stringify(formData);
+      initialCustomAttrs.current = JSON.stringify(customAttributes);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to update property'));
@@ -289,7 +297,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
         if (attr.attribute_type === 'boolean') {
           attrs[attr.attribute_definition_id] = attr.value_boolean ?? false;
         } else if (attr.attribute_type === 'number') {
-          attrs[attr.attribute_definition_id] = attr.value_number ?? null;
+          attrs[attr.attribute_definition_id] = attr.value_number != null ? Number(attr.value_number) : null;
         } else {
           attrs[attr.attribute_definition_id] = attr.value_text ?? null;
         }

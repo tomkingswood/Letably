@@ -63,9 +63,12 @@ async function saveCustomAttributes(bedroomId, agencyId, attributes) {
     } else if (attrType === 'text' || attrType === 'dropdown') {
       valueText = String(value);
     } else if (attrType === 'number') {
-      valueNumber = Number(value);
+      const num = Number(value);
+      valueNumber = Number.isFinite(num) ? num : null;
     } else if (attrType === 'boolean') {
-      valueBoolean = value ? true : false;
+      valueBoolean = (value === true || value === 'true') ? true
+        : (value === false || value === 'false') ? false
+        : null;
     }
 
     await db.query(`

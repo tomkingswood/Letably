@@ -66,7 +66,7 @@ const fetchData = async (agencyId, filters = {}, includeRelated = true) => {
       p.city,
       p.postcode,
       p.letting_type,
-      (SELECT COUNT(*) FROM bedrooms WHERE property_id = p.id) as bedroom_count,
+      (SELECT COUNT(*) FROM bedrooms WHERE property_id = p.id AND agency_id = $1) as bedroom_count,
       p.is_live,
       p.available_from,
       p.created_at,
@@ -100,22 +100,30 @@ const fetchData = async (agencyId, filters = {}, includeRelated = true) => {
 
   const result = await db.query(query, params, agencyId);
 
+  // Request-scoped copy of columns to avoid mutating module-level array
+  const exportColumns = [...columns];
+
   // Fetch custom attributes for export
   const propertyIds = result.rows.map(r => r.id);
   if (propertyIds.length > 0) {
     const attrsResult = await db.query(`
       SELECT pav.property_id, pad.name,
-        COALESCE(pav.value_text, pav.value_number::text, CASE WHEN pav.value_boolean THEN 'Yes' ELSE 'No' END) as value
+        COALESCE(
+          pav.value_text,
+          pav.value_number::text,
+          CASE WHEN pav.value_boolean IS NULL THEN NULL WHEN pav.value_boolean THEN 'Yes' ELSE 'No' END
+        ) as value
       FROM property_attribute_values pav
       JOIN property_attribute_definitions pad ON pad.id = pav.attribute_definition_id
       WHERE pav.property_id = ANY($1) AND pav.agency_id = $2
       ORDER BY pad.display_order ASC
     `, [propertyIds, agencyId], agencyId);
 
-    // Group by property_id
+    // Group by property_id with namespaced keys
     const attrsByProperty = {};
     for (const row of attrsResult.rows) {
-      (attrsByProperty[row.property_id] ||= {})[row.name] = row.value;
+      const key = `custom_${row.name}`;
+      (attrsByProperty[row.property_id] ||= {})[key] = row.value;
     }
 
     // Spread custom attributes onto each row
@@ -130,11 +138,14 @@ const fetchData = async (agencyId, filters = {}, includeRelated = true) => {
       allAttrNames.add(row.name);
     }
     for (const name of allAttrNames) {
-      if (!columns.find(c => c.key === name)) {
-        columns.push({ key: name, label: name });
+      const key = `custom_${name}`;
+      if (!exportColumns.find(c => c.key === key)) {
+        exportColumns.push({ key, label: name });
       }
     }
   }
+
+  result.rows.exportColumns = exportColumns;
 
   return result.rows;
 };

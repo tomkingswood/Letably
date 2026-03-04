@@ -88,7 +88,11 @@ exports.updateDefinition = asyncHandler(async (req, res) => {
     UPDATE bedroom_attribute_definitions SET
       name = COALESCE($1, name),
       attribute_type = COALESCE($2, attribute_type),
-      options = $3,
+      options = CASE
+        WHEN $2 = 'dropdown' THEN COALESCE($3, options)
+        WHEN $2 IS NOT NULL THEN NULL
+        ELSE options
+      END,
       is_required = COALESCE($4, is_required),
       updated_at = CURRENT_TIMESTAMP
     WHERE id = $5 AND agency_id = $6
@@ -96,7 +100,7 @@ exports.updateDefinition = asyncHandler(async (req, res) => {
   `, [
     name ? name.trim() : null,
     attribute_type || null,
-    attribute_type === 'dropdown' ? JSON.stringify(options) : null,
+    (attribute_type === 'dropdown' && options) ? JSON.stringify(options) : null,
     is_required !== undefined ? (is_required ? true : false) : null,
     id,
     agencyId
@@ -138,14 +142,23 @@ exports.reorderDefinitions = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'definitionIds must be a non-empty array' });
   }
 
-  // Update each definition's display_order
-  for (let i = 0; i < definitionIds.length; i++) {
-    await db.query(
-      'UPDATE bedroom_attribute_definitions SET display_order = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND agency_id = $3',
-      [i, definitionIds[i], agencyId],
-      agencyId
+  await db.transaction(async (client) => {
+    // Validate all IDs belong to this agency
+    const check = await client.query(
+      'SELECT COUNT(*)::int AS cnt FROM bedroom_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
+      [definitionIds, agencyId]
     );
-  }
+    if (check.rows[0].cnt !== definitionIds.length) {
+      throw Object.assign(new Error('One or more definition IDs do not belong to this agency'), { statusCode: 400 });
+    }
+
+    for (let i = 0; i < definitionIds.length; i++) {
+      await client.query(
+        'UPDATE bedroom_attribute_definitions SET display_order = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND agency_id = $3',
+        [i, definitionIds[i], agencyId]
+      );
+    }
+  }, agencyId);
 
   res.json({ message: 'Definitions reordered successfully' });
 }, 'reorder bedroom attribute definitions');

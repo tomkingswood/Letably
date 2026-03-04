@@ -185,7 +185,7 @@ const processExport = async (jobId, agencyId) => {
 
     // Generate export file
     if (job.export_format === 'csv') {
-      await streamCSV(writeStream, data, exporter.columns, onProgress);
+      await streamCSV(writeStream, data, data.exportColumns || exporter.columns, onProgress);
     } else {
       await streamXML(
         writeStream,

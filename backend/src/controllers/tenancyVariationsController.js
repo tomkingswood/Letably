@@ -14,7 +14,7 @@ const {
   validateNoDuplicateUsers
 } = require('../validators/tenancyValidator');
 const asyncHandler = require('../utils/asyncHandler');
-const { getFrontendBaseUrl } = require('../utils/urlBuilder');
+const { getFrontendBaseUrl, buildAgencyUrl } = require('../utils/urlBuilder');
 
 /**
  * Create a rolling tenancy from an existing tenancy
@@ -378,9 +378,8 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
   let emailsSent = 0;
   let setupEmailsSent = 0;
   if (send_portal_email) {
-    const siteUrl = getFrontendBaseUrl();
     const slug = req.agency?.slug || '';
-    const portalUrl = `${siteUrl}/${slug}/tenancy`;
+    const portalUrl = buildAgencyUrl(slug, 'tenancy');
     const propertyAddress = tenancy.property_address
       ? `${tenancy.property_address}${tenancy.location ? ', ' + tenancy.location : ''}`
       : 'your property';
@@ -399,7 +398,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
 
         if (hasValidSetupToken) {
           // User hasn't set up their password yet - send setup email with tenancy context
-          const setupUrl = `${siteUrl}/${slug}/setup-password/${member.setup_token}`;
+          const setupUrl = buildAgencyUrl(slug, `setup-password/${member.setup_token}`);
 
           const emailContent = createEmailTemplate(
             'Your Tenancy is Ready',
