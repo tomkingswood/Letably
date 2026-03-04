@@ -126,8 +126,8 @@ exports.getAllProperties = asyncHandler(async (req, res) => {
   }
 
   if (bedroomsFilter && bedroomsFilter !== 'all') {
-    query += ` AND (SELECT COUNT(*) FROM bedrooms b WHERE b.property_id = properties.id) >= $${paramIndex++}`;
-    params.push(parseInt(bedroomsFilter));
+    query += ` AND (SELECT COUNT(*) FROM bedrooms b WHERE b.property_id = properties.id AND b.agency_id = $${paramIndex++}) >= $${paramIndex++}`;
+    params.push(agencyId, parseInt(bedroomsFilter));
   }
 
   if (letting_type && letting_type !== 'all') {
@@ -155,7 +155,7 @@ exports.getAllProperties = asyncHandler(async (req, res) => {
       FROM images
       WHERE property_id = ANY($1)
       AND bedroom_id IS NULL
-      AND property_id IN (SELECT id FROM properties WHERE agency_id = $2)
+      AND agency_id = $2
       ORDER BY is_primary DESC, id ASC
     `, [propertyIds, agencyId], agencyId),
     db.query(
@@ -229,7 +229,7 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
     FROM images
     WHERE property_id = $1
     AND bedroom_id IS NULL
-    AND property_id IN (SELECT id FROM properties WHERE agency_id = $2)
+    AND agency_id = $2
     ORDER BY is_primary DESC, id ASC
   `, [id, agencyId], agencyId);
 
@@ -285,7 +285,7 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
       SELECT i.file_path, i.id as image_id
       FROM images i
       WHERE i.bedroom_id = $1
-      AND i.bedroom_id IN (SELECT id FROM bedrooms WHERE agency_id = $2)
+      AND i.agency_id = $2
       ORDER BY i.created_at ASC
     `, [bedroom.id, agencyId], agencyId);
 
@@ -511,9 +511,15 @@ exports.updateDisplayOrder = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'propertyIds must be a non-empty array' });
   }
 
+  // Normalize to integers and validate
+  const normalizedIds = propertyIds.map(Number);
+  if (!normalizedIds.every(n => Number.isInteger(n) && n > 0)) {
+    return res.status(400).json({ error: 'All propertyIds must be positive integers' });
+  }
+
   // Reject duplicate IDs
-  const uniqueIds = new Set(propertyIds.map(Number));
-  if (uniqueIds.size !== propertyIds.length) {
+  const uniqueIds = new Set(normalizedIds);
+  if (uniqueIds.size !== normalizedIds.length) {
     return res.status(400).json({ error: 'propertyIds must not contain duplicates' });
   }
 
@@ -523,15 +529,15 @@ exports.updateDisplayOrder = asyncHandler(async (req, res) => {
       'SELECT id FROM properties WHERE agency_id = $1',
       [agencyId]
     );
-    const storedIds = new Set(allProps.rows.map(r => r.id));
+    const storedIds = new Set(allProps.rows.map(r => Number(r.id)));
     if (storedIds.size !== uniqueIds.size || ![...storedIds].every(id => uniqueIds.has(id))) {
       throw Object.assign(new Error('propertyIds must contain exactly all properties for this agency'), { statusCode: 400 });
     }
 
-    for (let i = 0; i < propertyIds.length; i++) {
+    for (let i = 0; i < normalizedIds.length; i++) {
       await client.query(
         'UPDATE properties SET display_order = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND agency_id = $3',
-        [i, propertyIds[i], agencyId]
+        [i, normalizedIds[i], agencyId]
       );
     }
   }, agencyId);

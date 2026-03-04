@@ -116,7 +116,7 @@ exports.getBedroomsByProperty = asyncHandler(async (req, res) => {
       SELECT i.file_path
       FROM images i
       WHERE i.bedroom_id = $1
-      AND i.bedroom_id IN (SELECT id FROM bedrooms WHERE agency_id = $2)
+      AND i.agency_id = $2
       ORDER BY i.created_at ASC
     `, [bedroom.id, agencyId], agencyId);
     return {
