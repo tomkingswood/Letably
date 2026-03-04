@@ -983,15 +983,16 @@ const deleteAgency = asyncHandler(async (req, res) => {
   const path = require('path');
 
   // Verify agency exists
-  const agencyResult = await db.systemQuery(
+  const agencyResult = await db.query(
     'SELECT id, name, slug FROM agencies WHERE id = $1',
-    [id]
+    [id], id
   );
   if (agencyResult.rows.length === 0) {
     return res.status(404).json({ error: 'Agency not found' });
   }
 
   const agency = agencyResult.rows[0];
+  const agencyId = agency.id;
   const uploadsDir = path.join(__dirname, '../../uploads');
   const secureDocsDir = path.join(__dirname, '../../../secure-documents');
   const deletedFiles = [];
@@ -1008,8 +1009,8 @@ const deleteAgency = asyncHandler(async (req, res) => {
   }
 
   // 1. Delete property/bedroom images (file_path = '/uploads/filename.jpg')
-  const imagesResult = await db.systemQuery(
-    'SELECT file_path FROM images WHERE agency_id = $1', [id]
+  const imagesResult = await db.query(
+    'SELECT file_path FROM images WHERE agency_id = $1', [agencyId], agencyId
   );
   for (const row of imagesResult.rows) {
     if (row.file_path) {
@@ -1019,8 +1020,8 @@ const deleteAgency = asyncHandler(async (req, res) => {
   }
 
   // 2. Delete certificates (file_path = 'certificates/filename.pdf')
-  const certsResult = await db.systemQuery(
-    'SELECT file_path FROM certificates WHERE agency_id = $1', [id]
+  const certsResult = await db.query(
+    'SELECT file_path FROM certificates WHERE agency_id = $1', [agencyId], agencyId
   );
   for (const row of certsResult.rows) {
     if (row.file_path) {
@@ -1029,8 +1030,8 @@ const deleteAgency = asyncHandler(async (req, res) => {
   }
 
   // 3. Delete maintenance attachments (file_path = just the filename)
-  const maintResult = await db.systemQuery(
-    'SELECT file_path FROM maintenance_attachments WHERE agency_id = $1', [id]
+  const maintResult = await db.query(
+    'SELECT file_path FROM maintenance_attachments WHERE agency_id = $1', [agencyId], agencyId
   );
   for (const row of maintResult.rows) {
     if (row.file_path) {
@@ -1039,8 +1040,8 @@ const deleteAgency = asyncHandler(async (req, res) => {
   }
 
   // 4. Delete tenancy message attachments (file_path = just the filename)
-  const msgAttResult = await db.systemQuery(
-    'SELECT file_path FROM tenancy_message_attachments WHERE agency_id = $1', [id]
+  const msgAttResult = await db.query(
+    'SELECT file_path FROM tenancy_message_attachments WHERE agency_id = $1', [agencyId], agencyId
   );
   for (const row of msgAttResult.rows) {
     if (row.file_path) {
@@ -1049,8 +1050,8 @@ const deleteAgency = asyncHandler(async (req, res) => {
   }
 
   // 5. Delete ID documents — encrypted files in secure-documents
-  const idDocsResult = await db.systemQuery(
-    'SELECT file_path, document_type FROM id_documents WHERE agency_id = $1', [id]
+  const idDocsResult = await db.query(
+    'SELECT file_path, document_type FROM id_documents WHERE agency_id = $1', [agencyId], agencyId
   );
   for (const row of idDocsResult.rows) {
     if (row.file_path) {
@@ -1061,8 +1062,8 @@ const deleteAgency = asyncHandler(async (req, res) => {
   }
 
   // 6. Delete tenant documents — encrypted files in secure-documents
-  const tenantDocsResult = await db.systemQuery(
-    'SELECT file_path FROM tenant_documents WHERE agency_id = $1', [id]
+  const tenantDocsResult = await db.query(
+    'SELECT file_path FROM tenant_documents WHERE agency_id = $1', [agencyId], agencyId
   );
   for (const row of tenantDocsResult.rows) {
     if (row.file_path) {
@@ -1072,8 +1073,8 @@ const deleteAgency = asyncHandler(async (req, res) => {
   }
 
   // 7. Delete export job files (file_path = 'exports/agency_<id>/...')
-  const exportsResult = await db.systemQuery(
-    'SELECT file_path FROM export_jobs WHERE agency_id = $1', [id]
+  const exportsResult = await db.query(
+    'SELECT file_path FROM export_jobs WHERE agency_id = $1', [agencyId], agencyId
   );
   for (const row of exportsResult.rows) {
     if (row.file_path) {
@@ -1081,14 +1082,14 @@ const deleteAgency = asyncHandler(async (req, res) => {
     }
   }
   // Also remove the exports directory for this agency
-  const exportDir = path.join(uploadsDir, 'exports', `agency_${id}`);
+  const exportDir = path.join(uploadsDir, 'exports', `agency_${agencyId}`);
   try { await fsp.rm(exportDir, { recursive: true, force: true }); } catch { /* ignore */ }
 
   // 8. Delete site_settings uploaded files (CMP/PRS certificates, ICO, privacy policy)
-  const settingsResult = await db.systemQuery(
+  const settingsResult = await db.query(
     `SELECT setting_value FROM site_settings
      WHERE agency_id = $1 AND setting_key IN ('cmp_certificate_filename', 'prs_certificate_filename', 'ico_registration_filename', 'privacy_policy_filename')`,
-    [id]
+    [agencyId], agencyId
   );
   for (const row of settingsResult.rows) {
     if (row.setting_value) {
@@ -1096,15 +1097,16 @@ const deleteAgency = asyncHandler(async (req, res) => {
     }
   }
 
-  // Delete rows from tables with NO ACTION FK constraints first
-  await db.systemQuery('DELETE FROM holding_deposits WHERE agency_id = $1', [id]);
-  await db.systemQuery('DELETE FROM signed_documents WHERE agency_id = $1', [id]);
-  await db.systemQuery('DELETE FROM tenancy_message_attachments WHERE agency_id = $1', [id]);
-  await db.systemQuery('DELETE FROM tenancy_communications WHERE agency_id = $1', [id]);
-  await db.systemQuery('DELETE FROM tenant_documents WHERE agency_id = $1', [id]);
-
-  // Delete the agency — CASCADE handles the rest of the DB rows
-  await db.systemQuery('DELETE FROM agencies WHERE id = $1', [id]);
+  // Delete NO ACTION FK rows + agency in a transaction for atomicity
+  await db.transaction(async (client) => {
+    await client.query('DELETE FROM holding_deposits WHERE agency_id = $1', [agencyId]);
+    await client.query('DELETE FROM signed_documents WHERE agency_id = $1', [agencyId]);
+    await client.query('DELETE FROM tenancy_message_attachments WHERE agency_id = $1', [agencyId]);
+    await client.query('DELETE FROM tenancy_communications WHERE agency_id = $1', [agencyId]);
+    await client.query('DELETE FROM tenant_documents WHERE agency_id = $1', [agencyId]);
+    // CASCADE handles the rest of the DB rows
+    await client.query('DELETE FROM agencies WHERE id = $1', [agencyId]);
+  }, agencyId);
 
   // Log the action
   await logAuditAction(

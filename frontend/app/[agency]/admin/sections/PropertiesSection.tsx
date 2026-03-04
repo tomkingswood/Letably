@@ -752,6 +752,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                   {(reorderMode ? properties : filteredProperties).map((property, index) => {
                     const pricesAvailable = property.bedrooms?.filter(r => r.price_pppw != null).map(r => r.price_pppw!) ?? [];
                     const lowestPrice = pricesAvailable.length > 0 ? Math.min(...pricesAvailable) : null;
+                    const vacantCount = property.bedrooms?.filter(r => !r.is_occupied).length || 0;
 
                     return (
                       <tr
@@ -776,12 +777,9 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                         <td className="py-3 px-4">{property.location}</td>
                         <td className="py-3 px-4">
                           {property.bedrooms?.length || 0}
-                          {(() => {
-                            const vacant = property.bedrooms?.filter(r => !r.is_occupied).length || 0;
-                            return vacant > 0 ? (
-                              <span className="ml-1.5 text-xs text-orange-600 font-medium">({vacant} vacant)</span>
-                            ) : null;
-                          })()}
+                          {vacantCount > 0 && (
+                            <span className="ml-1.5 text-xs text-orange-600 font-medium">({vacantCount} vacant)</span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           {lowestPrice != null ? `From £${lowestPrice}` : 'N/A'}
@@ -825,6 +823,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                 const lowestPrice = property.bedrooms && property.bedrooms.length > 0
                   ? Math.min(...property.bedrooms.filter(r => r.price_pppw != null).map(r => r.price_pppw!))
                   : null;
+                const vacantCount = property.bedrooms?.filter(r => !r.is_occupied).length || 0;
 
                 return (
                   <div
@@ -857,12 +856,9 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                       <div>
                         <span className="text-gray-600">Bedrooms:</span>
                         <span className="ml-1 font-medium">{property.bedrooms?.length || 0}</span>
-                        {(() => {
-                          const vacant = property.bedrooms?.filter(r => !r.is_occupied).length || 0;
-                          return vacant > 0 ? (
-                            <span className="ml-1 text-xs text-orange-600 font-medium">({vacant} vacant)</span>
-                          ) : null;
-                        })()}
+                        {vacantCount > 0 && (
+                          <span className="ml-1 text-xs text-orange-600 font-medium">({vacantCount} vacant)</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-gray-600">Price:</span>
