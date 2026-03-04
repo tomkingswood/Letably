@@ -45,7 +45,7 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
       const response = await emailQueue.getAll();
       setEmails(response.data.emails || []);
     } catch (err: unknown) {
-      console.error('Error fetching email queue:', err);
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to load email queue') });
     } finally {
       setLoading(false);
     }
