@@ -5,16 +5,6 @@ import { adminReports } from '@/lib/api';
 import { useAgency } from '@/lib/agency-context';
 import { SectionProps } from './index';
 
-interface PortfolioData {
-  properties?: number;
-  bedrooms?: number;
-  occupiedBedrooms?: number;
-  vacantBedrooms?: number;
-  occupancyRate?: number;
-  activeTenancies?: number;
-  totalTenants?: number;
-}
-
 interface OccupancyData {
   properties?: Array<{
     id: number;
@@ -63,8 +53,7 @@ interface UpcomingEndingsData {
 export default function ReportsSection({ onNavigate, action, itemId, onBack }: SectionProps) {
   const { agencySlug } = useAgency();
   const [loading, setLoading] = useState(true);
-  const [selectedReport, setSelectedReport] = useState('portfolio');
-  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
+  const [selectedReport, setSelectedReport] = useState('occupancy');
   const [occupancyData, setOccupancyData] = useState<OccupancyData | null>(null);
   const [arrearsData, setArrearsData] = useState<ArrearsData | null>(null);
   const [upcomingEndingsData, setUpcomingEndingsData] = useState<UpcomingEndingsData | null>(null);
@@ -79,10 +68,6 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
     setError(null);
     try {
       switch (selectedReport) {
-        case 'portfolio':
-          const portfolioRes = await adminReports.getPortfolioOverview();
-          setPortfolioData(portfolioRes.data.report);
-          break;
         case 'occupancy': {
           const occupancyRes = await adminReports.getOccupancyReport();
           const occReport = occupancyRes.data.report;
@@ -126,7 +111,6 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
   };
 
   const reportTypes = [
-    { id: 'portfolio', name: 'Portfolio Overview', description: 'Overview of properties and occupancy' },
     { id: 'occupancy', name: 'Occupancy Report', description: 'Detailed bedroom occupancy status' },
     { id: 'arrears', name: 'Arrears Report', description: 'Outstanding payment tracking' },
     { id: 'upcoming-endings', name: 'Upcoming Endings', description: 'Tenancies ending soon' },
@@ -189,40 +173,6 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
             <h3 className="text-xl font-semibold mb-6">
               {reportTypes.find(r => r.id === selectedReport)?.name}
             </h3>
-
-            {/* Portfolio Overview */}
-            {selectedReport === 'portfolio' && portfolioData && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Properties</p>
-                  <p className="text-2xl font-bold text-gray-900">{portfolioData.properties || 0}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Total Bedrooms</p>
-                  <p className="text-2xl font-bold text-gray-900">{portfolioData.bedrooms || 0}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Occupied</p>
-                  <p className="text-2xl font-bold text-green-600">{portfolioData.occupiedBedrooms || 0}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Vacant</p>
-                  <p className="text-2xl font-bold text-red-600">{portfolioData.vacantBedrooms || 0}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Occupancy Rate</p>
-                  <p className="text-2xl font-bold text-primary">{portfolioData.occupancyRate || 0}%</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Active Tenancies</p>
-                  <p className="text-2xl font-bold text-gray-900">{portfolioData.activeTenancies || 0}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Total Tenants</p>
-                  <p className="text-2xl font-bold text-gray-900">{portfolioData.totalTenants || 0}</p>
-                </div>
-              </div>
-            )}
 
             {/* Occupancy Report */}
             {selectedReport === 'occupancy' && occupancyData && (
