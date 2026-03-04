@@ -21,7 +21,7 @@ async function fetchCustomAttributes(propertyIds, agencyId) {
     SELECT pav.property_id, pav.attribute_definition_id, pav.value_text, pav.value_number, pav.value_boolean,
            pad.name, pad.attribute_type
     FROM property_attribute_values pav
-    JOIN property_attribute_definitions pad ON pad.id = pav.attribute_definition_id
+    JOIN property_attribute_definitions pad ON pad.id = pav.attribute_definition_id AND pad.agency_id = $2
     WHERE pav.property_id = ANY($1) AND pav.agency_id = $2
     ORDER BY pad.display_order ASC
   `, [propertyIds, agencyId], agencyId);
@@ -49,45 +49,47 @@ async function fetchCustomAttributes(propertyIds, agencyId) {
 async function saveCustomAttributes(propertyId, agencyId, attributes) {
   if (!attributes || Object.keys(attributes).length === 0) return;
 
-  // Fetch definitions to know each attribute's type
-  const defIds = Object.keys(attributes).map(Number);
-  const defsResult = await db.query(
-    'SELECT id, attribute_type FROM property_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
-    [defIds, agencyId],
-    agencyId
-  );
+  await db.transaction(async (client) => {
+    // Fetch definitions to know each attribute's type
+    const defIds = Object.keys(attributes).map(Number);
+    const defsResult = await client.query(
+      'SELECT id, attribute_type FROM property_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
+      [defIds, agencyId]
+    );
 
-  const defTypes = {};
-  for (const def of defsResult.rows) {
-    defTypes[def.id] = def.attribute_type;
-  }
-
-  for (const [defId, value] of Object.entries(attributes)) {
-    const numDefId = Number(defId);
-    const attrType = defTypes[numDefId];
-    if (!attrType) continue; // Skip unknown definitions
-
-    let valueText = null, valueNumber = null, valueBoolean = null;
-    if (value === null || value === '' || value === undefined) {
-      // All nulls — effectively "no value"
-    } else if (attrType === 'text' || attrType === 'dropdown') {
-      valueText = String(value);
-    } else if (attrType === 'number') {
-      const num = Number(value);
-      valueNumber = Number.isFinite(num) ? num : null;
-    } else if (attrType === 'boolean') {
-      valueBoolean = (value === true || value === 'true') ? true
-        : (value === false || value === 'false') ? false
-        : null;
+    const defTypes = {};
+    for (const def of defsResult.rows) {
+      defTypes[def.id] = def.attribute_type;
     }
 
-    await db.query(`
-      INSERT INTO property_attribute_values (property_id, attribute_definition_id, agency_id, value_text, value_number, value_boolean)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (property_id, attribute_definition_id)
-      DO UPDATE SET value_text = $4, value_number = $5, value_boolean = $6, updated_at = CURRENT_TIMESTAMP
-    `, [propertyId, numDefId, agencyId, valueText, valueNumber, valueBoolean], agencyId);
-  }
+    for (const [defId, value] of Object.entries(attributes)) {
+      const numDefId = Number(defId);
+      const attrType = defTypes[numDefId];
+      if (!attrType) continue; // Skip unknown definitions
+
+      let valueText = null, valueNumber = null, valueBoolean = null;
+      if (value === null || value === '' || value === undefined) {
+        // All nulls — effectively "no value"
+      } else if (attrType === 'text' || attrType === 'dropdown') {
+        valueText = String(value);
+      } else if (attrType === 'number') {
+        const num = Number(value);
+        valueNumber = Number.isFinite(num) ? num : null;
+      } else if (attrType === 'boolean') {
+        valueBoolean = (value === true || value === 'true') ? true
+          : (value === false || value === 'false') ? false
+          : null;
+      }
+
+      await client.query(`
+        INSERT INTO property_attribute_values (property_id, attribute_definition_id, agency_id, value_text, value_number, value_boolean)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (property_id, attribute_definition_id)
+        DO UPDATE SET value_text = $4, value_number = $5, value_boolean = $6, updated_at = CURRENT_TIMESTAMP
+        WHERE property_attribute_values.agency_id = $3
+      `, [propertyId, numDefId, agencyId, valueText, valueNumber, valueBoolean]);
+    }
+  }, agencyId);
 }
 
 // Get all properties with optional filters
@@ -248,7 +250,7 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
       SELECT bav.bedroom_id, bav.attribute_definition_id, bav.value_text, bav.value_number, bav.value_boolean,
              bad.name, bad.attribute_type
       FROM bedroom_attribute_values bav
-      JOIN bedroom_attribute_definitions bad ON bad.id = bav.attribute_definition_id
+      JOIN bedroom_attribute_definitions bad ON bad.id = bav.attribute_definition_id AND bad.agency_id = $2
       WHERE bav.bedroom_id = ANY($1) AND bav.agency_id = $2
       ORDER BY bad.display_order ASC
     `, [bedroomIds, agencyId], agencyId);
@@ -484,10 +486,29 @@ exports.deleteProperty = asyncHandler(async (req, res) => {
 // Update property display order (admin only)
 exports.updateDisplayOrder = asyncHandler(async (req, res) => {
   const { propertyIds } = req.body;
+  const agencyId = req.agencyId;
 
   if (!Array.isArray(propertyIds) || propertyIds.length === 0) {
     return res.status(400).json({ error: 'propertyIds must be a non-empty array' });
   }
+
+  await db.transaction(async (client) => {
+    // Validate all IDs belong to this agency
+    const check = await client.query(
+      'SELECT COUNT(*)::int AS cnt FROM properties WHERE id = ANY($1) AND agency_id = $2',
+      [propertyIds, agencyId]
+    );
+    if (check.rows[0].cnt !== propertyIds.length) {
+      throw Object.assign(new Error('One or more property IDs do not belong to this agency'), { statusCode: 400 });
+    }
+
+    for (let i = 0; i < propertyIds.length; i++) {
+      await client.query(
+        'UPDATE properties SET display_order = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND agency_id = $3',
+        [i, propertyIds[i], agencyId]
+      );
+    }
+  }, agencyId);
 
   res.json({ message: 'Display order updated successfully' });
 }, 'update display order');

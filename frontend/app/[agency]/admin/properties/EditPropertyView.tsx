@@ -1119,7 +1119,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
                               {room.custom_attributes.map((attr) => {
                                 let displayValue: string;
                                 if (attr.attribute_type === 'boolean') {
-                                  displayValue = attr.value_boolean ? 'Yes' : 'No';
+                                  displayValue = attr.value_boolean === true ? 'Yes' : attr.value_boolean === false ? 'No' : '-';
                                 } else if (attr.attribute_type === 'number') {
                                   displayValue = attr.value_number != null ? String(attr.value_number) : '-';
                                 } else {

@@ -11,7 +11,7 @@ async function fetchCustomAttributes(bedroomIds, agencyId) {
     SELECT bav.bedroom_id, bav.attribute_definition_id, bav.value_text, bav.value_number, bav.value_boolean,
            bad.name, bad.attribute_type
     FROM bedroom_attribute_values bav
-    JOIN bedroom_attribute_definitions bad ON bad.id = bav.attribute_definition_id
+    JOIN bedroom_attribute_definitions bad ON bad.id = bav.attribute_definition_id AND bad.agency_id = $2
     WHERE bav.bedroom_id = ANY($1) AND bav.agency_id = $2
     ORDER BY bad.display_order ASC
   `, [bedroomIds, agencyId], agencyId);
@@ -39,45 +39,47 @@ async function fetchCustomAttributes(bedroomIds, agencyId) {
 async function saveCustomAttributes(bedroomId, agencyId, attributes) {
   if (!attributes || Object.keys(attributes).length === 0) return;
 
-  // Fetch definitions to know each attribute's type
-  const defIds = Object.keys(attributes).map(Number);
-  const defsResult = await db.query(
-    'SELECT id, attribute_type FROM bedroom_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
-    [defIds, agencyId],
-    agencyId
-  );
+  await db.transaction(async (client) => {
+    // Fetch definitions to know each attribute's type
+    const defIds = Object.keys(attributes).map(Number);
+    const defsResult = await client.query(
+      'SELECT id, attribute_type FROM bedroom_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
+      [defIds, agencyId]
+    );
 
-  const defTypes = {};
-  for (const def of defsResult.rows) {
-    defTypes[def.id] = def.attribute_type;
-  }
-
-  for (const [defId, value] of Object.entries(attributes)) {
-    const numDefId = Number(defId);
-    const attrType = defTypes[numDefId];
-    if (!attrType) continue; // Skip unknown definitions
-
-    let valueText = null, valueNumber = null, valueBoolean = null;
-    if (value === null || value === '' || value === undefined) {
-      // All nulls — effectively "no value"
-    } else if (attrType === 'text' || attrType === 'dropdown') {
-      valueText = String(value);
-    } else if (attrType === 'number') {
-      const num = Number(value);
-      valueNumber = Number.isFinite(num) ? num : null;
-    } else if (attrType === 'boolean') {
-      valueBoolean = (value === true || value === 'true') ? true
-        : (value === false || value === 'false') ? false
-        : null;
+    const defTypes = {};
+    for (const def of defsResult.rows) {
+      defTypes[def.id] = def.attribute_type;
     }
 
-    await db.query(`
-      INSERT INTO bedroom_attribute_values (bedroom_id, attribute_definition_id, agency_id, value_text, value_number, value_boolean)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (bedroom_id, attribute_definition_id)
-      DO UPDATE SET value_text = $4, value_number = $5, value_boolean = $6, updated_at = CURRENT_TIMESTAMP
-    `, [bedroomId, numDefId, agencyId, valueText, valueNumber, valueBoolean], agencyId);
-  }
+    for (const [defId, value] of Object.entries(attributes)) {
+      const numDefId = Number(defId);
+      const attrType = defTypes[numDefId];
+      if (!attrType) continue; // Skip unknown definitions
+
+      let valueText = null, valueNumber = null, valueBoolean = null;
+      if (value === null || value === '' || value === undefined) {
+        // All nulls — effectively "no value"
+      } else if (attrType === 'text' || attrType === 'dropdown') {
+        valueText = String(value);
+      } else if (attrType === 'number') {
+        const num = Number(value);
+        valueNumber = Number.isFinite(num) ? num : null;
+      } else if (attrType === 'boolean') {
+        valueBoolean = (value === true || value === 'true') ? true
+          : (value === false || value === 'false') ? false
+          : null;
+      }
+
+      await client.query(`
+        INSERT INTO bedroom_attribute_values (bedroom_id, attribute_definition_id, agency_id, value_text, value_number, value_boolean)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (bedroom_id, attribute_definition_id)
+        DO UPDATE SET value_text = $4, value_number = $5, value_boolean = $6, updated_at = CURRENT_TIMESTAMP
+        WHERE bedroom_attribute_values.agency_id = $3
+      `, [bedroomId, numDefId, agencyId, valueText, valueNumber, valueBoolean]);
+    }
+  }, agencyId);
 }
 
 // Get all bedrooms for a property

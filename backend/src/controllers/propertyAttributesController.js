@@ -143,13 +143,15 @@ exports.reorderDefinitions = asyncHandler(async (req, res) => {
   }
 
   await db.transaction(async (client) => {
-    // Validate all IDs belong to this agency
-    const check = await client.query(
-      'SELECT COUNT(*)::int AS cnt FROM property_attribute_definitions WHERE id = ANY($1) AND agency_id = $2',
-      [definitionIds, agencyId]
+    // Validate submitted list is the full set for this agency
+    const allDefs = await client.query(
+      'SELECT id FROM property_attribute_definitions WHERE agency_id = $1',
+      [agencyId]
     );
-    if (check.rows[0].cnt !== definitionIds.length) {
-      throw Object.assign(new Error('One or more definition IDs do not belong to this agency'), { statusCode: 400 });
+    const storedIds = new Set(allDefs.rows.map(r => r.id));
+    const submittedIds = new Set(definitionIds.map(Number));
+    if (storedIds.size !== submittedIds.size || ![...storedIds].every(id => submittedIds.has(id))) {
+      throw Object.assign(new Error('definitionIds must contain exactly all definitions for this agency'), { statusCode: 400 });
     }
 
     for (let i = 0; i < definitionIds.length; i++) {
