@@ -41,7 +41,7 @@ export interface Bedroom {
   id: number;
   property_id: number;
   bedroom_name: string;
-  status: 'available' | 'let';
+  is_occupied?: boolean;
   price_pppw?: number;
   bedroom_description?: string;
   available_from?: string;
@@ -437,7 +437,6 @@ export interface PropertyFormData {
 
 export interface BedroomFormData {
   bedroom_name: string;
-  status?: 'available' | 'let' | string;
   price_pppw?: number | string | null;
   bedroom_description?: string;
   available_from?: string;

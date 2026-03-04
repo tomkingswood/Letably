@@ -166,6 +166,9 @@ export const superAgencies = {
 
   getStorageUsage: (id: number | string) =>
     superApi.get<{ agency_id: number; storage: StorageUsage }>(`/super/agencies/${id}/storage`),
+
+  delete: (id: number | string) =>
+    superApi.delete<{ message: string }>(`/super/agencies/${id}`),
 };
 
 export const superStats = {

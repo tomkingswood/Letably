@@ -116,9 +116,9 @@ async function seedTestData() {
       return r.rows[0].id;
     }
 
-    async function insertBedroom(propertyId, name, price, status, order) {
-      const r = await client.query(`INSERT INTO bedrooms (agency_id, property_id, bedroom_name, price_pppw, status, display_order) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-        [agencyId, propertyId, name, price, status || 'available', order || 1]);
+    async function insertBedroom(propertyId, name, price, order) {
+      const r = await client.query(`INSERT INTO bedrooms (agency_id, property_id, bedroom_name, price_pppw, display_order) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [agencyId, propertyId, name, price, order || 1]);
       return r.rows[0].id;
     }
 
@@ -250,7 +250,7 @@ async function seedTestData() {
       for (let b = 0; b < numBeds; b++) {
         const rType = isHMO ? roomTypes[b % roomTypes.length] : (numBeds === 1 ? 'Studio' : `Bedroom ${b + 1}`);
         const price = isHMO ? randInt(70, 120) : randInt(80, 150);
-        const bedId = await insertBedroom(propId, isHMO ? `Room ${b + 1} - ${rType}` : rType, price, 'available', b + 1);
+        const bedId = await insertBedroom(propId, isHMO ? `Room ${b + 1} - ${rType}` : rType, price, b + 1);
         bedroomIds.push(bedId);
         bedroomPrices.push(price);
       }

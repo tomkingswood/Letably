@@ -637,11 +637,11 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 mb-1">Available Bedrooms</p>
+              <p className="text-gray-600 mb-1">Vacant Bedrooms</p>
               <p className="text-3xl font-bold text-blue-600">
                 {properties.reduce((sum, p) => {
-                  const availableRooms = p.bedrooms?.filter(r => r.status === 'available').length || 0;
-                  return sum + availableRooms;
+                  const vacantRooms = p.bedrooms?.filter(r => r.is_occupied === false).length || 0;
+                  return sum + vacantRooms;
                 }, 0)}
               </p>
             </div>
@@ -655,11 +655,11 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 mb-1">Let Bedrooms</p>
+              <p className="text-gray-600 mb-1">Occupied Bedrooms</p>
               <p className="text-3xl font-bold text-gray-600">
                 {properties.reduce((sum, p) => {
-                  const letRooms = p.bedrooms?.filter(r => r.status === 'let').length || 0;
-                  return sum + letRooms;
+                  const occupiedRooms = p.bedrooms?.filter(r => r.is_occupied === true).length || 0;
+                  return sum + occupiedRooms;
                 }, 0)}
               </p>
             </div>
@@ -752,6 +752,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                   {(reorderMode ? properties : filteredProperties).map((property, index) => {
                     const pricesAvailable = property.bedrooms?.filter(r => r.price_pppw != null).map(r => r.price_pppw!) ?? [];
                     const lowestPrice = pricesAvailable.length > 0 ? Math.min(...pricesAvailable) : null;
+                    const vacantCount = property.bedrooms?.filter(r => r.is_occupied === false).length || 0;
 
                     return (
                       <tr
@@ -774,7 +775,12 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                         )}
                         <td className="py-3 px-4 font-medium">{property.address_line1}</td>
                         <td className="py-3 px-4">{property.location}</td>
-                        <td className="py-3 px-4">{property.bedrooms?.length || 0}</td>
+                        <td className="py-3 px-4">
+                          {property.bedrooms?.length || 0}
+                          {vacantCount > 0 && (
+                            <span className="ml-1.5 text-xs text-orange-600 font-medium">({vacantCount} vacant)</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4">
                           {lowestPrice != null ? `From £${lowestPrice}` : 'N/A'}
                         </td>
@@ -817,6 +823,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                 const lowestPrice = property.bedrooms && property.bedrooms.length > 0
                   ? Math.min(...property.bedrooms.filter(r => r.price_pppw != null).map(r => r.price_pppw!))
                   : null;
+                const vacantCount = property.bedrooms?.filter(r => r.is_occupied === false).length || 0;
 
                 return (
                   <div
@@ -849,6 +856,9 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                       <div>
                         <span className="text-gray-600">Bedrooms:</span>
                         <span className="ml-1 font-medium">{property.bedrooms?.length || 0}</span>
+                        {vacantCount > 0 && (
+                          <span className="ml-1 text-xs text-orange-600 font-medium">({vacantCount} vacant)</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-gray-600">Price:</span>

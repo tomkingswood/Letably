@@ -51,7 +51,6 @@ const userFactory = {
       last_name: `User${id}`,
       role: 'admin',
       agency_id: TEST_AGENCY_ID,
-      is_active: true,
       created_at: new Date(),
       ...overrides
     };
@@ -63,10 +62,10 @@ const userFactory = {
   async create(overrides = {}) {
     const user = this.build(overrides);
     const result = await testQuery(
-      `INSERT INTO users (email, password_hash, first_name, last_name, role, agency_id, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO users (email, password_hash, first_name, last_name, role, agency_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [user.email, user.password_hash, user.first_name, user.last_name, user.role, user.agency_id, user.is_active]
+      [user.email, user.password_hash, user.first_name, user.last_name, user.role, user.agency_id]
     );
     return result.rows[0];
   }

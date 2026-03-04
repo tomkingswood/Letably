@@ -41,6 +41,7 @@ router.patch('/agencies/:id/property-images', authenticateSuperUser, superContro
 router.get('/agencies/:id/storage', authenticateSuperUser, superController.getAgencyStorageUsage);
 router.get('/agencies/:id/users', authenticateSuperUser, superController.getAgencyUsers);
 router.post('/agencies/:id/impersonate/:userId', authenticateSuperUser, superController.impersonateUser);
+router.delete('/agencies/:id', authenticateSuperUser, superController.deleteAgency);
 
 // Super users management
 router.get('/users', authenticateSuperUser, superController.listSuperUsers);
