@@ -20,6 +20,9 @@ export default function SuperAdminAgencyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -144,6 +147,22 @@ export default function SuperAdminAgencyDetailPage() {
       });
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDeleteAgency = async () => {
+    if (!agency || deleteConfirmText !== 'delete') return;
+
+    setDeleting(true);
+    try {
+      await superAgencies.delete(agency.id);
+      router.push('/sup3rAdm1n/agencies');
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to delete agency') });
+      setShowDeleteModal(false);
+      setDeleteConfirmText('');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -371,6 +390,16 @@ export default function SuperAdminAgencyDetailPage() {
                   {agency.property_images_enabled ? 'Disable Property Images' : 'Enable Property Images'}
                 </button>
               </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-700">
+                <h4 className="text-sm font-medium text-red-400 mb-3">Danger Zone</h4>
+                <button
+                  onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(''); }}
+                  className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-lg font-medium transition-colors"
+                >
+                  Delete Agency
+                </button>
+              </div>
             </div>
 
             {/* Admins */}
@@ -393,18 +422,11 @@ export default function SuperAdminAgencyDetailPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        admin.is_active
-                          ? 'bg-green-600/20 text-green-400'
-                          : 'bg-red-600/20 text-red-400'
-                      }`}>
-                        {admin.is_active ? 'Active' : 'Inactive'}
-                      </span>
                       <button
                         onClick={() => handleImpersonate(admin.id)}
-                        disabled={updating || !admin.is_active}
+                        disabled={updating}
                         className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={admin.is_active ? 'Login as this admin' : 'Cannot impersonate inactive user'}
+                        title="Login as this admin"
                       >
                         Impersonate
                       </button>
@@ -422,6 +444,48 @@ export default function SuperAdminAgencyDetailPage() {
         ) : (
           <div className="text-center text-gray-500 py-12">
             Agency not found
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && agency && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 border border-gray-700">
+              <h3 className="text-xl font-bold text-red-400 mb-2">Delete Agency</h3>
+              <p className="text-gray-300 mb-4">
+                This will permanently delete <strong className="text-white">{agency.name}</strong> and all associated data including users, properties, tenancies, payments, and files.
+              </p>
+              <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 mb-4 text-sm text-red-300">
+                <strong>This action cannot be undone.</strong>
+              </div>
+              <label className="block text-sm text-gray-400 mb-2">
+                Type <strong className="text-white">delete</strong> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
+                placeholder="delete"
+                autoFocus
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteAgency}
+                  disabled={deleteConfirmText !== 'delete' || deleting}
+                  className="flex-1 bg-red-700 hover:bg-red-800 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Agency'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-2.5 rounded-lg font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>

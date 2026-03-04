@@ -88,8 +88,8 @@ async function registerAgency(data) {
 
     // Create admin user
     const userResult = await client.query(
-      `INSERT INTO users (agency_id, email, password_hash, first_name, last_name, phone, role, is_active, email_verified)
-       VALUES ($1, $2, $3, $4, $5, $6, 'admin', true, true)
+      `INSERT INTO users (agency_id, email, password_hash, first_name, last_name, phone, role, email_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, 'admin', true)
        RETURNING id, email, first_name, last_name, role`,
       [agency.id, admin_email.toLowerCase(), passwordHash, admin_first_name, admin_last_name, admin_phone]
     );

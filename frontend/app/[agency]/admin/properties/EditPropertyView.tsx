@@ -65,7 +65,6 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
   const [editingBedroomId, setEditingBedroomId] = useState<number | null>(null);
   const [bedroomFormData, setBedroomFormData] = useState({
     bedroom_name: '',
-    status: 'available',
     price_pppw: '',
     bedroom_description: '',
     available_from: '',
@@ -246,7 +245,6 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     setEditingBedroomId(null);
     setBedroomFormData({
       bedroom_name: '',
-      status: 'available',
       price_pppw: '',
       bedroom_description: '',
       available_from: '',
@@ -259,7 +257,6 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     setEditingBedroomId(room.id);
     setBedroomFormData({
       bedroom_name: room.bedroom_name,
-      status: room.status,
       price_pppw: room.price_pppw?.toString() || '',
       bedroom_description: room.bedroom_description || '',
       available_from: room.available_from ? room.available_from.split('T')[0] : '',
@@ -272,7 +269,6 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     setEditingBedroomId(null);
     setBedroomFormData({
       bedroom_name: '',
-      status: 'available',
       price_pppw: '',
       bedroom_description: '',
       available_from: '',
@@ -1015,22 +1011,6 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
                 placeholder="e.g., Bedroom 1, Master Bedroom"
               />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="status"
-                  value={bedroomFormData.status}
-                  onChange={handleBedroomChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="available">Available</option>
-                  <option value="let">Let</option>
-                </select>
-              </div>
-
               <Input
                 label="Price per week (optional)"
                 name="price_pppw"
@@ -1124,22 +1104,6 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
                           placeholder="e.g., Bedroom 1, Master Bedroom"
                         />
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Status <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            name="status"
-                            value={bedroomFormData.status}
-                            onChange={handleBedroomChange}
-                            required
-                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                          >
-                            <option value="available">Available</option>
-                            <option value="let">Let</option>
-                          </select>
-                        </div>
-
                         <Input
                           label="Price per week (optional)"
                           name="price_pppw"
@@ -1212,8 +1176,8 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
                           <div className="flex-1">
                             <h4 className="font-bold text-lg">{room.bedroom_name}</h4>
                           <p className="text-sm text-gray-600">
-                            Status: <span className={room.status === 'available' ? 'text-green-600' : 'text-gray-600'}>
-                              {room.status === 'available' ? 'Available' : 'Let'}
+                            <span className={room.is_occupied ? 'text-gray-600' : 'text-green-600'}>
+                              {room.is_occupied ? 'Occupied' : 'Vacant'}
                             </span>
                           </p>
                           {room.price_pppw && (

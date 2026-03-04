@@ -116,9 +116,9 @@ async function seedTestData() {
       return r.rows[0].id;
     }
 
-    async function insertBedroom(propertyId, name, price, status, order) {
-      const r = await client.query(`INSERT INTO bedrooms (agency_id, property_id, bedroom_name, price_pppw, status, display_order) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-        [agencyId, propertyId, name, price, status || 'available', order || 1]);
+    async function insertBedroom(propertyId, name, price, _status, order) {
+      const r = await client.query(`INSERT INTO bedrooms (agency_id, property_id, bedroom_name, price_pppw, display_order) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [agencyId, propertyId, name, price, order || 1]);
       return r.rows[0].id;
     }
 

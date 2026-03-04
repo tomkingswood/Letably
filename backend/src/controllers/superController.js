@@ -198,7 +198,7 @@ const getAgency = asyncHandler(async (req, res) => {
 
   // Get admin users for this agency
   const adminsResult = await db.systemQuery(
-    `SELECT id, email, first_name, last_name, is_active, created_at, last_login_at
+    `SELECT id, email, first_name, last_name, created_at, last_login_at
      FROM users
      WHERE agency_id = $1 AND role = 'admin'
      ORDER BY created_at DESC`,
@@ -324,7 +324,7 @@ const getAgencyUsers = asyncHandler(async (req, res) => {
   const { role, search } = req.query;
 
   let query = `
-    SELECT id, email, first_name, last_name, role, is_active, created_at, last_login_at
+    SELECT id, email, first_name, last_name, role, created_at, last_login_at
     FROM users
     WHERE agency_id = $1
   `;
@@ -365,7 +365,7 @@ const impersonateUser = asyncHandler(async (req, res) => {
   const result = await db.systemQuery(
     `SELECT id, email, first_name, last_name, role, agency_id
      FROM users
-     WHERE id = $1 AND agency_id = $2 AND role = 'admin' AND is_active = true`,
+     WHERE id = $1 AND agency_id = $2 AND role = 'admin'`,
     [userId, id]
   );
 
@@ -972,6 +972,161 @@ const togglePropertyImages = asyncHandler(async (req, res) => {
   res.json({ agency: result.rows[0] });
 }, 'toggle property images');
 
+/**
+ * Permanently delete an agency and all associated data + files
+ *
+ * DELETE /api/super/agencies/:id
+ */
+const deleteAgency = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const fsp = require('fs').promises;
+  const path = require('path');
+
+  // Verify agency exists
+  const agencyResult = await db.systemQuery(
+    'SELECT id, name, slug FROM agencies WHERE id = $1',
+    [id]
+  );
+  if (agencyResult.rows.length === 0) {
+    return res.status(404).json({ error: 'Agency not found' });
+  }
+
+  const agency = agencyResult.rows[0];
+  const uploadsDir = path.join(__dirname, '../../uploads');
+  const secureDocsDir = path.join(__dirname, '../../../secure-documents');
+  const deletedFiles = [];
+  const failedFiles = [];
+
+  // Helper to safely delete a file
+  async function safeUnlink(filePath) {
+    try {
+      await fsp.unlink(filePath);
+      deletedFiles.push(filePath);
+    } catch (err) {
+      if (err.code !== 'ENOENT') failedFiles.push(filePath);
+    }
+  }
+
+  // 1. Delete property/bedroom images (file_path = '/uploads/filename.jpg')
+  const imagesResult = await db.systemQuery(
+    'SELECT file_path FROM images WHERE agency_id = $1', [id]
+  );
+  for (const row of imagesResult.rows) {
+    if (row.file_path) {
+      // file_path starts with /uploads/ — resolve relative to backend root
+      await safeUnlink(path.join(__dirname, '../..', row.file_path));
+    }
+  }
+
+  // 2. Delete certificates (file_path = 'certificates/filename.pdf')
+  const certsResult = await db.systemQuery(
+    'SELECT file_path FROM certificates WHERE agency_id = $1', [id]
+  );
+  for (const row of certsResult.rows) {
+    if (row.file_path) {
+      await safeUnlink(path.join(uploadsDir, row.file_path));
+    }
+  }
+
+  // 3. Delete maintenance attachments (file_path = just the filename)
+  const maintResult = await db.systemQuery(
+    'SELECT file_path FROM maintenance_attachments WHERE agency_id = $1', [id]
+  );
+  for (const row of maintResult.rows) {
+    if (row.file_path) {
+      await safeUnlink(path.join(uploadsDir, 'maintenance', row.file_path));
+    }
+  }
+
+  // 4. Delete tenancy message attachments (file_path = just the filename)
+  const msgAttResult = await db.systemQuery(
+    'SELECT file_path FROM tenancy_message_attachments WHERE agency_id = $1', [id]
+  );
+  for (const row of msgAttResult.rows) {
+    if (row.file_path) {
+      await safeUnlink(path.join(uploadsDir, 'tenancy-communications', row.file_path));
+    }
+  }
+
+  // 5. Delete ID documents — encrypted files in secure-documents
+  const idDocsResult = await db.systemQuery(
+    'SELECT file_path, document_type FROM id_documents WHERE agency_id = $1', [id]
+  );
+  for (const row of idDocsResult.rows) {
+    if (row.file_path) {
+      const filename = path.basename(row.file_path);
+      const subdir = row.document_type === 'guarantor_id' ? 'guarantors' : 'applicants';
+      await safeUnlink(path.join(secureDocsDir, subdir, filename));
+    }
+  }
+
+  // 6. Delete tenant documents — encrypted files in secure-documents
+  const tenantDocsResult = await db.systemQuery(
+    'SELECT file_path FROM tenant_documents WHERE agency_id = $1', [id]
+  );
+  for (const row of tenantDocsResult.rows) {
+    if (row.file_path) {
+      const filename = path.basename(row.file_path);
+      await safeUnlink(path.join(secureDocsDir, 'tenant-documents', filename));
+    }
+  }
+
+  // 7. Delete export job files (file_path = 'exports/agency_<id>/...')
+  const exportsResult = await db.systemQuery(
+    'SELECT file_path FROM export_jobs WHERE agency_id = $1', [id]
+  );
+  for (const row of exportsResult.rows) {
+    if (row.file_path) {
+      await safeUnlink(path.join(uploadsDir, row.file_path));
+    }
+  }
+  // Also remove the exports directory for this agency
+  const exportDir = path.join(uploadsDir, 'exports', `agency_${id}`);
+  try { await fsp.rm(exportDir, { recursive: true, force: true }); } catch { /* ignore */ }
+
+  // 8. Delete site_settings uploaded files (CMP/PRS certificates, ICO, privacy policy)
+  const settingsResult = await db.systemQuery(
+    `SELECT value FROM site_settings
+     WHERE agency_id = $1 AND key IN ('cmp_certificate_filename', 'prs_certificate_filename', 'ico_registration_filename', 'privacy_policy_filename')`,
+    [id]
+  );
+  for (const row of settingsResult.rows) {
+    if (row.value) {
+      await safeUnlink(path.join(uploadsDir, row.value));
+    }
+  }
+
+  // Delete rows from tables with NO ACTION FK constraints first
+  await db.systemQuery('DELETE FROM holding_deposits WHERE agency_id = $1', [id]);
+  await db.systemQuery('DELETE FROM signed_documents WHERE agency_id = $1', [id]);
+  await db.systemQuery('DELETE FROM tenancy_message_attachments WHERE agency_id = $1', [id]);
+  await db.systemQuery('DELETE FROM tenancy_communications WHERE agency_id = $1', [id]);
+  await db.systemQuery('DELETE FROM tenant_documents WHERE agency_id = $1', [id]);
+
+  // Delete the agency — CASCADE handles the rest of the DB rows
+  await db.systemQuery('DELETE FROM agencies WHERE id = $1', [id]);
+
+  // Log the action
+  await logAuditAction(
+    req.superUser.id,
+    'agency_deleted',
+    'agency',
+    parseInt(id),
+    {
+      agency_name: agency.name,
+      agency_slug: agency.slug,
+      files_deleted: deletedFiles.length,
+      files_failed: failedFiles.length
+    },
+    getClientIp(req)
+  );
+
+  res.json({
+    message: `Agency "${agency.name}" and all associated data have been permanently deleted`,
+    cleanup: { files_deleted: deletedFiles.length, files_failed: failedFiles.length }
+  });
+}, 'delete agency');
+
 module.exports = {
   login,
   getCurrentUser,
@@ -987,6 +1142,7 @@ module.exports = {
   listSuperUsers,
   getAgencyStorageUsage,
   togglePropertyImages,
+  deleteAgency,
   // Email queue
   getSmtpSettings,
   testSmtpConnection,

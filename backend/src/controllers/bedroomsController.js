@@ -35,7 +35,7 @@ exports.getBedroomsByProperty = asyncHandler(async (req, res) => {
 // Create bedroom (admin only)
 exports.createBedroom = asyncHandler(async (req, res) => {
   const { propertyId } = req.params;
-  const { bedroom_name, status, price_pppw, bedroom_description, available_from, youtube_url } = req.body;
+  const { bedroom_name, price_pppw, bedroom_description, available_from, youtube_url } = req.body;
   const agencyId = req.agencyId;
 
   if (!bedroom_name) {
@@ -61,14 +61,13 @@ exports.createBedroom = asyncHandler(async (req, res) => {
   const displayOrder = (maxOrderResult.rows[0]?.max_order || 0) + 1;
 
   const result = await db.query(`
-    INSERT INTO bedrooms (agency_id, property_id, bedroom_name, status, price_pppw, bedroom_description, available_from, youtube_url, display_order)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    INSERT INTO bedrooms (agency_id, property_id, bedroom_name, price_pppw, bedroom_description, available_from, youtube_url, display_order)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *
   `, [
     agencyId,
     propertyId,
     bedroom_name,
-    status || 'available',
     price_pppw || null,
     bedroom_description || null,
     available_from || null,
@@ -84,7 +83,7 @@ exports.createBedroom = asyncHandler(async (req, res) => {
 // Update bedroom (admin only)
 exports.updateBedroom = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { bedroom_name, status, price_pppw, bedroom_description, available_from, youtube_url } = req.body;
+  const { bedroom_name, price_pppw, bedroom_description, available_from, youtube_url } = req.body;
   const agencyId = req.agencyId;
 
   // Defense-in-depth: explicit agency_id filtering
@@ -101,15 +100,14 @@ exports.updateBedroom = asyncHandler(async (req, res) => {
   const result = await db.query(`
     UPDATE bedrooms SET
       bedroom_name = $1,
-      status = $2,
-      price_pppw = $3,
-      bedroom_description = $4,
-      available_from = $5,
-      youtube_url = $6,
+      price_pppw = $2,
+      bedroom_description = $3,
+      available_from = $4,
+      youtube_url = $5,
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $7 AND agency_id = $8
+    WHERE id = $6 AND agency_id = $7
     RETURNING *
-  `, [bedroom_name, status, price_pppw, bedroom_description, available_from, youtube_url, id, agencyId], agencyId);
+  `, [bedroom_name, price_pppw, bedroom_description, available_from, youtube_url, id, agencyId], agencyId);
 
   const updatedBedroom = result.rows[0];
 

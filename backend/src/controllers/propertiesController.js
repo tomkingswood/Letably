@@ -47,7 +47,9 @@ exports.getAllProperties = asyncHandler(async (req, res) => {
   // Batch-fetch images and bedrooms for all properties (eliminates N+1)
   const propertyIds = properties.map(p => p.id);
 
-  const [imagesResult, bedroomsResult] = await Promise.all([
+  const today = new Date().toISOString().split('T')[0];
+
+  const [imagesResult, bedroomsResult, occupiedResult] = await Promise.all([
     db.query(`
       SELECT id, property_id, file_path, is_primary
       FROM images
@@ -61,15 +63,28 @@ exports.getAllProperties = asyncHandler(async (req, res) => {
       [propertyIds, agencyId],
       agencyId
     ),
+    // Find which bedrooms have an active tenancy (started and not yet ended)
+    db.query(`
+      SELECT DISTINCT tm.bedroom_id
+      FROM tenancy_members tm
+      JOIN tenancies t ON t.id = tm.tenancy_id AND t.agency_id = $2
+      WHERE tm.bedroom_id = ANY(SELECT id FROM bedrooms WHERE property_id = ANY($1) AND agency_id = $2)
+      AND tm.agency_id = $2
+      AND t.start_date <= $3
+      AND (t.end_date IS NULL OR t.end_date >= $3)
+      AND t.status IN ('active', 'approved', 'awaiting_signatures', 'approval')
+    `, [propertyIds, agencyId, today], agencyId),
   ]);
 
   // Group by property_id
   const imagesByProperty = {};
   const bedroomsByProperty = {};
+  const occupiedBedroomIds = new Set(occupiedResult.rows.map(r => r.bedroom_id));
   for (const img of imagesResult.rows) {
     (imagesByProperty[img.property_id] ||= []).push(img);
   }
   for (const br of bedroomsResult.rows) {
+    br.is_occupied = occupiedBedroomIds.has(br.id);
     (bedroomsByProperty[br.property_id] ||= []).push(br);
   }
 
@@ -122,6 +137,21 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
     agencyId
   );
 
+  // Find which bedrooms have an active tenancy
+  const singlePropToday = new Date().toISOString().split('T')[0];
+  const bedroomIds = bedroomsResult.rows.map(b => b.id);
+  const occupiedResult = bedroomIds.length > 0 ? await db.query(`
+    SELECT DISTINCT tm.bedroom_id
+    FROM tenancy_members tm
+    JOIN tenancies t ON t.id = tm.tenancy_id AND t.agency_id = $2
+    WHERE tm.bedroom_id = ANY($1)
+    AND tm.agency_id = $2
+    AND t.start_date <= $3
+    AND (t.end_date IS NULL OR t.end_date >= $3)
+    AND t.status IN ('active', 'approved', 'awaiting_signatures', 'approval')
+  `, [bedroomIds, agencyId, singlePropToday], agencyId) : { rows: [] };
+  const occupiedBedroomIds = new Set(occupiedResult.rows.map(r => r.bedroom_id));
+
   // Get images for each bedroom directly via images.bedroom_id
   // Defense-in-depth: verify bedroom belongs to agency
   const bedroomsWithImages = await Promise.all(bedroomsResult.rows.map(async (bedroom) => {
@@ -135,6 +165,7 @@ exports.getPropertyById = asyncHandler(async (req, res) => {
 
     return {
       ...bedroom,
+      is_occupied: occupiedBedroomIds.has(bedroom.id),
       images: bedroomImagesResult.rows || [],
       imageUrls: bedroomImagesResult.rows ? bedroomImagesResult.rows.map(img => img.file_path) : []
     };

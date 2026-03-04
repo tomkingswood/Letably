@@ -69,8 +69,8 @@ async function seedAgency() {
     const passwordHash = await bcrypt.hash('password123', 10);
 
     const userResult = await client.query(`
-      INSERT INTO users (agency_id, email, password_hash, first_name, last_name, role, is_active, email_verified)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO users (agency_id, email, password_hash, first_name, last_name, role, email_verified)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (agency_id, email) DO UPDATE SET
         password_hash = EXCLUDED.password_hash,
         updated_at = NOW()
@@ -82,7 +82,6 @@ async function seedAgency() {
       'Admin',
       'User',
       'admin',
-      true,
       true
     ]);
 
@@ -90,8 +89,8 @@ async function seedAgency() {
 
     // Create a test tenant user
     const tenantResult = await client.query(`
-      INSERT INTO users (agency_id, email, password_hash, first_name, last_name, role, is_active, email_verified)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO users (agency_id, email, password_hash, first_name, last_name, role, email_verified)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (agency_id, email) DO UPDATE SET
         password_hash = EXCLUDED.password_hash,
         updated_at = NOW()
@@ -103,7 +102,6 @@ async function seedAgency() {
       'Test',
       'Tenant',
       'tenant',
-      true,
       true
     ]);
 
