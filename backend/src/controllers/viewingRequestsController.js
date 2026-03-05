@@ -17,8 +17,9 @@ const formatFullAddress = (row) => {
 /**
  * Generate email notification for new viewing request
  */
-const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipientEmail, agencySlug, customDomain) => {
+const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipientEmail, agencySlug, customDomain, branding = {}) => {
   const adminUrl = buildAgencyUrl(agencySlug || '', 'admin?section=viewing-requests', customDomain);
+  const companyName = branding.companyName || 'Letably';
 
   const bodyContent = `
     <h1>New Viewing Request</h1>
@@ -54,15 +55,15 @@ const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipie
       <p style="margin: 0 0 15px 0; color: #666; font-size: 14px;">
         Manage this viewing request in the admin panel:
       </p>
-      ${createButton(`${adminUrl}`, 'View All Viewing Requests')}
+      ${createButton(`${adminUrl}`, 'View All Viewing Requests', branding.primaryColor)}
     </div>
 
     <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
-      This is an automated notification from our property management system.
+      This is an automated notification from ${escapeHtml(companyName)}.
     </p>
   `;
 
-  const emailHtml = createEmailTemplate('New Viewing Request', bodyContent);
+  const emailHtml = createEmailTemplate('New Viewing Request', bodyContent, branding);
 
   const textParts = [
     'NEW VIEWING REQUEST',
@@ -105,9 +106,9 @@ const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipie
  * Generate confirmation email sent to the visitor when an admin creates a viewing request
  */
 const generateViewingConfirmationEmail = (viewingRequest, propertyAddress, branding) => {
-  const agencyName = branding?.company_name || 'Our Agency';
-  const agencyPhone = branding?.phone_number || '';
-  const agencyEmail = branding?.email_address || '';
+  const agencyName = branding?.companyName || 'Our Agency';
+  const agencyPhone = branding?.phone || '';
+  const agencyEmail = branding?.email || '';
 
   const contactLines = [];
   if (agencyPhone) contactLines.push(`<p style="margin: 4px 0; color: #555;">Phone: <a href="tel:${escapeHtml(agencyPhone)}" style="color: #CF722F; text-decoration: none;">${escapeHtml(agencyPhone)}</a></p>`);
@@ -146,7 +147,7 @@ const generateViewingConfirmationEmail = (viewingRequest, propertyAddress, brand
     </p>
   `;
 
-  const emailHtml = createEmailTemplate('Viewing Confirmation', bodyContent);
+  const emailHtml = createEmailTemplate('Viewing Confirmation', bodyContent, branding);
 
   const textParts = [
     'VIEWING CONFIRMATION',
@@ -323,6 +324,7 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
   try {
     const recipientEmail = getReminderRecipient();
     if (recipientEmail) {
+      const branding = await getAgencyBranding(agencyId);
       const viewingRequestData = {
         name,
         email,
@@ -338,7 +340,8 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
         fullAddress,
         recipientEmail,
         req.agency?.slug,
-        req.agency?.custom_portal_domain
+        req.agency?.custom_portal_domain,
+        branding
       );
 
       await queueEmail({

@@ -150,11 +150,12 @@ async function sendCommunicationNotifications(tenancyId, actingUser, messageCont
         viewUrl = buildAgencyUrl(slug, `tenancy/communication`, customDomain);
       }
 
-      const buttonHtml = createButton(viewUrl, 'View Messages');
+      const buttonHtml = createButton(viewUrl, 'View Messages', branding.primaryColor);
 
       const emailHtml = createEmailTemplate(
         subject,
-        `<p>Hi ${recipient.name.split(' ')[0]},</p>${htmlContent}<div style="text-align: center;">${buttonHtml}</div>`
+        `<p>Hi ${recipient.name.split(' ')[0]},</p>${htmlContent}<div style="text-align: center;">${buttonHtml}</div>`,
+        branding
       );
 
       await queueEmail({

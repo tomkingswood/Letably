@@ -164,7 +164,8 @@ const recordRemindersEmailed = async (reminders, recipientEmail, agencyId) => {
 /**
  * Generate consolidated email content for all reminders
  */
-const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letably', agencySlug = '', customDomain = null) => {
+const generateConsolidatedEmail = (reminders, recipientEmail, branding = {}, agencySlug = '', customDomain = null) => {
+  const brandName = branding.companyName || 'Letably';
   const severityColors = {
     critical: '#DC2626',
     medium: '#F97316',
@@ -256,7 +257,8 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
       </p>
       ${createButton(
         buildAgencyUrl(agencySlug, 'admin?section=reminders', customDomain),
-        'Open Admin Panel'
+        'Open Admin Panel',
+        branding.primaryColor
       )}
     </div>
 
@@ -265,7 +267,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
     </p>
   `;
 
-  const emailHtml = createEmailTemplate(subject, bodyContent);
+  const emailHtml = createEmailTemplate(subject, bodyContent, branding);
 
   // Generate plain text version
   const textParts = [`${brandName} Reminders - ${today}`, '', `You have ${reminders.length} active reminder(s):`, ''];
@@ -666,10 +668,9 @@ const processReminderEmails = async (isManualTrigger = false, agencyId) => {
 
     // Get branding for the email
     const branding = await getAgencyBranding(agencyId);
-    const brandName = branding.companyName || 'Letably';
 
     // Generate consolidated email with only new/upgraded reminders
-    const emailContent = generateConsolidatedEmail(remindersToEmail, recipientEmail, brandName, branding.agencySlug, branding.customDomain);
+    const emailContent = generateConsolidatedEmail(remindersToEmail, recipientEmail, branding, branding.agencySlug, branding.customDomain);
 
     // Determine priority based on highest severity
     const hasCritical = remindersToEmail.some(r => r.severity === 'critical');

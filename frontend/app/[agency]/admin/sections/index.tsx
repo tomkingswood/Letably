@@ -79,17 +79,6 @@ export const sections: Record<string, {
       bgColor: 'bg-teal-100',
     },
   },
-  'custom-attributes': {
-    component: dynamic(() => import('./PropertyAttributesSection'), { loading: SectionLoading }),
-    meta: {
-      title: 'Custom Attributes',
-      description: 'Define custom attributes for properties and rooms (e.g., Bathrooms, Parking, Room Size)',
-      group: 'properties',
-      iconColor: 'text-indigo-600',
-      bgColor: 'bg-indigo-100',
-    },
-  },
-
   // Lettings Management
   applications: {
     component: dynamic(() => import('./ApplicationsSection'), { loading: SectionLoading }),
@@ -262,6 +251,16 @@ export const sections: Record<string, {
       bgColor: 'bg-green-100',
     },
   },
+  'custom-attributes': {
+    component: dynamic(() => import('./PropertyAttributesSection'), { loading: SectionLoading }),
+    meta: {
+      title: 'Custom Attributes',
+      description: 'Define custom attributes for properties and rooms (e.g., Bathrooms, Parking, Room Size)',
+      group: 'settings',
+      iconColor: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
+    },
+  },
   'property-certificate-types': {
     component: dynamic(() => import('./PropertyCertificateTypesSection'), { loading: SectionLoading }),
     meta: {
@@ -272,7 +271,7 @@ export const sections: Record<string, {
       bgColor: 'bg-green-100',
     },
   },
-  'certificate-types': {
+  'tenancy-certificate-types': {
     component: dynamic(() => import('./CertificateTypesSection'), { loading: SectionLoading }),
     meta: {
       title: 'Tenancy Document Types',

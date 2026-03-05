@@ -378,6 +378,8 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
   let emailsSent = 0;
   let setupEmailsSent = 0;
   if (send_portal_email) {
+    const { getAgencyBranding } = require('../services/brandingService');
+    const branding = await getAgencyBranding(agencyId);
     const slug = req.agency?.slug || '';
     const portalUrl = buildAgencyUrl(slug, 'tenancy', req.agency?.custom_portal_domain);
     const propertyAddress = tenancy.property_address
@@ -411,7 +413,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
                 <p style="margin: 5px 0;">You'll use this to log in after setting your password.</p>
               `, 'info')}
               <div style="text-align: center;">
-                ${createButton(setupUrl, 'Set Up Your Password')}
+                ${createButton(setupUrl, 'Set Up Your Password', branding.primaryColor)}
               </div>
               <p style="font-size: 14px; color: #666;">This link will expire in 7 days. If it expires, please contact us for a new link.</p>
               <p>Once you've set up your password, you'll be able to:</p>
@@ -422,7 +424,8 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
                 <li>Access important documents</li>
               </ul>
               <p>If you have any questions, please don't hesitate to contact us.</p>
-            `
+            `,
+            branding
           );
 
           await queueEmail({
@@ -448,9 +451,10 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
                 <li>Submit and track maintenance requests</li>
                 <li>Access important documents</li>
               </ul>
-              ${createButton(`${portalUrl}`, 'Go to Tenant Portal')}
+              ${createButton(`${portalUrl}`, 'Go to Tenant Portal', branding.primaryColor)}
               <p>If you have any questions, please don't hesitate to contact us.</p>
-            `
+            `,
+            branding
           );
 
           await queueEmail({

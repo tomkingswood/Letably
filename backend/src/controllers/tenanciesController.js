@@ -18,6 +18,7 @@ const {
 
 const { buildSigningNotificationEmail } = require('../utils/tenancyEmailBuilder');
 const { buildAgencyUrl } = require('../utils/urlBuilder');
+const { getAgencyBranding } = require('../services/brandingService');
 
 /**
  * Get all tenancies with member details and filtering
@@ -678,6 +679,7 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
       const members = await getTenancyMembersForEmail(id, agencyId);
 
       // Send email to each tenant using email builder
+      const branding = await getAgencyBranding(agencyId);
       for (const member of members) {
         const agencySlug = req.agency?.slug || '';
         const customDomain = req.agency?.custom_portal_domain;
@@ -690,7 +692,8 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
           city: tenancyDetails.city,
           startDate: tenancyDetails.start_date,
           endDate: tenancyDetails.end_date,
-          signingUrl
+          signingUrl,
+          branding
         });
 
         queueEmail({

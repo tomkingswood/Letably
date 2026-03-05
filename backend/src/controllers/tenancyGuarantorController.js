@@ -1,7 +1,7 @@
 const db = require('../db');
 const { getGuarantorAgreementsByTenancy } = require('../services/guarantorService');
 const { queueEmail } = require('../services/emailService');
-const { getSiteSettings } = require('../repositories/tenancyRepository');
+const { getAgencyBranding } = require('../services/brandingService');
 const { buildGuarantorRegenerationEmail } = require('../utils/tenancyEmailBuilder');
 const { buildAgencyUrl } = require('../utils/urlBuilder');
 const asyncHandler = require('../utils/asyncHandler');
@@ -82,10 +82,9 @@ exports.regenerateGuarantorAgreementToken = asyncHandler(async (req, res) => {
     WHERE id = $2 AND agency_id = $3
   `, [newToken, agreementId, agencyId], agencyId);
 
-  // Get settings and build signing URL
-  const settings = await getSiteSettings(agencyId);
+  // Get branding and build signing URL
+  const branding = await getAgencyBranding(agencyId);
   const signingUrl = buildAgencyUrl(agreement.agency_slug, `guarantor/sign/${newToken}`, req.agency?.custom_portal_domain);
-  const companyName = settings.company_name || 'Letably';
 
   // Build email using email builder
   const { html, text, subject } = buildGuarantorRegenerationEmail({
@@ -97,7 +96,7 @@ exports.regenerateGuarantorAgreementToken = asyncHandler(async (req, res) => {
     tenancyStartDate: agreement.tenancy_start_date,
     tenancyEndDate: agreement.tenancy_end_date,
     signingUrl,
-    companyName
+    branding
   });
 
   // Send email
