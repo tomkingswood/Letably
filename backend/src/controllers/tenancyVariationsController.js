@@ -79,7 +79,7 @@ exports.createRollingTenancyFromExisting = asyncHandler(async (req, res) => {
     });
   }
 
-  const bedroomConflicts = checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, req.agencyId);
+  const bedroomConflicts = await checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, req.agencyId);
   if (bedroomConflicts.length > 0) {
     const conflictError = formatBedroomConflictError(bedroomConflicts);
     return res.status(409).json(conflictError);
@@ -287,7 +287,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
     member_name: `${m.first_name} ${m.surname}`
   }));
 
-  const bedroomConflicts = checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, req.agencyId);
+  const bedroomConflicts = await checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, req.agencyId);
   if (bedroomConflicts.length > 0) {
     const conflictError = formatBedroomConflictError(bedroomConflicts);
     return res.status(409).json(conflictError);

@@ -24,7 +24,7 @@ import { MessageAlert } from '@/components/ui/MessageAlert';
 
 // Extended ThreadMessage with is_private flag
 interface ExtendedThreadMessage extends ThreadMessage {
-  is_private?: number;
+  is_private?: boolean;
 }
 
 // Transform maintenance comments to ThreadMessage format
@@ -264,8 +264,8 @@ export default function LandlordMaintenanceDetailPage({ params }: { params: Prom
             {/* Message Thread - Public Messages */}
             {(() => {
               const allMessages = transformCommentsToMessages(request.comments);
-              const publicMessages = allMessages.filter(m => !m.is_private || m.is_private === 0);
-              const privateMessages = allMessages.filter(m => m.is_private === 1);
+              const publicMessages = allMessages.filter(m => !m.is_private);
+              const privateMessages = allMessages.filter(m => m.is_private === true);
 
               return (
                 <>

@@ -19,7 +19,7 @@ import { MessageAlert } from '@/components/ui/MessageAlert';
 
 // Extended ThreadMessage with is_private flag
 interface ExtendedThreadMessage extends ThreadMessage {
-  is_private?: number;
+  is_private?: boolean;
 }
 
 // Transform communication messages to ThreadMessage format
@@ -185,8 +185,8 @@ export default function LandlordCommunicationDetailPage({ params }: { params: Pr
         {/* Communication Thread - Public Messages */}
         {(() => {
           const allMessages = transformMessagesToThread(messages);
-          const publicMessages = allMessages.filter(m => !m.is_private || m.is_private === 0);
-          const privateMessages = allMessages.filter(m => m.is_private === 1);
+          const publicMessages = allMessages.filter(m => !m.is_private);
+          const privateMessages = allMessages.filter(m => m.is_private === true);
 
           return (
             <>

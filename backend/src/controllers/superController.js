@@ -1028,8 +1028,9 @@ const deleteAgency = asyncHandler(async (req, res) => {
   );
   for (const row of imagesResult.rows) {
     if (row.file_path) {
-      // file_path starts with /uploads/ — resolve relative to backend root
-      await safeUnlink(path.join(backendRoot, row.file_path), uploadsDir);
+      // file_path may start with /uploads/ — strip leading slash for correct join
+      const relativePath = row.file_path.startsWith('/') ? row.file_path.substring(1) : row.file_path;
+      await safeUnlink(path.join(backendRoot, relativePath), uploadsDir);
     }
   }
 

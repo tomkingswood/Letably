@@ -93,7 +93,8 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'signed_documents_agency_isolation') THEN
     CREATE POLICY signed_documents_agency_isolation ON signed_documents
-      USING (agency_id = current_setting('app.agency_id', true)::integer);
+      USING (agency_id = current_setting('app.agency_id', true)::integer)
+      WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
   END IF;
 END $$;
 
@@ -120,6 +121,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'tenant_documents_agency_isolation') THEN
     CREATE POLICY tenant_documents_agency_isolation ON tenant_documents
-      USING (agency_id = current_setting('app.agency_id', true)::integer);
+      USING (agency_id = current_setting('app.agency_id', true)::integer)
+      WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
   END IF;
 END $$;

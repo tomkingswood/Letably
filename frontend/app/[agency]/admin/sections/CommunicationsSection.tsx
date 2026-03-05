@@ -27,7 +27,7 @@ interface TenancyThread {
 }
 
 interface ExtendedThreadMessage extends ThreadMessage {
-  is_private?: number;
+  is_private?: boolean;
 }
 
 function transformMessagesToThread(messages: CommunicationMessage[]): ExtendedThreadMessage[] {
@@ -173,8 +173,8 @@ function CommunicationThreadView({ tenancyId, onBack }: { tenancyId: string; onB
   }
 
   const allMessages = transformMessagesToThread(messages);
-  const publicMessages = allMessages.filter(m => !m.is_private || m.is_private === 0);
-  const privateMessages = allMessages.filter(m => m.is_private === 1);
+  const publicMessages = allMessages.filter(m => !m.is_private);
+  const privateMessages = allMessages.filter(m => m.is_private === true);
 
   return (
     <div>

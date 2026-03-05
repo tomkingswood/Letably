@@ -271,22 +271,22 @@ exports.deleteDocument = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Documents can only be deleted for active tenancies' });
   }
 
-  // Delete file from filesystem
-  const filePath = path.join(TENANT_DOCS_DIR, path.basename(document.file_path));
-  try {
-    await fs.unlink(filePath);
-  } catch (fileError) {
-    console.error('Error deleting file from disk:', fileError);
-    // Continue with database deletion even if file not found
-  }
-
-  // Defense-in-depth: explicit agency_id filtering
-  // Delete from database (explicit agency check via tenancy join for defense-in-depth)
-  await db.query(
-    `DELETE FROM tenant_documents WHERE id = $1 AND agency_id = $2`,
+  // Delete DB row first to avoid dangling records if DELETE fails
+  const deleteResult = await db.query(
+    `DELETE FROM tenant_documents WHERE id = $1 AND agency_id = $2 RETURNING file_path`,
     [id, agencyId],
     agencyId
   );
+
+  // Only unlink file if a row was actually deleted
+  if (deleteResult.rows[0]?.file_path) {
+    const filePath = path.join(TENANT_DOCS_DIR, path.basename(deleteResult.rows[0].file_path));
+    try {
+      await fs.unlink(filePath);
+    } catch (fileError) {
+      console.error('Error deleting file from disk:', fileError);
+    }
+  }
 
   res.json({ message: 'Document deleted successfully' });
 }, 'delete document');
