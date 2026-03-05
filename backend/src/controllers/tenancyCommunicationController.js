@@ -6,7 +6,7 @@ const { createEmailTemplate, createButton, createInfoBox, escapeHtml } = require
 const { getAgencyBranding } = require('../services/brandingService');
 const asyncHandler = require('../utils/asyncHandler');
 
-const { getFrontendBaseUrl } = require('../utils/urlBuilder');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 
 /**
  * Send notifications for new tenancy communication messages
@@ -136,18 +136,18 @@ async function sendCommunicationNotifications(tenancyId, actingUser, messageCont
     }
 
     // Send emails
-    const frontendUrl = getFrontendBaseUrl();
     const slug = branding.agencySlug || '';
+    const customDomain = branding.customDomain;
 
     for (const recipient of recipients) {
       // Generate role-specific URL
       let viewUrl;
       if (recipient.isAdmin) {
-        viewUrl = `${frontendUrl}/${slug}/admin/tenancies/${tenancyId}/communication`;
+        viewUrl = buildAgencyUrl(slug, `admin/tenancies/${tenancyId}/communication`, customDomain);
       } else if (recipient.isLandlord) {
-        viewUrl = `${frontendUrl}/${slug}/landlord/communication/${tenancyId}`;
+        viewUrl = buildAgencyUrl(slug, `landlord/communication/${tenancyId}`, customDomain);
       } else {
-        viewUrl = `${frontendUrl}/${slug}/tenancy/communication`;
+        viewUrl = buildAgencyUrl(slug, `tenancy/communication`, customDomain);
       }
 
       const buttonHtml = createButton(viewUrl, 'View Messages');

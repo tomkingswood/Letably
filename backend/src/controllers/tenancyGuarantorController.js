@@ -84,7 +84,7 @@ exports.regenerateGuarantorAgreementToken = asyncHandler(async (req, res) => {
 
   // Get settings and build signing URL
   const settings = await getSiteSettings(agencyId);
-  const signingUrl = buildAgencyUrl(agreement.agency_slug, `guarantor/sign/${newToken}`);
+  const signingUrl = buildAgencyUrl(agreement.agency_slug, `guarantor/sign/${newToken}`, req.agency?.custom_portal_domain);
   const companyName = settings.company_name || 'Letably';
 
   // Build email using email builder

@@ -3,7 +3,7 @@ const { queueEmail } = require('./emailService');
 const { createEmailTemplate, createButton, COLORS, escapeHtml } = require('../utils/emailTemplates');
 const { formatDate } = require('../utils/dateFormatter');
 const { getAgencyBranding } = require('./brandingService');
-const { getFrontendBaseUrl } = require('../utils/urlBuilder');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 
 /**
  * Get reminder recipient email from settings
@@ -164,7 +164,7 @@ const recordRemindersEmailed = async (reminders, recipientEmail, agencyId) => {
 /**
  * Generate consolidated email content for all reminders
  */
-const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letably', agencySlug = '') => {
+const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letably', agencySlug = '', customDomain = null) => {
   const severityColors = {
     critical: '#DC2626',
     medium: '#F97316',
@@ -195,7 +195,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
   const renderReminder = (reminder) => {
     let propertyLink = '';
     if (reminder.reference_type === 'property' && reminder.reference_id) {
-      propertyLink = `<a href="${getFrontendBaseUrl()}/${agencySlug}/admin?section=properties&action=edit&id=${reminder.reference_id}" style="color: #CF722F; text-decoration: none; font-weight: 600;">View Property →</a>`;
+      propertyLink = `<a href="${buildAgencyUrl(agencySlug, `admin?section=properties&action=edit&id=${reminder.reference_id}`, customDomain)}" style="color: #CF722F; text-decoration: none; font-weight: 600;">View Property →</a>`;
     }
 
     let viewingRequestDetails = '';
@@ -255,7 +255,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
         View and manage all reminders in the admin panel:
       </p>
       ${createButton(
-        `${getFrontendBaseUrl()}/${agencySlug}/admin?section=reminders`,
+        buildAgencyUrl(agencySlug, 'admin?section=reminders', customDomain),
         'Open Admin Panel'
       )}
     </div>
@@ -301,7 +301,7 @@ const generateConsolidatedEmail = (reminders, recipientEmail, brandName = 'Letab
   }
 
   textParts.push('---');
-  textParts.push(`View all reminders: ${getFrontendBaseUrl()}/${agencySlug}/admin?section=reminders`);
+  textParts.push(`View all reminders: ${buildAgencyUrl(agencySlug, 'admin?section=reminders', customDomain)}`);
 
   return {
     to: recipientEmail,
@@ -669,7 +669,7 @@ const processReminderEmails = async (isManualTrigger = false, agencyId) => {
     const brandName = branding.companyName || 'Letably';
 
     // Generate consolidated email with only new/upgraded reminders
-    const emailContent = generateConsolidatedEmail(remindersToEmail, recipientEmail, brandName, branding.agencySlug);
+    const emailContent = generateConsolidatedEmail(remindersToEmail, recipientEmail, brandName, branding.agencySlug, branding.customDomain);
 
     // Determine priority based on highest severity
     const hasCritical = remindersToEmail.some(r => r.severity === 'critical');

@@ -197,7 +197,7 @@ exports.createApplication = asyncHandler(async (req, res) => {
 
   if (is_new_user && setupToken) {
     // Send a SINGLE combined email: welcome + application notification
-    const setupUrl = buildAgencyUrl(req.agency.slug, `setup-password/${setupToken}`);
+    const setupUrl = buildAgencyUrl(req.agency.slug, `setup-password/${setupToken}`, req.agency.custom_portal_domain);
 
     const bodyContent = `
       <h1>Welcome to ${escapeHtml(companyName)}!</h1>
@@ -221,7 +221,7 @@ exports.createApplication = asyncHandler(async (req, res) => {
       <p>Once your password is set, you can complete your application here:</p>
 
       <div style="text-align: center;">
-        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`)}`, 'Complete Application')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`, branding.customDomain)}`, 'Complete Application')}
       </div>
 
       ${createInfoBox(`
@@ -248,7 +248,7 @@ ${setupUrl}
 This setup link will expire in 7 days. If it expires, please contact us for a new link.
 
 Once your password is set, you can complete your application here:
-${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`)}
+${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`, branding.customDomain)}
 
 Important: You must complete this application before we can proceed with your tenancy.
 
@@ -279,7 +279,7 @@ ${companyName}`;
       <p>Please click the button below to complete your application:</p>
 
       <div style="text-align: center;">
-        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`)}`, 'Complete Application')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`, branding.customDomain)}`, 'Complete Application')}
       </div>
 
       ${createInfoBox(`
@@ -301,7 +301,7 @@ An application has been created for you to complete.
 Application Type: ${application_type === 'student' ? 'Student' : 'Professional'}
 
 Please visit the following link to complete your application:
-${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`)}
+${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`, branding.customDomain)}
 
 Important: You must complete this application before we can proceed with your tenancy.
 
@@ -621,7 +621,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
       `, 'info')}
 
       <div style="text-align: center;">
-        ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${id}`)}`, 'View Application Details')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${id}`, branding.customDomain)}`, 'View Application Details')}
       </div>
 
       <p style="color: #666; font-size: 14px; margin-top: 30px;">
@@ -642,7 +642,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
 
     // If guarantor is required, send email to guarantor
     if (newStatus === 'awaiting_guarantor' && guarantor_email) {
-      const guarantorLink = `${buildAgencyUrl(branding.agencySlug, `guarantor/${guarantorToken}`)}`;
+      const guarantorLink = `${buildAgencyUrl(branding.agencySlug, `guarantor/${guarantorToken}`, branding.customDomain)}`;
 
       const guarantorBodyContent = `
         <h1>Guarantor Form Required</h1>
@@ -876,7 +876,7 @@ exports.submitGuarantorForm = asyncHandler(async (req, res) => {
     <p>The application is now complete and ready for review.</p>
 
     <div style="text-align: center;">
-      ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${applicationDetails.id}`)}`, 'View Complete Application')}
+      ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${applicationDetails.id}`, branding.customDomain)}`, 'View Complete Application')}
     </div>
   `;
 
@@ -923,7 +923,7 @@ exports.regenerateGuarantorToken = asyncHandler(async (req, res) => {
     // Get branding for email
     const branding = await getAgencyBranding(agencyId);
     const brandName = branding.companyName || 'Letably';
-    const guarantorLink = `${buildAgencyUrl(branding.agencySlug, `guarantor/${newToken}`)}`;
+    const guarantorLink = `${buildAgencyUrl(branding.agencySlug, `guarantor/${newToken}`, branding.customDomain)}`;
 
     const guarantorBodyContent = `
       <h1>New Guarantor Form Link</h1>

@@ -225,7 +225,7 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
 
     // Get tenancy info and agency slug
     const tenancyResult = await db.query(`
-      SELECT t.*, p.address_line1, p.city, ag.slug as agency_slug
+      SELECT t.*, p.address_line1, p.city, ag.slug as agency_slug, ag.custom_portal_domain
       FROM tenancies t
       JOIN properties p ON t.property_id = p.id
       JOIN agencies ag ON t.agency_id = ag.id
@@ -239,7 +239,7 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
 
     for (const agreement of agreements) {
       // Generate signing URL
-      const signingUrl = buildAgencyUrl(tenancy.agency_slug, `guarantor/sign/${agreement.token}`);
+      const signingUrl = buildAgencyUrl(tenancy.agency_slug, `guarantor/sign/${agreement.token}`, tenancy.custom_portal_domain);
       const companyName = settings.company_name || 'Letably';
 
       // Generate email body content using template system
