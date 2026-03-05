@@ -34,7 +34,7 @@ interface Property {
 
 export default function ManageManualRemindersPage() {
   const router = useRouter();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [reminders, setReminders] = useState<ManualReminder[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,7 +213,7 @@ export default function ManageManualRemindersPage() {
                 </button>
               )}
               <button
-                onClick={() => router.push(`/${agencySlug}/admin`)}
+                onClick={() => router.push(buildPath('/admin'))}
                 className="bg-white text-primary hover:bg-gray-100 px-6 py-2 rounded-lg font-semibold transition-colors w-full sm:w-auto"
               >
                 Back to Dashboard
@@ -228,7 +228,7 @@ export default function ManageManualRemindersPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <Link
-              href={`/${agencySlug}/admin?section=reminders`}
+              href={buildPath('/admin?section=reminders')}
               className="text-primary hover:text-orange-700 font-semibold"
             >
               ← Back to Reminders

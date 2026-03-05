@@ -187,13 +187,13 @@ export function useHasRole(...roles: string[]) {
  */
 export function useRequireAuth(redirectTo?: string) {
   const { isAuthenticated, isLoading } = useAuth();
-  const { agencySlug } = useAgency();
+  const { buildPath } = useAgency();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && redirectTo && typeof window !== 'undefined') {
-      window.location.href = `/${agencySlug}${redirectTo}`;
+      window.location.href = buildPath(redirectTo);
     }
-  }, [isLoading, isAuthenticated, redirectTo, agencySlug]);
+  }, [isLoading, isAuthenticated, redirectTo, buildPath]);
 
   return { isAuthenticated, isLoading };
 }

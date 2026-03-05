@@ -14,7 +14,7 @@ import { validatePassword } from '@/lib/validation';
 export default function AccountPage() {
   const router = useRouter();
   const { user: authUser, isLoading: authLoading, isAuthenticated, logout } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,7 +39,7 @@ export default function AccountPage() {
     if (authLoading) return;
 
     if (!isAuthenticated) {
-      router.push(`/${agencySlug}`);
+      router.push(buildPath('/'));
       return;
     }
 

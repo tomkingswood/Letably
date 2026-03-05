@@ -973,6 +973,59 @@ const togglePropertyImages = asyncHandler(async (req, res) => {
 }, 'toggle property images');
 
 /**
+ * Update custom portal domain for an agency
+ *
+ * PATCH /api/super/agencies/:id/custom-domain
+ */
+const updateCustomDomain = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { custom_portal_domain } = req.body;
+
+  // Allow null/empty to clear the domain
+  const domain = custom_portal_domain?.trim() || null;
+
+  // Validate domain format if provided
+  if (domain) {
+    const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
+    if (!domainRegex.test(domain)) {
+      return res.status(400).json({ error: 'Invalid domain format' });
+    }
+
+    // Check if domain is already in use by another agency
+    const existing = await db.systemQuery(
+      `SELECT id FROM agencies WHERE custom_portal_domain = $1 AND id != $2`,
+      [domain, id]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Domain is already in use by another agency' });
+    }
+  }
+
+  const result = await db.systemQuery(
+    `UPDATE agencies
+     SET custom_portal_domain = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING id, name, slug, custom_portal_domain`,
+    [domain, id]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: 'Agency not found' });
+  }
+
+  await logAuditAction(
+    req.superUser.id,
+    domain ? 'custom_domain_set' : 'custom_domain_removed',
+    'agency',
+    parseInt(id),
+    { agency_name: result.rows[0].name, domain },
+    getClientIp(req)
+  );
+
+  res.json({ agency: result.rows[0] });
+}, 'update custom domain');
+
+/**
  * Permanently delete an agency and all associated data + files
  *
  * DELETE /api/super/agencies/:id
@@ -1161,6 +1214,7 @@ module.exports = {
   listSuperUsers,
   getAgencyStorageUsage,
   togglePropertyImages,
+  updateCustomDomain,
   deleteAgency,
   // Email queue
   getSmtpSettings,

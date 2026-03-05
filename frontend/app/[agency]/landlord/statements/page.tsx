@@ -92,7 +92,7 @@ const monthNames = [
 export default function LandlordStatementsPage() {
   const router = useRouter();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [periods, setPeriods] = useState<StatementPeriod[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -252,7 +252,7 @@ export default function LandlordStatementsPage() {
       {/* Header */}
       <div className="bg-primary text-white py-6">
         <div className="container mx-auto px-4">
-          <Link href={`/${agencySlug}/landlord`} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
+          <Link href={buildPath('/landlord')} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>

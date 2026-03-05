@@ -1,15 +1,64 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// In-memory cache for domain → slug resolution (persists across requests in the same edge worker)
+const domainCache = new Map<string, { slug: string; expiresAt: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Known platform hostnames that are NOT custom domains
+ */
+function isPlatformHost(host: string): boolean {
+  return (
+    host.includes('localhost') ||
+    host.includes('letably.com') ||
+    host.includes('vercel.app')
+  );
+}
+
+/**
+ * Resolve custom domain to agency slug via backend API
+ */
+async function resolveCustomDomain(domain: string): Promise<string | null> {
+  // Check cache first
+  const cached = domainCache.get(domain);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.slug;
+  }
+
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL_INTERNAL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    const res = await fetch(`${apiUrl}/agencies/resolve-domain?domain=${encodeURIComponent(domain)}`, {
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!res.ok) {
+      // Cache miss for 1 minute to avoid hammering on unknown domains
+      domainCache.set(domain, { slug: '', expiresAt: Date.now() + 60_000 });
+      return null;
+    }
+
+    const data = await res.json();
+    if (data.slug) {
+      domainCache.set(domain, { slug: data.slug, expiresAt: Date.now() + CACHE_TTL_MS });
+      return data.slug;
+    }
+  } catch (err) {
+    console.error('Failed to resolve custom domain:', domain, err);
+  }
+
+  return null;
+}
+
 /**
  * Middleware for Letably multi-tenant routing
  *
  * Handles:
- * 1. Agency slug extraction from URL path
- * 2. Agency validation (optional - can be moved to client)
+ * 1. Custom domain → slug resolution + URL rewrite
+ * 2. Agency slug extraction from URL path
  * 3. Protected route redirects
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Skip middleware for static files and API routes
@@ -29,6 +78,34 @@ export function middleware(request: NextRequest) {
   if (isPublicRoute) {
     return NextResponse.next();
   }
+
+  // --- Custom domain detection ---
+  const host = request.headers.get('host')?.split(':')[0] || '';
+
+  if (!isPlatformHost(host)) {
+    // Custom domain: resolve to agency slug
+    const slug = await resolveCustomDomain(host);
+
+    if (!slug) {
+      // Unknown custom domain — show error
+      return new NextResponse('Agency not found for this domain', { status: 404 });
+    }
+
+    // Rewrite: portal.steelcityliving.com/tenancy → /steel-city-living/tenancy (internally)
+    // The browser URL stays as portal.steelcityliving.com/tenancy
+    const url = request.nextUrl.clone();
+    url.pathname = `/${slug}${pathname}`;
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-agency-slug', slug);
+    requestHeaders.set('x-custom-domain', 'true');
+
+    return NextResponse.rewrite(url, {
+      request: { headers: requestHeaders },
+    });
+  }
+
+  // --- Standard slug-based routing (letably.com/steel-city-living/...) ---
 
   // Extract agency slug from path (first segment)
   const segments = pathname.split('/').filter(Boolean);

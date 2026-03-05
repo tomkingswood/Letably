@@ -15,7 +15,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 export default function LandlordCommunicationPage() {
   const router = useRouter();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [tenancies, setTenancies] = useState<TenancyWithCommunication[]>([]);
   const [error, setError] = useState('');
@@ -56,7 +56,7 @@ export default function LandlordCommunicationPage() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <Link href={`/${agencySlug}/landlord`} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
+              <Link href={buildPath('/landlord')} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
@@ -84,7 +84,7 @@ export default function LandlordCommunicationPage() {
               <CommunicationListItem
                 key={tenancy.id}
                 tenancy={tenancy}
-                href={`/${agencySlug}/landlord/communication/${tenancy.id}`}
+                href={buildPath(`/landlord/communication/${tenancy.id}`)}
               />
             ))}
           </div>

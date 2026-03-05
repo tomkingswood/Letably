@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const backendPort = process.env.BACKEND_PORT || '5000';
+const backendPort = process.env.BACKEND_PORT || '3001';
 
 // Get hostname from NEXT_PUBLIC_SITE_URL or default to localhost
 const getSiteHostname = () => {

@@ -13,14 +13,12 @@ import { RoleBanner, RoleIcon } from '@/components/ui/RoleBanner';
  * No navigation links since each role has its own dashboard.
  */
 export default function AgencyHeader() {
-  const { agency, agencySlug } = useAgency();
+  const { agency, agencySlug, buildPath } = useAgency();
   const { user, isAuthenticated, logout } = useAuth();
-
-  const basePath = `/${agencySlug}`;
 
   const handleLogout = () => {
     logout();
-    window.location.href = basePath;
+    window.location.href = buildPath('/');
   };
 
   // Primary color with fallback
@@ -37,7 +35,7 @@ export default function AgencyHeader() {
           >
             <div className="flex items-center justify-between py-3 text-white">
               <Link
-                href={`${basePath}/${user.role === 'admin' ? 'admin' : user.role === 'landlord' ? 'landlord' : 'tenancy'}`}
+                href={buildPath(`/${user.role === 'admin' ? 'admin' : user.role === 'landlord' ? 'landlord' : 'tenancy'}`)}
                 className="flex items-center gap-2 hover:opacity-90 transition-opacity"
               >
                 <RoleIcon role={user.role} />

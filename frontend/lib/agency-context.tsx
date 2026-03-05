@@ -26,11 +26,13 @@ export interface Agency {
 interface AgencyContextType {
   agency: Agency | null;
   agencySlug: string | null;
+  isCustomDomain: boolean;
   isLoading: boolean;
   error: string | null;
   setAgency: (agency: Agency | null) => void;
   setAgencySlug: (slug: string) => void;
   refreshAgency: () => Promise<void>;
+  buildPath: (path: string) => string;
 }
 
 const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
@@ -42,6 +44,7 @@ interface AgencyProviderProps {
   children: ReactNode;
   initialAgency?: Agency | null;
   initialSlug?: string;
+  isCustomDomain?: boolean;
 }
 
 /**
@@ -53,7 +56,8 @@ interface AgencyProviderProps {
 export function AgencyProvider({
   children,
   initialAgency = null,
-  initialSlug = ''
+  initialSlug = '',
+  isCustomDomain: initialIsCustomDomain = false
 }: AgencyProviderProps) {
   const [agency, setAgency] = useState<Agency | null>(initialAgency);
   const [agencySlug, setAgencySlug] = useState<string | null>(initialSlug);
@@ -70,7 +74,8 @@ export function AgencyProvider({
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      // Use relative URL on client-side (proxied via Next.js rewrites) to avoid cross-origin issues with custom domains
+      const apiUrl = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL_INTERNAL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api');
       const response = await fetch(`${apiUrl}/agencies/${slug}`);
 
       if (!response.ok) {
@@ -122,14 +127,29 @@ export function AgencyProvider({
     }
   }, [agency]);
 
+  // Detect custom domain: check if current hostname differs from platform hosts
+  const isCustomDomain = initialIsCustomDomain || (typeof window !== 'undefined' && (() => {
+    const host = window.location.hostname;
+    return !host.includes('localhost') && !host.includes('letably.com') && !host.includes('vercel.app');
+  })());
+
+  // Build a path that includes the slug prefix only on platform domains
+  const buildPath = (path: string) => {
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    if (isCustomDomain) return normalized;
+    return `/${agencySlug}${normalized}`;
+  };
+
   const value: AgencyContextType = {
     agency,
     agencySlug,
+    isCustomDomain,
     isLoading,
     error,
     setAgency,
     setAgencySlug,
-    refreshAgency
+    refreshAgency,
+    buildPath,
   };
 
   return (

@@ -36,7 +36,7 @@ function transformMessagesToThread(messages: CommunicationMessage[]): ThreadMess
 
 export default function TenantCommunicationPage() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -117,7 +117,7 @@ export default function TenantCommunicationPage() {
         <div className="text-center">
           <div className="text-gray-400 text-5xl mb-4">💬</div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">{error}</h3>
-          <Link href={`/${agencySlug}/tenancy`} className="text-primary hover:underline">
+          <Link href={buildPath('/tenancy')} className="text-primary hover:underline">
             Back to My Tenancy
           </Link>
         </div>
@@ -130,7 +130,7 @@ export default function TenantCommunicationPage() {
       {/* Header */}
       <div className="bg-primary text-white py-6">
         <div className="max-w-4xl mx-auto px-4">
-          <Link href={`/${agencySlug}/tenancy`} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
+          <Link href={buildPath('/tenancy')} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>

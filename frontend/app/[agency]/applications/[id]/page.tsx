@@ -32,7 +32,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const isAuthenticated = !!user;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -65,7 +65,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
-      router.push(`/${agencySlug}`);
+      router.push(buildPath('/'));
       return;
     }
 
@@ -161,7 +161,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
             setMessage({ type: 'error', text: 'You do not have permission to access this application. This application may belong to a different user.' });
             setApplication(null);
           } else {
-            router.push(`/${agencySlug}`);
+            router.push(buildPath('/'));
             return;
           }
         } else {
@@ -302,7 +302,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
           ) : (
             <p className="text-red-600 mb-4">Application not found</p>
           )}
-          <Link href={`/${agencySlug}`} className="text-primary hover:underline font-semibold">
+          <Link href={buildPath('/')} className="text-primary hover:underline font-semibold">
             Return to Homepage
           </Link>
         </div>
@@ -475,7 +475,7 @@ export default function ApplicationFormPage({ params }: PageProps) {
               </div>
 
               <div className="text-center mt-6">
-                <Link href={`/${agencySlug}`} className="text-primary hover:underline font-semibold">
+                <Link href={buildPath('/')} className="text-primary hover:underline font-semibold">
                   Return to Homepage
                 </Link>
               </div>

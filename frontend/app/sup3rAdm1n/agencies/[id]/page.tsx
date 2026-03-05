@@ -23,6 +23,8 @@ export default function SuperAdminAgencyDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [editingDomain, setEditingDomain] = useState(false);
+  const [domainInput, setDomainInput] = useState('');
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -144,6 +146,31 @@ export default function SuperAdminAgencyDetailPage() {
       setMessage({
         type: 'error',
         text: getErrorMessage(err, 'Failed to impersonate user')
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateDomain = async () => {
+    if (!agency) return;
+
+    setUpdating(true);
+    setMessage(null);
+
+    try {
+      const domain = domainInput.trim() || null;
+      const response = await superAgencies.updateCustomDomain(agency.id, domain);
+      setAgency({ ...agency, custom_portal_domain: response.data.agency.custom_portal_domain });
+      setEditingDomain(false);
+      setMessage({
+        type: 'success',
+        text: domain ? `Custom domain set to ${domain}` : 'Custom domain removed'
+      });
+    } catch (err: unknown) {
+      setMessage({
+        type: 'error',
+        text: getErrorMessage(err, 'Failed to update custom domain')
       });
     } finally {
       setUpdating(false);
@@ -400,6 +427,58 @@ export default function SuperAdminAgencyDetailPage() {
                   Delete Agency
                 </button>
               </div>
+            </div>
+
+            {/* Custom Domain */}
+            <div className="bg-gray-800 rounded-lg p-6 mb-8">
+              <h3 className="text-lg font-semibold text-white mb-4">Custom Portal Domain</h3>
+              {editingDomain ? (
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-400 mb-1">Domain</label>
+                    <input
+                      type="text"
+                      value={domainInput}
+                      onChange={(e) => setDomainInput(e.target.value)}
+                      placeholder="portal.example.com"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Leave empty to remove custom domain</p>
+                  </div>
+                  <button
+                    onClick={handleUpdateDomain}
+                    disabled={updating}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingDomain(false)}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    {agency.custom_portal_domain ? (
+                      <span className="text-white font-mono">{agency.custom_portal_domain}</span>
+                    ) : (
+                      <span className="text-gray-500">No custom domain configured</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setDomainInput(agency.custom_portal_domain || '');
+                      setEditingDomain(true);
+                    }}
+                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-sm font-medium transition-colors"
+                  >
+                    {agency.custom_portal_domain ? 'Edit' : 'Set Domain'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Admins */}

@@ -21,7 +21,7 @@ export default function SignAgreementPage({ params }: PageProps) {
   const { tenancyId, memberId } = use(params);
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [agreement, setAgreement] = useState<Agreement | null>(null);
   const [memberData, setMemberData] = useState<AgreementMemberData | null>(null);
@@ -37,7 +37,7 @@ export default function SignAgreementPage({ params }: PageProps) {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push(`/${agencySlug}`);
+      router.push(buildPath('/'));
       return;
     }
     if (!authLoading && user) {
@@ -64,7 +64,7 @@ export default function SignAgreementPage({ params }: PageProps) {
       // Check if unauthorized - redirect to login
       const axiosErr = err as { response?: { status?: number } };
       if (axiosErr.response?.status === 401) {
-        router.push(`/${agencySlug}`);
+        router.push(buildPath('/'));
         return;
       }
       setError(getErrorMessage(err, 'Failed to load agreement'));
@@ -179,7 +179,7 @@ export default function SignAgreementPage({ params }: PageProps) {
           <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
           <p className="text-gray-700 mb-4">{error}</p>
           <button
-            onClick={() => router.push(`/${agencySlug}/tenancy`)}
+            onClick={() => router.push(buildPath('/tenancy'))}
             className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark"
           >
             Go Home
@@ -288,7 +288,7 @@ export default function SignAgreementPage({ params }: PageProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => router.push(`/${agencySlug}/tenancy`)}
+                  onClick={() => router.push(buildPath('/tenancy'))}
                   className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   Cancel
@@ -311,7 +311,7 @@ export default function SignAgreementPage({ params }: PageProps) {
               </p>
             </div>
             <button
-              onClick={() => router.push(`/${agencySlug}/tenancy`)}
+              onClick={() => router.push(buildPath('/tenancy'))}
               className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
             >
               Back to Home

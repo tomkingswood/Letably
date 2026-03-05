@@ -110,11 +110,10 @@ const sectionIcons: Record<string, React.ReactNode> = {
 function AdminDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { agency, agencySlug } = useAgency();
+  const { agency, agencySlug, buildPath } = useAgency();
   const { user } = useAuth();
   const { isAuthenticated, isLoading } = useRequireAuth('');
 
-  const basePath = `/${agencySlug}`;
   const primaryColor = agency?.primary_color || '#1E3A5F';
 
   // Get current section and sub-view params from URL
@@ -129,11 +128,11 @@ function AdminDashboardContent() {
       urlParams.set('section', section);
       if (params?.action) urlParams.set('action', params.action);
       if (params?.id) urlParams.set('id', params.id);
-      router.push(`${basePath}/admin?${urlParams.toString()}`);
+      router.push(buildPath(`/admin?${urlParams.toString()}`));
     } else {
-      router.push(`${basePath}/admin`);
+      router.push(buildPath('/admin'));
     }
-  }, [router, basePath]);
+  }, [router, buildPath]);
 
   // Go back - contextual based on current state
   const handleBack = useCallback(() => {
@@ -163,9 +162,9 @@ function AdminDashboardContent() {
   // Redirect if not admin
   useEffect(() => {
     if (!isLoading && isAuthenticated && user?.role !== 'admin') {
-      router.push(basePath);
+      router.push(buildPath('/'));
     }
-  }, [isLoading, isAuthenticated, user, router, basePath]);
+  }, [isLoading, isAuthenticated, user, router, buildPath]);
 
   // Loading state
   if (isLoading) {

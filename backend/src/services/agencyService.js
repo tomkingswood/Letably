@@ -5,7 +5,7 @@
  */
 
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
+
 const AgencyModel = require('../models/agency');
 const AgencySettingsModel = require('../models/agencySettings');
 const db = require('../db');
@@ -165,61 +165,6 @@ async function updateSettings(agencyId, data) {
 }
 
 /**
- * Set up custom domain
- */
-async function setupCustomDomain(agencyId, domain) {
-  // Validate domain format
-  const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
-  if (!domainRegex.test(domain)) {
-    throw new Error('Invalid domain format');
-  }
-
-  // Check if domain is already in use
-  const existing = await AgencyModel.findByDomain(domain);
-  if (existing && existing.id !== agencyId) {
-    throw new Error('Domain is already in use by another agency');
-  }
-
-  // Generate verification token
-  const verificationToken = crypto.randomBytes(16).toString('hex');
-
-  await AgencyModel.update(agencyId, {
-    custom_portal_domain: domain,
-    custom_domain_verified: false
-  });
-
-  // Return verification instructions
-  return {
-    domain,
-    verification_token: verificationToken,
-    dns_record: {
-      type: 'TXT',
-      name: `_letably-verification.${domain}`,
-      value: `letably-verify=${verificationToken}`
-    }
-  };
-}
-
-/**
- * Verify custom domain DNS
- */
-async function verifyCustomDomain(agencyId) {
-  const agency = await AgencyModel.findById(agencyId);
-
-  if (!agency.custom_portal_domain) {
-    throw new Error('No custom domain configured');
-  }
-
-  // In production, this would check DNS records
-  // For now, just mark as verified
-  await AgencyModel.update(agencyId, {
-    custom_domain_verified: true
-  });
-
-  return { verified: true };
-}
-
-/**
  * Generate or regenerate API key
  */
 async function generateApiKey(agencyId) {
@@ -258,8 +203,6 @@ module.exports = {
   getFullInfo,
   updateBranding,
   updateSettings,
-  setupCustomDomain,
-  verifyCustomDomain,
   generateApiKey,
   revokeApiKey,
   checkSubscription

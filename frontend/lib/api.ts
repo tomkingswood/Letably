@@ -12,14 +12,14 @@ import type {
   ApplicationFormConfig,
 } from './types';
 
-// Use internal URL for server-side requests, public URL for client-side
+// Use internal URL for server-side requests, relative URL for client-side (proxied via Next.js rewrites)
 const getApiUrl = () => {
-  // Server-side: use localhost
+  // Server-side: use direct backend URL
   if (typeof window === 'undefined') {
     return process.env.NEXT_PUBLIC_API_URL_INTERNAL || 'http://localhost:3001/api';
   }
-  // Client-side: use public URL
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  // Client-side: use relative URL to go through Next.js proxy (avoids cross-origin issues with custom domains)
+  return '/api';
 };
 
 const api = axios.create({

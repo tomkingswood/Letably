@@ -72,6 +72,7 @@ export interface Agency {
   subscription_expires_at?: string;
   is_active: boolean;
   property_images_enabled: boolean;
+  custom_portal_domain?: string | null;
   created_at: string;
   updated_at: string;
   user_count?: number;
@@ -166,6 +167,9 @@ export const superAgencies = {
 
   getStorageUsage: (id: number | string) =>
     superApi.get<{ agency_id: number; storage: StorageUsage }>(`/super/agencies/${id}/storage`),
+
+  updateCustomDomain: (id: number | string, custom_portal_domain: string | null) =>
+    superApi.patch<{ agency: Agency }>(`/super/agencies/${id}/custom-domain`, { custom_portal_domain }),
 
   delete: (id: number | string) =>
     superApi.delete<{ message: string }>(`/super/agencies/${id}`),

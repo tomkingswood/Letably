@@ -17,7 +17,7 @@ interface ApplicationDetailViewProps {
 }
 
 export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigate }: ApplicationDetailViewProps) {
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<ApplicationFormData | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -272,7 +272,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
   };
 
   const handleCopyLink = () => {
-    const guarantorLink = `${window.location.origin}/${agencySlug}/guarantor/${application?.guarantor_token}`;
+    const guarantorLink = `${window.location.origin}${buildPath(`/guarantor/${application?.guarantor_token}`)}`;
     navigator.clipboard.writeText(guarantorLink).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -620,7 +620,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
                   <input
                     type="text"
                     readOnly
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/${agencySlug}/guarantor/${application.guarantor_token}`}
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}${buildPath(`/guarantor/${application.guarantor_token}`)}`}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
                   />
                   <button

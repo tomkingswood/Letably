@@ -12,7 +12,7 @@ import { useAuth } from '@/lib/auth-context';
  */
 export default function LandlordPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { agencySlug, isLoading: agencyLoading } = useAgency();
+  const { agencySlug, buildPath, isLoading: agencyLoading } = useAgency();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
@@ -20,13 +20,13 @@ export default function LandlordPortalLayout({ children }: { children: React.Rea
 
     // Redirect to login if not authenticated
     if (!isAuthenticated) {
-      router.push(`/${agencySlug}`);
+      router.push(buildPath('/'));
       return;
     }
 
     // Redirect to home if not landlord
     if (user?.role !== 'landlord') {
-      router.push(`/${agencySlug}`);
+      router.push(buildPath('/'));
     }
   }, [agencyLoading, authLoading, isAuthenticated, user, agencySlug, router]);
 

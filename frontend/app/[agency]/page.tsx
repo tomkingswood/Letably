@@ -14,7 +14,7 @@ import { MessageAlert } from '@/components/ui/MessageAlert';
  */
 export default function AgencyPage() {
   const router = useRouter();
-  const { agency, agencySlug, isLoading: agencyLoading } = useAgency();
+  const { agency, agencySlug, buildPath, isLoading: agencyLoading } = useAgency();
   const { user, isAuthenticated, isLoading: authLoading, login, error: authError } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -29,13 +29,13 @@ export default function AgencyPage() {
     if (isAuthenticated && user) {
       switch (user.role) {
         case 'admin':
-          router.push(`/${agencySlug}/admin`);
+          router.push(buildPath('/admin'));
           break;
         case 'landlord':
-          router.push(`/${agencySlug}/landlord`);
+          router.push(buildPath('/landlord'));
           break;
         case 'tenant':
-          router.push(`/${agencySlug}/tenancy`);
+          router.push(buildPath('/tenancy'));
           break;
       }
     }

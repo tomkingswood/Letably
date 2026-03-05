@@ -36,9 +36,98 @@ Node.js 18+, TypeScript 5.x (frontend): Follow standard conventions
 - `app/[agency]/layout.tsx` wraps all child routes with `AgencyProvider` (resolves agency from slug, provides branding) and `AuthProvider` (manages agency-scoped auth tokens in localStorage as `token_<slug>`, `user_<slug>`).
 - Without the agency slug in the URL, the app has no way to know which agency context to use — API calls, auth tokens, and data are all scoped per agency.
 - Pages under `[agency]/` use `useAuth()` from `lib/auth-context.tsx` (NOT `hooks/useAuth.ts`) and `useAgency()` from `lib/agency-context.tsx` for authentication and agency context.
-- All internal links within portal pages must include the agency slug prefix: `` `/${agencySlug}/tenancy` ``, NOT `/tenancy`.
 - Role-based auth guards are implemented as layout files (e.g. `[agency]/admin/layout.tsx`, `[agency]/tenancy/layout.tsx`) that check `user.role` and redirect unauthorized users to `/${agencySlug}`.
 - The `hooks/useAuth.ts` hooks (`useRequireTenant`, `useRequireLandlord`, etc.) are for pages NOT under `[agency]/` that use the `lastAgencySlug` fallback. Pages under `[agency]/` should always use the context-based auth.
+
+## Custom Domain Support
+
+Agencies can optionally use a custom portal domain (e.g. `portal.steelcityliving.com`) instead of `letably.com/steel-city-living`. When a custom domain is active, the agency slug is invisible to users — all URLs are clean (e.g. `/admin`, `/tenancy`).
+
+### How it works
+
+1. **Next.js middleware** (`frontend/middleware.ts`) detects non-platform hostnames via `isPlatformHost()` (checks for `localhost`, `letably.com`, `vercel.app`). Any other hostname is treated as a custom domain.
+2. Middleware resolves the domain to a slug by calling `GET /api/agencies/resolve-domain?domain=<host>` (with a 5-minute in-memory cache).
+3. Middleware **rewrites** the URL internally: `portal.example.com/admin` → `/steel-city-living/admin`. The browser URL stays clean — the slug is only in the internal Next.js routing.
+4. The `[agency]` layout picks up the slug from the rewritten URL as normal.
+
+### CRITICAL: Use `buildPath()` for ALL internal links
+
+**NEVER hardcode `/${agencySlug}/...` in links or redirects.** Always use `buildPath()` from the agency context:
+
+```typescript
+const { buildPath } = useAgency();
+
+// GOOD — works on both platform domain and custom domain
+<Link href={buildPath('/admin')}>Admin</Link>
+router.push(buildPath('/tenancy'));
+window.location.href = buildPath('/login');
+
+// BAD — breaks on custom domain (adds slug to URL)
+<Link href={`/${agencySlug}/admin`}>Admin</Link>
+```
+
+`buildPath()` behaviour:
+- **Platform domain** (`letably.com`): returns `/${agencySlug}/path` (slug visible in URL)
+- **Custom domain** (`portal.example.com`): returns `/path` (no slug — middleware handles it)
+
+### Components outside `[agency]` context
+
+`Header.tsx` and other components that render outside the `AgencyProvider` cannot use `buildPath()`. These use a standalone `isCustomDomainHost()` check:
+
+```typescript
+function isCustomDomainHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return !host.includes('localhost') && !host.includes('letably.com') && !host.includes('vercel.app');
+}
+const prefix = (agencySlug && !isCustomDomainHost()) ? `/${agencySlug}` : '';
+```
+
+### API calls from the browser
+
+All client-side API calls use the relative URL `/api` (not `http://localhost:3001/api`). Next.js `rewrites` in `next.config.js` proxy these to the backend. This is essential for custom domains — browsers block cross-origin requests to private network addresses (localhost) from non-localhost origins.
+
+```typescript
+// frontend/lib/api.ts
+const getApiUrl = () => {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL_INTERNAL || 'http://localhost:3001/api';
+  }
+  return '/api';  // Client-side: relative URL proxied by Next.js
+};
+```
+
+### Backend email links
+
+When the backend generates links in emails (setup-password, guarantor signing, etc.), use `buildAgencyUrl()` from `backend/src/utils/urlBuilder.js` with the optional `customDomain` parameter:
+
+```javascript
+const { buildAgencyUrl } = require('../utils/urlBuilder');
+
+// If agency has a custom domain, links use it; otherwise, falls back to slug-based URL
+const url = buildAgencyUrl(agency.slug, 'setup-password/TOKEN', agency.custom_portal_domain);
+// → "https://portal.example.com/setup-password/TOKEN"  (custom domain)
+// → "https://letably.com/steel-city-living/setup-password/TOKEN"  (platform domain)
+```
+
+### Admin setup
+
+Custom domains are configured **only** by super admins at `/sup3rAdm1n/agencies/[id]`. Agencies cannot self-configure custom domains. The `agencies.custom_portal_domain` column stores the domain — if it's set, it's active (no verification step). DNS/SSL configuration is handled manually by the platform operator.
+
+### Key files
+
+| File | Role |
+|------|------|
+| `frontend/middleware.ts` | Custom domain detection, slug resolution, URL rewriting |
+| `frontend/lib/agency-context.tsx` | `buildPath()`, `isCustomDomain` flag |
+| `frontend/lib/api.ts` | Relative `/api` URL for client-side (proxied) |
+| `frontend/next.config.js` | Rewrites that proxy `/api` to backend |
+| `frontend/components/ui/Header.tsx` | `isCustomDomainHost()` for outside-context links |
+| `backend/src/models/agency.js` | `findByDomain()` — looks up agency by domain |
+| `backend/src/controllers/agencyController.js` | `resolveDomain` endpoint for middleware |
+| `backend/src/utils/urlBuilder.js` | `buildAgencyUrl()` with optional custom domain |
+| `backend/src/controllers/superController.js` | `updateCustomDomain` — super admin endpoint |
+| `frontend/app/sup3rAdm1n/agencies/[id]/page.tsx` | Custom domain management UI |
 
 ## Multi-Tenancy Safety Rules
 

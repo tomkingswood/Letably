@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { auth } from '@/lib/api';
 import { getErrorMessage } from '@/lib/types';
+import { useAgency } from '@/lib/agency-context';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { MessageAlert } from '@/components/ui/MessageAlert';
@@ -19,6 +20,7 @@ interface SetupUser {
 export default function SetupPasswordPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const router = useRouter();
+  const { buildPath } = useAgency();
   const [user, setUser] = useState<SetupUser | null>(null);
   const [agencySlug, setAgencySlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,7 +138,7 @@ export default function SetupPasswordPage({ params }: { params: Promise<{ token:
               Your password has been set. Redirecting you to login...
             </p>
             <Link
-              href={agencySlug ? `/${agencySlug}/login` : '/login'}
+              href={buildPath('/')}
               className="inline-block px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium"
             >
               Go to Login

@@ -27,7 +27,7 @@ interface TenancyDetailViewProps {
 
 export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps) {
   const router = useRouter();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const searchParams = useSearchParams();
 
   // Core state
@@ -915,7 +915,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
   };
 
   const handleCopyGuarantorLink = (token: string, guarantorName: string) => {
-    const link = `${window.location.origin}/${agencySlug}/guarantor/sign/${token}`;
+    const link = `${window.location.origin}${buildPath(`/guarantor/sign/${token}`)}`;
     navigator.clipboard.writeText(link);
     setSuccess(`Guarantor agreement link for ${guarantorName} copied to clipboard!`);
     setTimeout(() => setSuccess(''), 3000);
@@ -995,7 +995,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
       setSuccess('Rolling tenancy created successfully');
 
       // Navigate to the new tenancy
-      router.push(`/${agencySlug}/admin?section=tenancies&action=view&id=${response.data.tenancy.id}`);
+      router.push(buildPath(`/admin?section=tenancies&action=view&id=${response.data.tenancy.id}`));
     } catch (err: unknown) {
       setRollingError(getErrorMessage(err, 'Failed to create rolling tenancy'));
     } finally {
@@ -1029,7 +1029,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
       {/* Action buttons */}
       <div className="flex gap-3 mb-6">
         <Link
-          href={`/${agencySlug}/admin?section=maintenance&property_id=${tenancy?.property_id}`}
+          href={buildPath(`/admin?section=maintenance&property_id=${tenancy?.property_id}`)}
           className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1039,7 +1039,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
           Maintenance
         </Link>
         <Link
-          href={`/${agencySlug}/admin?section=communications&action=view&id=${id}`}
+          href={buildPath(`/admin?section=communications&action=view&id=${id}`)}
           className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -50,7 +50,7 @@ export default function LandlordTenancyDetailPage({ params }: { params: Promise<
   const { id } = use(params);
   const router = useRouter();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [tenancy, setTenancy] = useState<Tenancy | null>(null);
   const [members, setMembers] = useState<TenancyMember[]>([]);
@@ -125,7 +125,7 @@ export default function LandlordTenancyDetailPage({ params }: { params: Promise<
             <div className="text-red-600 text-5xl mb-4">⚠️</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
             <p className="text-gray-600 mb-6">{error || 'Tenancy not found'}</p>
-            <Button onClick={() => router.push(`/${agencySlug}/landlord`)}>Back to Dashboard</Button>
+            <Button onClick={() => router.push(buildPath('/landlord'))}>Back to Dashboard</Button>
           </div>
         </div>
       </div>
@@ -149,7 +149,7 @@ export default function LandlordTenancyDetailPage({ params }: { params: Promise<
             </div>
             <Button
               variant="secondary"
-              onClick={() => router.push(`/${agencySlug}/landlord`)}
+              onClick={() => router.push(buildPath('/landlord'))}
               className="bg-white text-primary hover:bg-gray-100 w-full sm:w-auto"
             >
               ← Back to Dashboard

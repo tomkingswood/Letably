@@ -18,7 +18,7 @@ interface PageProps {
 
 export default function GuarantorAgreementSigningPage({ params }: PageProps) {
   const { token } = use(params);
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [agreement, setAgreement] = useState<Agreement | null>(null);
@@ -175,7 +175,7 @@ export default function GuarantorAgreementSigningPage({ params }: PageProps) {
             <h2 className="text-xl font-bold text-red-800 mb-2">Unable to Access Agreement</h2>
             <p className="text-red-700 mb-4">{error}</p>
             <Link
-              href={`/${agencySlug}`}
+              href={buildPath('/')}
               className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
             >
               Return to Homepage
@@ -197,7 +197,7 @@ export default function GuarantorAgreementSigningPage({ params }: PageProps) {
               Thank you for signing the guarantor agreement. The letting agent has been notified.
             </p>
             <Link
-              href={`/${agencySlug}`}
+              href={buildPath('/')}
               className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
             >
               Return to Homepage

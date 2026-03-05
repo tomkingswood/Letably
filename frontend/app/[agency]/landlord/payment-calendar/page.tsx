@@ -30,7 +30,7 @@ interface CalendarDay {
 export default function LandlordPaymentCalendarPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState<PaymentSchedule[]>([]);
@@ -169,7 +169,7 @@ export default function LandlordPaymentCalendarPage() {
               <p className="text-xl text-white/90">View payment schedules for your properties</p>
             </div>
             <button
-              onClick={() => router.push(`/${agencySlug}/landlord`)}
+              onClick={() => router.push(buildPath('/landlord'))}
               className="px-6 py-3 bg-white text-primary rounded-lg hover:bg-gray-100 transition-colors w-full sm:w-auto"
             >
               ← Back to Dashboard

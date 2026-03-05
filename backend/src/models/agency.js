@@ -13,7 +13,7 @@ const db = require('../db');
 async function findById(id) {
   const result = await db.systemQuery(
     `SELECT id, name, slug, email, phone, logo_url, primary_color, secondary_color,
-            show_powered_by, custom_portal_domain, custom_domain_verified,
+            show_powered_by, custom_portal_domain,
             subscription_tier, subscription_expires_at, is_active, public_api_key,
             api_rate_limit, property_images_enabled, created_at, updated_at
      FROM agencies WHERE id = $1`,
@@ -28,7 +28,7 @@ async function findById(id) {
 async function findBySlug(slug) {
   const result = await db.systemQuery(
     `SELECT id, name, slug, email, phone, logo_url, primary_color, secondary_color,
-            show_powered_by, custom_portal_domain, custom_domain_verified,
+            show_powered_by, custom_portal_domain,
             subscription_tier, subscription_expires_at, is_active, public_api_key,
             api_rate_limit, property_images_enabled, created_at, updated_at
      FROM agencies WHERE slug = $1`,
@@ -43,10 +43,10 @@ async function findBySlug(slug) {
 async function findByDomain(domain) {
   const result = await db.systemQuery(
     `SELECT id, name, slug, email, phone, logo_url, primary_color, secondary_color,
-            show_powered_by, custom_portal_domain, custom_domain_verified,
+            show_powered_by, custom_portal_domain,
             subscription_tier, subscription_expires_at, is_active
      FROM agencies
-     WHERE custom_portal_domain = $1 AND custom_domain_verified = true`,
+     WHERE custom_portal_domain = $1`,
     [domain]
   );
   return result.rows[0] || null;
@@ -94,7 +94,7 @@ async function create(data) {
 async function update(id, data) {
   const allowedFields = [
     'name', 'email', 'phone', 'logo_url', 'primary_color', 'secondary_color',
-    'show_powered_by', 'custom_portal_domain', 'custom_domain_verified',
+    'show_powered_by', 'custom_portal_domain',
     'subscription_tier', 'subscription_expires_at', 'is_active', 'api_rate_limit',
     'property_images_enabled'
   ];
