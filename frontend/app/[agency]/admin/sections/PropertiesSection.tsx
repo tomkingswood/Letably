@@ -25,6 +25,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
   const [filterLocation, setFilterLocation] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [savingOrder, setSavingOrder] = useState(false);
+  const isFiltered = searchTerm !== '' || filterLocation !== 'all' || filterStatus !== 'all';
 
   // Landlords for dropdown
   const [landlords, setLandlords] = useState<Landlord[]>([]);
@@ -485,12 +486,14 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
           <input
             type="text"
             placeholder="Search by address..."
+            aria-label="Search properties by address"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
 
           <select
+            aria-label="Filter by location"
             value={filterLocation}
             onChange={(e) => setFilterLocation(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -502,6 +505,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
           </select>
 
           <select
+            aria-label="Filter by status"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -556,9 +560,10 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                           <div className="flex flex-col items-center gap-0.5">
                             <button
                               onClick={() => moveProperty(realIndex, 'up')}
-                              disabled={realIndex === 0 || savingOrder}
+                              disabled={realIndex === 0 || savingOrder || isFiltered}
                               className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-not-allowed"
-                              title="Move up"
+                              title={isFiltered ? 'Clear filters to reorder' : 'Move up'}
+                              aria-label={`Move ${property.address_line1} up`}
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -566,9 +571,10 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                             </button>
                             <button
                               onClick={() => moveProperty(realIndex, 'down')}
-                              disabled={realIndex === properties.length - 1 || savingOrder}
+                              disabled={realIndex === properties.length - 1 || savingOrder || isFiltered}
                               className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-not-allowed"
-                              title="Move down"
+                              title={isFiltered ? 'Clear filters to reorder' : 'Move down'}
+                              aria-label={`Move ${property.address_line1} down`}
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -636,8 +642,10 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                       <div className="flex flex-col items-center mr-3 gap-0.5">
                         <button
                           onClick={() => moveProperty(realIndex, 'up')}
-                          disabled={realIndex === 0 || savingOrder}
+                          disabled={realIndex === 0 || savingOrder || isFiltered}
                           className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                          title={isFiltered ? 'Clear filters to reorder' : 'Move up'}
+                          aria-label={`Move ${property.address_line1} up`}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -645,8 +653,10 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                         </button>
                         <button
                           onClick={() => moveProperty(realIndex, 'down')}
-                          disabled={realIndex === properties.length - 1 || savingOrder}
+                          disabled={realIndex === properties.length - 1 || savingOrder || isFiltered}
                           className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                          title={isFiltered ? 'Clear filters to reorder' : 'Move down'}
+                          aria-label={`Move ${property.address_line1} down`}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
