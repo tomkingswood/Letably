@@ -627,7 +627,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                 </thead>
                 <tbody>
                   {(reorderMode ? properties : filteredProperties).map((property, index) => {
-                    const pricesAvailable = property.bedrooms?.filter(r => r.price_pppw != null).map(r => r.price_pppw!) ?? [];
+                    const pricesAvailable = property.bedrooms?.filter(r => r.price_pppw != null).map(r => Number(r.price_pppw)) ?? [];
                     const lowestPrice = pricesAvailable.length > 0 ? Math.min(...pricesAvailable) : null;
                     const vacantCount = property.bedrooms?.filter(r => r.is_occupied === false).length || 0;
 

@@ -64,7 +64,7 @@ export default function DynamicFormField({
           {label} {required && '*'}
         </label>
         <div className="space-y-2">
-          {options.map((opt) => (
+          {options.map((opt, optIndex) => (
             <label key={opt.value} className="flex items-center">
               <input
                 type="radio"
@@ -73,6 +73,7 @@ export default function DynamicFormField({
                 checked={value === opt.value}
                 onChange={handleChange}
                 disabled={disabled}
+                required={optIndex === 0 && required}
                 className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
               />
               <span className="ml-2 text-sm text-gray-900">{opt.label}</span>

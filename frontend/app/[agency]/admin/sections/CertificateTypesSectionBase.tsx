@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { certificateTypes } from '@/lib/api';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import { getErrorMessage } from '@/lib/types';
@@ -50,20 +50,24 @@ export default function CertificateTypesSectionBase({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  useEffect(() => {
-    fetchTypes();
-  }, []);
-
-  const fetchTypes = async () => {
+  const fetchTypes = useCallback(async () => {
     try {
       const response = await certificateTypes.getAll(apiType);
-      setTypes(response.data.certificateTypes || []);
+      const data = (response.data.certificateTypes || []).map((t: CertificateType) => ({
+        ...t,
+        default_validity_months: Number.isFinite(Number(t.default_validity_months)) ? Number(t.default_validity_months) : 12,
+      }));
+      setTypes(data);
     } catch (err: unknown) {
       setMessage({ type: 'error', text: getErrorMessage(err, `Failed to load ${title.toLowerCase()}`) });
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiType, title]);
+
+  useEffect(() => {
+    fetchTypes();
+  }, [fetchTypes]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

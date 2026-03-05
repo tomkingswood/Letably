@@ -7,7 +7,7 @@ const db = require('../db');
 const appRepo = require('../repositories/applicationRepository');
 const asyncHandler = require('../utils/asyncHandler');
 const { parseJsonField, parseJsonFields } = require('../utils/parseJsonField');
-const { buildAgencyUrl, buildPublicUrl } = require('../utils/urlBuilder');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 const agencySettings = require('../models/agencySettings');
 const holdingDepositRepo = require('../repositories/holdingDepositRepository');
 
@@ -289,7 +289,7 @@ ${companyName}`;
       <p>If you have any questions, please contact us at ${contactEmail}.</p>
     `;
 
-    const emailHtml = createEmailTemplate('Application Created', bodyContent);
+    const emailHtml = createEmailTemplate('Application Created', bodyContent, branding);
 
     const emailText = `
 Application Created

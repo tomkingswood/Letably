@@ -283,7 +283,10 @@ export default function CommunicationsSection({ onNavigate, action, itemId }: Se
       setLoading(true);
       const params = filterMessages === 'has_messages' ? { has_messages: 'true' } : {};
       const response = await tenancyCommunication.getAllTenancies(params);
-      setTenancies(response.data.tenancies || []);
+      setTenancies((response.data.tenancies || []).map((t: any) => ({
+        ...t,
+        message_count: Number(t.message_count) || 0,
+      })));
     } catch (error) {
       console.error('Error fetching communications:', error);
     } finally {

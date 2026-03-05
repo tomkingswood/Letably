@@ -273,9 +273,12 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
 
   const handleCopyLink = () => {
     const guarantorLink = `${window.location.origin}/${agencySlug}/guarantor/${application?.guarantor_token}`;
-    navigator.clipboard.writeText(guarantorLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(guarantorLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      setMessage({ type: 'error', text: 'Failed to copy link to clipboard' });
+    });
   };
 
   if (loading) {

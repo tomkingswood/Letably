@@ -63,8 +63,8 @@ exports.createDeposit = asyncHandler(async (req, res) => {
 
   // Check for existing holding deposit on this application
   const existingDeposit = await holdingDepositRepo.getByApplicationId(application_id, agencyId);
-  if (existingDeposit && existingDeposit.status === 'held') {
-    return res.status(400).json({ error: 'This application already has an active holding deposit' });
+  if (existingDeposit) {
+    return res.status(400).json({ error: 'This application already has a holding deposit' });
   }
 
   // Validate bedroom and property exist if provided
@@ -106,31 +106,39 @@ exports.createDeposit = asyncHandler(async (req, res) => {
   }
 
   // Create deposit and approve application in transaction
-  const deposit = await db.transaction(async (client) => {
-    // Create holding deposit
-    const depositResult = await client.query(`
-      INSERT INTO holding_deposits (
-        agency_id, application_id, amount, payment_reference, date_received,
-        bedroom_id, property_id, reservation_days, reservation_expires_at,
-        status, status_changed_at, status_changed_by
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'held', NOW(), $10)
-      RETURNING *
-    `, [
-      agencyId, application_id, parseFloat(amount), payment_reference || null,
-      date_received, bedroom_id || null, property_id || null,
-      reservation_days ? parseInt(reservation_days) : null,
-      reservationExpiresAt, userId
-    ]);
+  let deposit;
+  try {
+    deposit = await db.transaction(async (client) => {
+      // Create holding deposit
+      const depositResult = await client.query(`
+        INSERT INTO holding_deposits (
+          agency_id, application_id, amount, payment_reference, date_received,
+          bedroom_id, property_id, reservation_days, reservation_expires_at,
+          status, status_changed_at, status_changed_by
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'held', NOW(), $10)
+        RETURNING *
+      `, [
+        agencyId, application_id, parseFloat(amount), payment_reference || null,
+        date_received, bedroom_id || null, property_id || null,
+        reservation_days ? parseInt(reservation_days) : null,
+        reservationExpiresAt, userId
+      ]);
 
-    // Approve the application
-    await client.query(
-      'UPDATE applications SET status = $1 WHERE id = $2 AND agency_id = $3',
-      ['approved', application_id, agencyId]
-    );
+      // Approve the application
+      await client.query(
+        'UPDATE applications SET status = $1 WHERE id = $2 AND agency_id = $3',
+        ['approved', application_id, agencyId]
+      );
 
-    return depositResult.rows[0];
-  }, agencyId);
+      return depositResult.rows[0];
+    }, agencyId);
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'This application already has a holding deposit' });
+    }
+    throw err;
+  }
 
   // Send approval email (best-effort, don't fail the response)
   try {

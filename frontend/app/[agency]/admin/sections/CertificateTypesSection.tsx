@@ -3,7 +3,7 @@
 import { SectionProps } from './index';
 import CertificateTypesSectionBase from './CertificateTypesSectionBase';
 
-export default function CertificateTypesSection({ onNavigate, action, itemId, onBack }: SectionProps) {
+export default function CertificateTypesSection(_props: SectionProps) {
   return (
     <CertificateTypesSectionBase
       apiType="tenancy"

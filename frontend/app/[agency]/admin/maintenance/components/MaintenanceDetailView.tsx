@@ -84,9 +84,9 @@ export default function MaintenanceDetailView({ id, onBack, onNavigate }: Mainte
 
       const mappedRequest: MaintenanceRequest = {
         ...reqData,
-        creator_name: `${reqData.created_by_first_name} ${reqData.created_by_last_name}`,
+        creator_name: [reqData.created_by_first_name?.trim(), reqData.created_by_last_name?.trim()].filter(Boolean).join(' ') || 'Unknown',
         creator_email: reqData.created_by_email,
-        property_address: `${reqData.address_line1}, ${reqData.city}`,
+        property_address: [reqData.address_line1?.trim(), reqData.city?.trim()].filter(Boolean).join(', ') || 'Unknown address',
         comments: comments || [],
         has_landlord: has_landlord,
       };

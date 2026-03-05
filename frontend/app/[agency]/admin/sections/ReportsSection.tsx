@@ -92,10 +92,13 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
           const arrReport = arrearsRes.data.report;
           if (arrReport?.summary) {
             arrReport.summary.totalArrears = Number(arrReport.summary.totalArrears);
+            arrReport.summary.totalOverduePayments = Number(arrReport.summary.totalOverduePayments);
           }
           if (arrReport?.tenants) {
             for (const t of arrReport.tenants) {
               t.total_arrears = Number(t.total_arrears);
+              t.overdue_payments = Number(t.overdue_payments);
+              t.days_overdue = Number(t.days_overdue);
             }
           }
           setArrearsData(arrReport);
