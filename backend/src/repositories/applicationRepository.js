@@ -238,7 +238,7 @@ async function getIdDocumentsForApplication(applicationId, agencyId) {
   const result = await db.query(
     `SELECT * FROM id_documents
      WHERE application_id = $1
-     AND application_id IN (SELECT id FROM applications WHERE agency_id = $2)`,
+     AND agency_id = $2`,
     [applicationId, agencyId],
     agencyId
   );

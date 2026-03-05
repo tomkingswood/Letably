@@ -94,7 +94,7 @@ export function TenantInfo({
                 type="number"
                 step="0.01"
                 value={memberFormData.rent_pppw}
-                onChange={(e) => onFormDataChange({...memberFormData, rent_pppw: parseFloat(e.target.value)})}
+                onChange={(e) => onFormDataChange({...memberFormData, rent_pppw: parseFloat(e.target.value) || 0})}
                 required
               />
             </div>
@@ -104,7 +104,7 @@ export function TenantInfo({
                 type="number"
                 step="0.01"
                 value={memberFormData.deposit_amount}
-                onChange={(e) => onFormDataChange({...memberFormData, deposit_amount: parseFloat(e.target.value)})}
+                onChange={(e) => onFormDataChange({...memberFormData, deposit_amount: parseFloat(e.target.value) || 0})}
                 required
               />
             </div>

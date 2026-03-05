@@ -1002,7 +1002,7 @@ const deleteAgency = asyncHandler(async (req, res) => {
   function isWithinBase(baseDir, targetPath) {
     const resolvedBase = path.resolve(baseDir);
     const resolvedTarget = path.resolve(targetPath);
-    return resolvedTarget.startsWith(resolvedBase + path.sep) || resolvedTarget === resolvedBase;
+    return resolvedTarget.startsWith(resolvedBase + path.sep);
   }
 
   // Helper to safely delete a file (with path traversal guard)
@@ -1028,8 +1028,9 @@ const deleteAgency = asyncHandler(async (req, res) => {
   );
   for (const row of imagesResult.rows) {
     if (row.file_path) {
-      // file_path starts with /uploads/ — resolve relative to backend root
-      await safeUnlink(path.join(backendRoot, row.file_path), uploadsDir);
+      // file_path may start with /uploads/ — strip leading slash for correct join
+      const relativePath = row.file_path.startsWith('/') ? row.file_path.substring(1) : row.file_path;
+      await safeUnlink(path.join(backendRoot, relativePath), uploadsDir);
     }
   }
 

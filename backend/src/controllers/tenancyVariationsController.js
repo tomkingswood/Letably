@@ -79,7 +79,7 @@ exports.createRollingTenancyFromExisting = asyncHandler(async (req, res) => {
     });
   }
 
-  const bedroomConflicts = checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null);
+  const bedroomConflicts = await checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, req.agencyId);
   if (bedroomConflicts.length > 0) {
     const conflictError = formatBedroomConflictError(bedroomConflicts);
     return res.status(409).json(conflictError);
@@ -93,7 +93,7 @@ exports.createRollingTenancyFromExisting = asyncHandler(async (req, res) => {
       if (member.rent_pppw !== undefined) {
         totalRent += parseFloat(member.rent_pppw) || 0;
       } else {
-        const srcMember = await client.query('SELECT rent_pppw FROM tenancy_members WHERE id = $1', [member.member_id]);
+        const srcMember = await client.query('SELECT rent_pppw FROM tenancy_members WHERE id = $1 AND agency_id = $2', [member.member_id, agencyId]);
         totalRent += parseFloat(srcMember.rows[0]?.rent_pppw) || 0;
       }
     }
@@ -171,7 +171,7 @@ exports.createRollingTenancyFromExisting = asyncHandler(async (req, res) => {
           guarantor_relationship,
           guarantor_id_type
         FROM tenancy_members
-        WHERE id = $6
+        WHERE id = $6 AND agency_id = $1
         RETURNING id
       `, [
         agencyId,
@@ -287,7 +287,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
     member_name: `${m.first_name} ${m.surname}`
   }));
 
-  const bedroomConflicts = checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null);
+  const bedroomConflicts = await checkBedroomConflicts(bedroomAssignments, start_date, end_date || null, null, req.agencyId);
   if (bedroomConflicts.length > 0) {
     const conflictError = formatBedroomConflictError(bedroomConflicts);
     return res.status(409).json(conflictError);

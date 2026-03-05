@@ -343,7 +343,7 @@ async function getMemberCount(tenancyId, agencyId) {
  */
 async function getSiteSettings(agencyId) {
   try {
-    const result = await db.query('SELECT setting_key, setting_value FROM site_settings', [], agencyId);
+    const result = await db.query('SELECT setting_key, setting_value FROM site_settings WHERE agency_id = $1', [agencyId], agencyId);
     const settings = {};
     result.rows.forEach(row => {
       settings[row.setting_key] = row.setting_value;

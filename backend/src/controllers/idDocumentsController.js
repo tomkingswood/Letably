@@ -66,8 +66,8 @@ exports.uploadApplicantId = asyncHandler(async (req, res) => {
 
   // Verify user owns this application
   const applicationResult = await db.query(
-    'SELECT * FROM applications WHERE id = $1 AND user_id = $2',
-    [id, userId],
+    'SELECT * FROM applications WHERE id = $1 AND user_id = $2 AND agency_id = $3',
+    [id, userId, agencyId],
     agencyId
   );
   const application = applicationResult.rows[0];
@@ -79,7 +79,7 @@ exports.uploadApplicantId = asyncHandler(async (req, res) => {
   // Check if ID already uploaded
   // Defense-in-depth: explicit agency_id filtering
   const existingResult = await db.query(
-    'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND application_id IN (SELECT id FROM applications WHERE agency_id = $3)',
+    'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND agency_id = $3',
     [id, 'applicant_id', agencyId],
     agencyId
   );
@@ -144,8 +144,8 @@ exports.uploadGuarantorId = asyncHandler(async (req, res) => {
 
   // Find application by guarantor token
   const applicationResult = await db.query(
-    'SELECT * FROM applications WHERE guarantor_token = $1',
-    [token],
+    'SELECT * FROM applications WHERE guarantor_token = $1 AND agency_id = $2',
+    [token, agencyId],
     agencyId
   );
   const application = applicationResult.rows[0];
@@ -162,7 +162,7 @@ exports.uploadGuarantorId = asyncHandler(async (req, res) => {
   // Check if ID already uploaded
   // Defense-in-depth: explicit agency_id filtering
   const existingResult = await db.query(
-    'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND application_id IN (SELECT id FROM applications WHERE agency_id = $3)',
+    'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND agency_id = $3',
     [application.id, 'guarantor_id', agencyId],
     agencyId
   );
@@ -222,8 +222,8 @@ exports.downloadApplicantId = asyncHandler(async (req, res) => {
     // Verify user owns application or is admin
     if (!isAdmin) {
       const applicationResult = await db.query(
-        'SELECT * FROM applications WHERE id = $1 AND user_id = $2',
-        [id, userId],
+        'SELECT * FROM applications WHERE id = $1 AND user_id = $2 AND agency_id = $3',
+        [id, userId, agencyId],
         agencyId
       );
       const application = applicationResult.rows[0];
@@ -236,7 +236,7 @@ exports.downloadApplicantId = asyncHandler(async (req, res) => {
     // Get document metadata
     // Defense-in-depth: explicit agency_id filtering
     const documentResult = await db.query(
-      'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND application_id IN (SELECT id FROM applications WHERE agency_id = $3)',
+      'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND agency_id = $3',
       [id, documentType, agencyId],
       agencyId
     );
@@ -280,8 +280,8 @@ exports.downloadGuarantorId = asyncHandler(async (req, res) => {
 
     // Find application by guarantor token
     const applicationResult = await db.query(
-      'SELECT * FROM applications WHERE guarantor_token = $1',
-      [token],
+      'SELECT * FROM applications WHERE guarantor_token = $1 AND agency_id = $2',
+      [token, agencyId],
       agencyId
     );
     const application = applicationResult.rows[0];
@@ -298,7 +298,7 @@ exports.downloadGuarantorId = asyncHandler(async (req, res) => {
     // Get document metadata
     // Defense-in-depth: explicit agency_id filtering
     const documentResult = await db.query(
-      'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND application_id IN (SELECT id FROM applications WHERE agency_id = $3)',
+      'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND agency_id = $3',
       [application.id, 'guarantor_id', agencyId],
       agencyId
     );
@@ -333,8 +333,8 @@ exports.checkGuarantorIdDocumentStatus = asyncHandler(async (req, res) => {
 
   // Find application by guarantor token
   const applicationResult = await db.query(
-    'SELECT * FROM applications WHERE guarantor_token = $1',
-    [token],
+    'SELECT * FROM applications WHERE guarantor_token = $1 AND agency_id = $2',
+    [token, agencyId],
     agencyId
   );
   const application = applicationResult.rows[0];
@@ -351,7 +351,7 @@ exports.checkGuarantorIdDocumentStatus = asyncHandler(async (req, res) => {
   // Check if document exists
   // Defense-in-depth: explicit agency_id filtering
   const documentResult = await db.query(
-    'SELECT id, original_filename, file_size, mime_type, uploaded_at FROM id_documents WHERE application_id = $1 AND document_type = $2 AND application_id IN (SELECT id FROM applications WHERE agency_id = $3)',
+    'SELECT id, original_filename, file_size, mime_type, uploaded_at FROM id_documents WHERE application_id = $1 AND document_type = $2 AND agency_id = $3',
     [application.id, 'guarantor_id', agencyId],
     agencyId
   );
@@ -386,8 +386,8 @@ exports.checkIdDocumentStatus = asyncHandler(async (req, res) => {
   // Verify user owns application or is admin
   if (!isAdmin) {
     const applicationResult = await db.query(
-      'SELECT * FROM applications WHERE id = $1 AND user_id = $2',
-      [id, userId],
+      'SELECT * FROM applications WHERE id = $1 AND user_id = $2 AND agency_id = $3',
+      [id, userId, agencyId],
       agencyId
     );
     const application = applicationResult.rows[0];
@@ -400,7 +400,7 @@ exports.checkIdDocumentStatus = asyncHandler(async (req, res) => {
   // Check if document exists
   // Defense-in-depth: explicit agency_id filtering
   const documentResult = await db.query(
-    'SELECT id, original_filename, file_size, mime_type, uploaded_at FROM id_documents WHERE application_id = $1 AND document_type = $2 AND application_id IN (SELECT id FROM applications WHERE agency_id = $3)',
+    'SELECT id, original_filename, file_size, mime_type, uploaded_at FROM id_documents WHERE application_id = $1 AND document_type = $2 AND agency_id = $3',
     [id, documentType, agencyId],
     agencyId
   );
@@ -435,8 +435,8 @@ exports.deleteApplicantId = asyncHandler(async (req, res) => {
 
   // Verify user owns this application
   const applicationResult = await db.query(
-    'SELECT * FROM applications WHERE id = $1 AND user_id = $2',
-    [id, userId],
+    'SELECT * FROM applications WHERE id = $1 AND user_id = $2 AND agency_id = $3',
+    [id, userId, agencyId],
     agencyId
   );
   const application = applicationResult.rows[0];
@@ -453,7 +453,7 @@ exports.deleteApplicantId = asyncHandler(async (req, res) => {
   // Get document metadata
   // Defense-in-depth: explicit agency_id filtering
   const documentResult = await db.query(
-    'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND application_id IN (SELECT id FROM applications WHERE agency_id = $3)',
+    'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND agency_id = $3',
     [id, documentType, agencyId],
     agencyId
   );
@@ -475,12 +475,12 @@ exports.deleteApplicantId = asyncHandler(async (req, res) => {
     // Continue with database deletion even if file not found
   }
 
-  // Delete from database (explicit agency check via application join for defense-in-depth)
+  // Delete from database
   // Defense-in-depth: explicit agency_id filtering
   await db.query(
     `DELETE FROM id_documents
      WHERE id = $1
-     AND application_id IN (SELECT id FROM applications WHERE agency_id = $2)`,
+     AND agency_id = $2`,
     [document.id, agencyId],
     agencyId
   );
@@ -500,8 +500,8 @@ exports.deleteGuarantorId = asyncHandler(async (req, res) => {
 
   // Find application by guarantor token
   const applicationResult = await db.query(
-    'SELECT * FROM applications WHERE guarantor_token = $1',
-    [token],
+    'SELECT * FROM applications WHERE guarantor_token = $1 AND agency_id = $2',
+    [token, agencyId],
     agencyId
   );
   const application = applicationResult.rows[0];
@@ -523,7 +523,7 @@ exports.deleteGuarantorId = asyncHandler(async (req, res) => {
   // Get document metadata
   // Defense-in-depth: explicit agency_id filtering
   const documentResult = await db.query(
-    'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND application_id IN (SELECT id FROM applications WHERE agency_id = $3)',
+    'SELECT * FROM id_documents WHERE application_id = $1 AND document_type = $2 AND agency_id = $3',
     [application.id, 'guarantor_id', agencyId],
     agencyId
   );
@@ -542,12 +542,12 @@ exports.deleteGuarantorId = asyncHandler(async (req, res) => {
     // Continue with database deletion even if file not found
   }
 
-  // Delete from database (explicit agency check via application join for defense-in-depth)
+  // Delete from database
   // Defense-in-depth: explicit agency_id filtering
   await db.query(
     `DELETE FROM id_documents
      WHERE id = $1
-     AND application_id IN (SELECT id FROM applications WHERE agency_id = $2)`,
+     AND agency_id = $2`,
     [document.id, agencyId],
     agencyId
   );

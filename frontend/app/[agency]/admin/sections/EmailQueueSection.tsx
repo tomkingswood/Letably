@@ -301,7 +301,7 @@ export default function EmailQueueSection({ onNavigate, action, itemId, onBack }
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={stats.pending > 0 ? handleDeleteAll : handleDeleteAll}
+                    onClick={handleDeleteAll}
                     disabled={deletingAll}
                     className="flex-1 bg-red-700 hover:bg-red-800 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50 transition-colors"
                   >

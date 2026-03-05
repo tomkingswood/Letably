@@ -85,8 +85,8 @@ async function validateBedroomBelongsToProperty(bedroomId, propertyId, agencyId)
     if (!bedroomId) return { valid: true };
 
     const result = await db.query(
-      `SELECT id FROM bedrooms WHERE id = $1 AND property_id = $2`,
-      [bedroomId, propertyId],
+      `SELECT id FROM bedrooms WHERE id = $1 AND property_id = $2 AND agency_id = $3`,
+      [bedroomId, propertyId, agencyId],
       agencyId
     );
 
@@ -139,13 +139,14 @@ async function checkBedroomConflicts(bedroomAssignments, startDate, endDate, exc
         JOIN bedrooms b ON tm.bedroom_id = b.id
         JOIN properties p ON t.property_id = p.id
         WHERE tm.bedroom_id = $1
+          AND t.agency_id = $2
           AND t.status != 'expired'
       `;
 
-      const params = [assignment.bedroom_id];
+      const params = [assignment.bedroom_id, agencyId];
 
       if (excludeTenancyId) {
-        query += ` AND t.id != $2`;
+        query += ` AND t.id != $${params.length + 1}`;
         params.push(excludeTenancyId);
       }
 
@@ -369,10 +370,10 @@ async function validateMigrationMember(member, index, agencyId) {
       return { valid: false, error: `Member ${index + 1}: deposit_amount is required` };
     }
 
-    // Validate user exists
+    // Validate user exists within this agency
     const result = await db.query(
-      'SELECT id FROM users WHERE id = $1',
-      [member.user_id],
+      'SELECT id FROM users WHERE id = $1 AND agency_id = $2',
+      [member.user_id, agencyId],
       agencyId
     );
 
@@ -408,8 +409,8 @@ function validateNoDuplicateUsers(members) {
 async function validatePropertyExists(propertyId, agencyId) {
   try {
     const result = await db.query(
-      'SELECT id FROM properties WHERE id = $1',
-      [propertyId],
+      'SELECT id FROM properties WHERE id = $1 AND agency_id = $2',
+      [propertyId, agencyId],
       agencyId
     );
 
@@ -433,8 +434,8 @@ async function validatePropertyExists(propertyId, agencyId) {
 async function validateApplicationForTenancy(applicationId, agencyId) {
   try {
     const result = await db.query(
-      'SELECT status FROM applications WHERE id = $1',
-      [applicationId],
+      'SELECT status FROM applications WHERE id = $1 AND agency_id = $2',
+      [applicationId, agencyId],
       agencyId
     );
 

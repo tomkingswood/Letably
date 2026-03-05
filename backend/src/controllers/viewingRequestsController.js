@@ -341,7 +341,7 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
         req.agency?.slug
       );
 
-      queueEmail({
+      await queueEmail({
         to_email: emailContent.to,
         subject: emailContent.subject,
         html_body: emailContent.html,

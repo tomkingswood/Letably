@@ -26,8 +26,8 @@ const getReminderRecipient = async (agencyId) => {
 const getLastEmailSent = async (agencyId) => {
   try {
     const result = await db.query(
-      'SELECT setting_value FROM site_settings WHERE setting_key = $1',
-      ['last_reminder_email_sent'],
+      'SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2',
+      ['last_reminder_email_sent', agencyId],
       agencyId
     );
     return result.rows[0] ? result.rows[0].setting_value : null;
@@ -44,15 +44,15 @@ const updateLastEmailSent = async (agencyId) => {
   try {
     const now = new Date().toISOString();
     const existingResult = await db.query(
-      'SELECT setting_value FROM site_settings WHERE setting_key = $1',
-      ['last_reminder_email_sent'],
+      'SELECT setting_value FROM site_settings WHERE setting_key = $1 AND agency_id = $2',
+      ['last_reminder_email_sent', agencyId],
       agencyId
     );
 
     if (existingResult.rows[0]) {
       await db.query(
-        'UPDATE site_settings SET setting_value = $1, updated_at = CURRENT_TIMESTAMP WHERE setting_key = $2',
-        [now, 'last_reminder_email_sent'],
+        'UPDATE site_settings SET setting_value = $1, updated_at = CURRENT_TIMESTAMP WHERE setting_key = $2 AND agency_id = $3',
+        [now, 'last_reminder_email_sent', agencyId],
         agencyId
       );
     } else {
@@ -88,10 +88,10 @@ const getLastEmailForReminder = async (reminderId, recipientEmail, agencyId) => 
   try {
     const result = await db.query(`
       SELECT * FROM reminder_email_notifications
-      WHERE reminder_identifier = $1 AND recipient_email = $2
+      WHERE reminder_identifier = $1 AND recipient_email = $2 AND agency_id = $3
       ORDER BY last_emailed_at DESC
       LIMIT 1
-    `, [reminderId, recipientEmail], agencyId);
+    `, [reminderId, recipientEmail, agencyId], agencyId);
     return result.rows[0] || null;
   } catch (error) {
     console.error('Error getting last email for reminder:', error);
@@ -329,7 +329,8 @@ const calculateReminders = async (agencyId) => {
   const propertiesResult = await db.query(`
     SELECT id, address_line1
     FROM properties
-  `, [], agencyId);
+    WHERE agency_id = $1
+  `, [agencyId], agencyId);
   const properties = propertiesResult.rows;
 
   // Get all property certificates with expiry dates
@@ -341,8 +342,8 @@ const calculateReminders = async (agencyId) => {
       ct.display_name as certificate_type_display_name
     FROM certificates c
     JOIN certificate_types ct ON c.certificate_type_id = ct.id
-    WHERE c.entity_type = 'property' AND c.expiry_date IS NOT NULL
-  `, [], agencyId);
+    WHERE c.entity_type = 'property' AND c.expiry_date IS NOT NULL AND c.agency_id = $1
+  `, [agencyId], agencyId);
   const propertyCertificates = propertyCertificatesResult.rows;
 
   // Group certificates by property
@@ -356,8 +357,8 @@ const calculateReminders = async (agencyId) => {
 
   // Get global certificates from settings
   const settingsResult = await db.query(
-    'SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ($1, $2)',
-    ['prs_certificate_expiry', 'cmp_certificate_expiry'],
+    'SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ($1, $2) AND agency_id = $3',
+    ['prs_certificate_expiry', 'cmp_certificate_expiry', agencyId],
     agencyId
   );
   const settings = settingsResult.rows;
@@ -563,8 +564,9 @@ const calculateReminders = async (agencyId) => {
     SELECT mr.*, p.address_line1 as property_address
     FROM manual_reminders mr
     LEFT JOIN properties p ON mr.property_id = p.id
+    WHERE mr.agency_id = $1
     ORDER BY mr.reminder_date ASC
-  `, [], agencyId);
+  `, [agencyId], agencyId);
   const manualReminders = manualRemindersResult.rows;
 
   for (const mr of manualReminders) {

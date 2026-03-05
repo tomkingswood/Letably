@@ -73,12 +73,16 @@ export default function ReportsSection({ onNavigate, action, itemId, onBack }: S
           const occReport = occupancyRes.data.report;
           if (occReport?.properties) {
             for (const prop of occReport.properties) {
+              prop.occupancy.rate = Number(prop.occupancy.rate);
               for (const bed of prop.bedrooms) {
                 if (bed.baseRent != null) bed.baseRent = Number(bed.baseRent);
                 if (bed.tenant) bed.tenant.rentPPPW = Number(bed.tenant.rentPPPW);
                 if (bed.nextTenant) bed.nextTenant.rentPPPW = Number(bed.nextTenant.rentPPPW);
               }
             }
+          }
+          if (occReport?.summary) {
+            occReport.summary.occupancyRate = Number(occReport.summary.occupancyRate);
           }
           setOccupancyData(occReport);
           break;

@@ -47,7 +47,7 @@ export default function TenanciesSection({ onNavigate, action, itemId, onBack }:
       refreshData();
     }
     wasViewMode.current = isViewMode;
-  }, [isViewMode]);
+  }, [isViewMode, refreshData]);
 
   const handleDeleteTenancy = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();

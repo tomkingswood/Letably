@@ -19,12 +19,10 @@ CREATE TABLE IF NOT EXISTS manual_reminders (
 CREATE INDEX IF NOT EXISTS idx_manual_reminders_agency_reminder_date ON manual_reminders(agency_id, reminder_date);
 
 ALTER TABLE manual_reminders ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'manual_reminders' AND policyname = 'manual_reminders_agency_isolation') THEN
-    CREATE POLICY manual_reminders_agency_isolation ON manual_reminders
-      USING (agency_id = current_setting('app.current_agency_id', true)::int);
-  END IF;
-END $$;
+DROP POLICY IF EXISTS manual_reminders_agency_isolation ON manual_reminders;
+CREATE POLICY manual_reminders_agency_isolation ON manual_reminders
+  USING (agency_id = current_setting('app.agency_id', true)::int)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::int);
 
 -- reminder_email_notifications
 CREATE TABLE IF NOT EXISTS reminder_email_notifications (
@@ -41,11 +39,9 @@ CREATE INDEX IF NOT EXISTS idx_reminder_email_notif_agency ON reminder_email_not
 CREATE INDEX IF NOT EXISTS idx_reminder_email_notif_lookup ON reminder_email_notifications(recipient_email, agency_id);
 
 ALTER TABLE reminder_email_notifications ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'reminder_email_notifications' AND policyname = 'reminder_email_notif_agency_isolation') THEN
-    CREATE POLICY reminder_email_notif_agency_isolation ON reminder_email_notifications
-      USING (agency_id = current_setting('app.current_agency_id', true)::int);
-  END IF;
-END $$;
+DROP POLICY IF EXISTS reminder_email_notif_agency_isolation ON reminder_email_notifications;
+CREATE POLICY reminder_email_notif_agency_isolation ON reminder_email_notifications
+  USING (agency_id = current_setting('app.agency_id', true)::int)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::int);
 
 COMMIT;

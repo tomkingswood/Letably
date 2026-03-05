@@ -132,8 +132,7 @@ export default function HoldingDepositApprovalModal({
       return;
     }
 
-    const parsed = new Date(dateReceived);
-    if (isNaN(parsed.getTime()) || dateReceived !== parsed.toISOString().split('T')[0]) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateReceived) || isNaN(new Date(dateReceived + 'T00:00:00').getTime())) {
       setError('Please enter a valid date');
       return;
     }

@@ -114,7 +114,7 @@ const fetchData = async (agencyId, filters = {}, includeRelated = true) => {
           CASE WHEN pav.value_boolean IS NULL THEN NULL WHEN pav.value_boolean THEN 'Yes' ELSE 'No' END
         ) as value
       FROM property_attribute_values pav
-      JOIN property_attribute_definitions pad ON pad.id = pav.attribute_definition_id
+      JOIN property_attribute_definitions pad ON pad.id = pav.attribute_definition_id AND pad.agency_id = $2
       WHERE pav.property_id = ANY($1) AND pav.agency_id = $2
       ORDER BY pad.display_order ASC
     `, [propertyIds, agencyId], agencyId);

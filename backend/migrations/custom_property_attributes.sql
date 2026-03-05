@@ -72,9 +72,11 @@ ALTER TABLE property_attribute_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE property_attribute_values ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY pad_agency_isolation ON property_attribute_definitions
-  USING (agency_id = current_setting('app.current_agency_id', true)::integer);
+  USING (agency_id = current_setting('app.agency_id', true)::integer)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
 
 CREATE POLICY pav_agency_isolation ON property_attribute_values
-  USING (agency_id = current_setting('app.current_agency_id', true)::integer);
+  USING (agency_id = current_setting('app.agency_id', true)::integer)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
 
 COMMIT;

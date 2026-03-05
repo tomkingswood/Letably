@@ -19,7 +19,7 @@ export function AwaitingSignaturesModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => { if (!submitting) onClose(); }}
       title="Mark as Awaiting Signatures"
       size="lg"
     >

@@ -302,10 +302,10 @@ exports.sendMessage = asyncHandler(async (req, res) => {
 
     // Insert message
     const insertResult = await db.query(`
-      INSERT INTO tenancy_communications (tenancy_id, user_id, content)
-      VALUES ($1, $2, $3)
+      INSERT INTO tenancy_communications (tenancy_id, user_id, content, agency_id)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [tenancy.id, userId, (content || '').trim()], agencyId);
+    `, [tenancy.id, userId, (content || '').trim(), agencyId], agencyId);
 
     const messageId = insertResult.rows[0].id;
 
@@ -317,10 +317,10 @@ exports.sendMessage = asyncHandler(async (req, res) => {
       const fileType = imageExts.includes(ext) ? 'image' : 'document';
 
       const attachResult = await db.query(`
-        INSERT INTO tenancy_message_attachments (message_id, file_path, original_filename, file_type, file_size)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO tenancy_message_attachments (message_id, file_path, original_filename, file_type, file_size, agency_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
-      `, [messageId, file.filename, file.originalname, fileType, file.size], agencyId);
+      `, [messageId, file.filename, file.originalname, fileType, file.size, agencyId], agencyId);
 
       attachments.push(attachResult.rows[0]);
     }
@@ -491,10 +491,10 @@ exports.sendMessageLandlord = asyncHandler(async (req, res) => {
 
     // Insert message with is_private flag
     const insertResult = await db.query(`
-      INSERT INTO tenancy_communications (tenancy_id, user_id, content, is_private)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO tenancy_communications (tenancy_id, user_id, content, is_private, agency_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [tenancyId, userId, (content || '').trim(), isPrivate], agencyId);
+    `, [tenancyId, userId, (content || '').trim(), isPrivate, agencyId], agencyId);
 
     const messageId = insertResult.rows[0].id;
 
@@ -506,10 +506,10 @@ exports.sendMessageLandlord = asyncHandler(async (req, res) => {
       const fileType = imageExts.includes(ext) ? 'image' : 'document';
 
       const attachResult = await db.query(`
-        INSERT INTO tenancy_message_attachments (message_id, file_path, original_filename, file_type, file_size)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO tenancy_message_attachments (message_id, file_path, original_filename, file_type, file_size, agency_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
-      `, [messageId, file.filename, file.originalname, fileType, file.size], agencyId);
+      `, [messageId, file.filename, file.originalname, fileType, file.size, agencyId], agencyId);
 
       attachments.push(attachResult.rows[0]);
     }
@@ -800,10 +800,10 @@ exports.sendMessageAdmin = asyncHandler(async (req, res) => {
 
     // Insert message with is_private flag
     const insertResult = await db.query(`
-      INSERT INTO tenancy_communications (tenancy_id, user_id, content, is_private)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO tenancy_communications (tenancy_id, user_id, content, is_private, agency_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [tenancyId, userId, (content || '').trim(), isPrivate], agencyId);
+    `, [tenancyId, userId, (content || '').trim(), isPrivate, agencyId], agencyId);
 
     const messageId = insertResult.rows[0].id;
 
@@ -815,10 +815,10 @@ exports.sendMessageAdmin = asyncHandler(async (req, res) => {
       const fileType = imageExts.includes(ext) ? 'image' : 'document';
 
       const attachResult = await db.query(`
-        INSERT INTO tenancy_message_attachments (message_id, file_path, original_filename, file_type, file_size)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO tenancy_message_attachments (message_id, file_path, original_filename, file_type, file_size, agency_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
-      `, [messageId, file.filename, file.originalname, fileType, file.size], agencyId);
+      `, [messageId, file.filename, file.originalname, fileType, file.size, agencyId], agencyId);
 
       attachments.push(attachResult.rows[0]);
     }

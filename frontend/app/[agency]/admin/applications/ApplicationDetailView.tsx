@@ -218,7 +218,7 @@ export default function ApplicationDetailView({ id, onBack, onDeleted, onNavigat
       window.open(blobUrl, '_blank');
 
       // Clean up the blob URL after a delay
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (error) {
       setMessage({
         type: 'error',

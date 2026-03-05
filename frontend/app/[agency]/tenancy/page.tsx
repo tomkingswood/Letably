@@ -274,7 +274,7 @@ export default function TenancyPortalPage() {
   }
 
   if (!loading && pendingTenancies.length > 0 && !tenancy) {
-    return <PendingTenanciesView tenancies={pendingTenancies} currentUserId={user?.id} />;
+    return <PendingTenanciesView tenancies={pendingTenancies} />;
   }
 
   if (error && !tenancy) {

@@ -129,7 +129,7 @@ export default function StatementsSection({ onNavigate, action, itemId, onBack }
       const landlordId = selectedLandlord !== 'all' ? parseInt(selectedLandlord) : undefined;
       const res = await adminReports.getMonthlyStatement(year, month, landlordId);
       if (requestIdRef.current !== thisRequestId) return;
-      const stmt = res.data.statement;
+      const stmt = res.data?.statement;
       if (stmt) {
         if (stmt.summary) {
           stmt.summary.totalDue = Number(stmt.summary.totalDue);

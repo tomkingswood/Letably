@@ -28,7 +28,7 @@ export interface MaintenanceComment {
   user_name: string;
   user_role: string;
   attachments?: MaintenanceAttachment[];
-  is_private?: number; // 0 = public, 1 = private (internal chat)
+  is_private?: boolean;
 }
 
 export interface MaintenanceRequestBase {
