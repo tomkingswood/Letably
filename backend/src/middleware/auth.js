@@ -39,11 +39,12 @@ const authenticateToken = async (req, res, next) => {
 
     // If agency wasn't set by agencyContext middleware, look it up
     if (!req.agency && decoded.agency_id) {
-      const result = await db.systemQuery(
+      const result = await db.query(
         `SELECT id, name, slug, email, phone, logo_url, primary_color, secondary_color,
                 show_powered_by, custom_portal_domain, subscription_tier, subscription_expires_at, is_active
          FROM agencies WHERE id = $1`,
-        [decoded.agency_id]
+        [decoded.agency_id],
+        decoded.agency_id
       );
       req.agency = result.rows[0] || null;
     }

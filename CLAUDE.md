@@ -110,6 +110,13 @@ const url = buildAgencyUrl(agency.slug, 'setup-password/TOKEN', agency.custom_po
 // → "https://letably.com/steel-city-living/setup-password/TOKEN"  (platform domain)
 ```
 
+The custom domain is available in three places depending on context:
+- **`req.agency.custom_portal_domain`** — from agencyContext or auth middleware
+- **`branding.customDomain`** — from `getAgencyBranding(agencyId)` (most email code uses this)
+- **Direct SQL** — `SELECT custom_portal_domain FROM agencies WHERE id = $1`
+
+When adding new email-generating code, use `branding.customDomain` if you already have branding, or `req.agency?.custom_portal_domain` in controllers.
+
 ### Admin setup
 
 Custom domains are configured **only** by super admins at `/sup3rAdm1n/agencies/[id]`. Agencies cannot self-configure custom domains. The `agencies.custom_portal_domain` column stores the domain — if it's set, it's active (no verification step). DNS/SSL configuration is handled manually by the platform operator.
