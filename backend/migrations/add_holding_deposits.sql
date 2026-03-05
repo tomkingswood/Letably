@@ -25,6 +25,15 @@ CREATE TABLE IF NOT EXISTS holding_deposits (
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_agency_id ON holding_deposits(agency_id);
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_application_id ON holding_deposits(application_id);
+-- Deduplicate any legacy duplicate (agency_id, application_id) pairs before adding unique index
+DO $$
+BEGIN
+  DELETE FROM holding_deposits
+  WHERE id NOT IN (
+    SELECT MAX(id) FROM holding_deposits
+    GROUP BY agency_id, application_id
+  );
+END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_holding_deposits_agency_application_unique
   ON holding_deposits(agency_id, application_id);
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_bedroom_id ON holding_deposits(bedroom_id);
