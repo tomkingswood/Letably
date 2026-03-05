@@ -281,6 +281,16 @@ export const sections: Record<string, {
       bgColor: 'bg-teal-100',
     },
   },
+  'agency-certificate-types': {
+    component: dynamic(() => import('./AgencyCertificateTypesSection'), { loading: SectionLoading }),
+    meta: {
+      title: 'Agency Certificate Types',
+      description: 'Manage certificate types for the agency (Client Money Protection, Memberships)',
+      group: 'documents',
+      iconColor: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+    },
+  },
 };
 
 // Get sections by group (excludes hidden sections from dashboard)

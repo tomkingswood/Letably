@@ -9,7 +9,7 @@ export default function CertificateTypesSection(_props: SectionProps) {
       apiType="tenancy"
       title="Tenancy Document Types"
       subtitle="Manage document types displayed on tenant tenancy pages"
-      infoText="Once configured here, these document types will be available to upload when creating or managing a tenancy. Each tenancy stores its own set of documents, shared between all tenants on that tenancy."
+      infoText="Once configured here, these document types will be available to upload when creating or managing a tenancy. Each tenancy stores its own set of documents, shared between all tenants on that tenancy. Documents with expiry dates will trigger reminders when approaching expiry."
       emptyText="No tenancy document types defined yet"
       placeholder="e.g., Tenancy Agreement, Deposit Certificate, Inventory"
       iconColorClass="bg-teal-100"
