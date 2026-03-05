@@ -125,7 +125,7 @@ function SortableThresholdRow({
 
 export default function ReminderSettingsPage() {
   const router = useRouter();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [thresholds, setThresholds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -235,7 +235,7 @@ export default function ReminderSettingsPage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <button
-                onClick={() => router.push(`/${agencySlug}/admin`)}
+                onClick={() => router.push(buildPath('/admin'))}
                 className="bg-white text-primary hover:bg-gray-100 px-6 py-2 rounded-lg font-semibold transition-colors w-full sm:w-auto"
               >
                 Back to Dashboard
@@ -247,7 +247,7 @@ export default function ReminderSettingsPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <Link href={`/${agencySlug}/admin?section=reminders`} className="text-primary hover:text-primary-dark font-semibold">
+          <Link href={buildPath('/admin?section=reminders')} className="text-primary hover:text-primary-dark font-semibold">
             ← Back to Reminders
           </Link>
         </div>

@@ -72,7 +72,7 @@ type ReportTab = 'overview' | 'arrears' | 'endings';
 export default function LandlordReportsPage() {
   const router = useRouter();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ReportTab>('overview');
   const [landlordName, setLandlordName] = useState('');
@@ -148,7 +148,7 @@ export default function LandlordReportsPage() {
       {/* Header */}
       <div className="bg-primary text-white py-6">
         <div className="container mx-auto px-4">
-          <Link href={`/${agencySlug}/landlord`} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
+          <Link href={buildPath('/landlord')} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -233,7 +233,7 @@ export default function LandlordReportsPage() {
                 <p className="text-sm text-gray-600 mt-1">Available for letting</p>
               </div>
               <div className="bg-white rounded-lg shadow-md p-6 flex items-center justify-center gap-3">
-                <Button onClick={() => router.push(`/${agencySlug}/landlord/statements`)}>
+                <Button onClick={() => router.push(buildPath('/landlord/statements'))}>
                   View Financial Statements
                 </Button>
                 <ReportExportButton reportType="occupancy" onError={setError} />

@@ -25,7 +25,7 @@ import type { Tenancy, TenancyMember } from '@/components/tenancy/types';
 export default function TenancyPortalPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tenancy, setTenancy] = useState<Tenancy | null>(null);
@@ -286,7 +286,7 @@ export default function TenancyPortalPage() {
             <h1 className="text-2xl font-bold text-gray-900 mb-4">No Tenancies Found</h1>
             <p className="text-gray-600 mb-6">{error}</p>
             <button
-              onClick={() => router.push(`/${agencySlug}`)}
+              onClick={() => router.push(buildPath('/'))}
               className="px-6 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors"
             >
               Back to Home
@@ -410,7 +410,6 @@ export default function TenancyPortalPage() {
               setNewRequestForm={setNewRequestForm}
               submittingRequest={submittingRequest}
               onSubmitRequest={handleSubmitMaintenanceRequest}
-              agencySlug={agencySlug || ''}
             />
 
             <CommunicationCard

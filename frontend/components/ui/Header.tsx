@@ -5,8 +5,17 @@ import { getEffectiveAgencySlug } from '@/lib/api';
 import { useAuthState } from '@/hooks/useAuth';
 import { RoleBanner, RoleIcon } from '@/components/ui/RoleBanner';
 
+function isCustomDomainHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname.toLowerCase();
+  if (host === 'localhost' || host === '127.0.0.1') return false;
+  if (host === 'letably.com' || host.endsWith('.letably.com')) return false;
+  if (host === 'vercel.app' || host.endsWith('.vercel.app')) return false;
+  return true;
+}
+
 function getPortalHref(role: string, agencySlug: string | null): string {
-  const prefix = agencySlug ? `/${agencySlug}` : '';
+  const prefix = (agencySlug && !isCustomDomainHost()) ? `/${agencySlug}` : '';
   if (role === 'admin') return `${prefix}/admin`;
   if (role === 'landlord') return `${prefix}/landlord`;
   return `${prefix}/tenancy`;
@@ -91,7 +100,7 @@ export default function Header() {
                       {user.first_name}
                     </span>
                     <Link
-                      href={`${getEffectiveAgencySlug() ? `/${getEffectiveAgencySlug()}` : ''}/account`}
+                      href={`${(getEffectiveAgencySlug() && !isCustomDomainHost()) ? `/${getEffectiveAgencySlug()}` : ''}/account`}
                       className="text-primary hover:text-primary-dark whitespace-nowrap"
                     >
                       <span className="hidden sm:inline">Manage Account</span>

@@ -84,8 +84,8 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // In development only, allow localhost origins
-    if (isDevelopment && origin.includes('localhost')) {
+    // In development only, allow localhost and custom domain origins
+    if (isDevelopment && (origin.includes('localhost') || origin.includes('.local') || origin.includes('.test'))) {
       return callback(null, true);
     }
 

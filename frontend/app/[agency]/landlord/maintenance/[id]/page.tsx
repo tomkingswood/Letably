@@ -70,7 +70,7 @@ export default function LandlordMaintenanceDetailPage({ params }: { params: Prom
   const { id } = use(params);
   const router = useRouter();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [request, setRequest] = useState<MaintenanceRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -182,7 +182,7 @@ export default function LandlordMaintenanceDetailPage({ params }: { params: Prom
         <div className="text-center">
           <div className="text-gray-400 text-5xl mb-4">🔧</div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Request not found</h3>
-          <Link href={`/${agencySlug}/landlord/maintenance`} className="text-primary hover:underline">
+          <Link href={buildPath('/landlord/maintenance')} className="text-primary hover:underline">
             Back to Maintenance
           </Link>
         </div>
@@ -199,7 +199,7 @@ export default function LandlordMaintenanceDetailPage({ params }: { params: Prom
       {/* Header */}
       <div className="bg-primary text-white py-6">
         <div className="container mx-auto px-4">
-          <Link href={`/${agencySlug}/landlord/maintenance`} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
+          <Link href={buildPath('/landlord/maintenance')} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>

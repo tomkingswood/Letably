@@ -8,8 +8,8 @@ const express = require('express');
 const router = express.Router();
 const agencyController = require('../controllers/agencyController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
-const { agencyContext, requireAgency } = require('../middleware/agencyContext');
-const { subscriptionCheck, requirePremium } = require('../middleware/subscriptionCheck');
+
+const { subscriptionCheck } = require('../middleware/subscriptionCheck');
 const { authLimiter } = require('../middleware/rateLimit');
 
 // Public routes
@@ -19,6 +19,12 @@ const { authLimiter } = require('../middleware/rateLimit');
  * POST /api/agencies/register
  */
 router.post('/register', authLimiter, agencyController.register);
+
+/**
+ * Resolve custom domain to agency slug
+ * GET /api/agencies/resolve-domain?domain=portal.example.com
+ */
+router.get('/resolve-domain', authLimiter, agencyController.resolveDomain);
 
 // Protected routes (require authentication)
 
@@ -91,30 +97,6 @@ router.get('/subscription',
   authenticateToken,
   requireAdmin,
   agencyController.getSubscription
-);
-
-// Premium features
-
-/**
- * Setup custom domain
- * POST /api/agencies/custom-domain
- */
-router.post('/custom-domain',
-  authenticateToken,
-  requireAdmin,
-  requirePremium,
-  agencyController.setupCustomDomain
-);
-
-/**
- * Verify custom domain
- * POST /api/agencies/custom-domain/verify
- */
-router.post('/custom-domain/verify',
-  authenticateToken,
-  requireAdmin,
-  requirePremium,
-  agencyController.verifyCustomDomain
 );
 
 /**

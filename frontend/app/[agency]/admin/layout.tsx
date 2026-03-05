@@ -12,7 +12,7 @@ import { useAuth } from '@/lib/auth-context';
  */
 export default function AgencyAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { agencySlug, isLoading: agencyLoading } = useAgency();
+  const { agencySlug, buildPath, isLoading: agencyLoading } = useAgency();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
@@ -20,15 +20,15 @@ export default function AgencyAdminLayout({ children }: { children: React.ReactN
 
     // Redirect to login if not authenticated
     if (!isAuthenticated) {
-      router.push(`/${agencySlug}`);
+      router.push(buildPath('/'));
       return;
     }
 
     // Redirect to home if not admin
     if (user?.role !== 'admin') {
-      router.push(`/${agencySlug}`);
+      router.push(buildPath('/'));
     }
-  }, [agencyLoading, authLoading, isAuthenticated, user, agencySlug, router]);
+  }, [agencyLoading, authLoading, isAuthenticated, user, agencySlug, router, buildPath]);
 
   // Show loading while checking auth
   if (agencyLoading || authLoading) {

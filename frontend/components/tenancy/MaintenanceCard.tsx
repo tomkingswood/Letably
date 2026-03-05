@@ -1,5 +1,6 @@
 'use client';
 
+import { useAgency } from '@/lib/agency-context';
 import { Modal } from '@/components/ui/Modal';
 
 interface NewRequestForm {
@@ -18,7 +19,6 @@ interface MaintenanceCardProps {
   setNewRequestForm: (form: NewRequestForm) => void;
   submittingRequest: boolean;
   onSubmitRequest: (e: React.FormEvent) => void;
-  agencySlug: string;
 }
 
 export function MaintenanceCard({
@@ -30,8 +30,8 @@ export function MaintenanceCard({
   setNewRequestForm,
   submittingRequest,
   onSubmitRequest,
-  agencySlug,
 }: MaintenanceCardProps) {
+  const { buildPath } = useAgency();
   if (isExpired) return null;
 
   return (
@@ -67,7 +67,7 @@ export function MaintenanceCard({
             {maintenanceRequests.map((request) => (
               <a
                 key={request.id}
-                href={`/${agencySlug}/tenancy/maintenance/${request.id}`}
+                href={buildPath(`/tenancy/maintenance/${request.id}`)}
                 className="block border rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">

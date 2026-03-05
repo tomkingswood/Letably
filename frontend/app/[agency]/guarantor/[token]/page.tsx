@@ -18,7 +18,7 @@ interface PageProps {
 
 export default function GuarantorFormPage({ params }: PageProps) {
   const { token } = use(params);
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [application, setApplication] = useState<ApplicationFormData | null>(null);
@@ -238,7 +238,7 @@ export default function GuarantorFormPage({ params }: PageProps) {
             <h2 className="text-xl font-bold text-red-800 mb-2">Unable to Access Form</h2>
             <p className="text-red-700 mb-4">{error}</p>
             <Link
-              href={`/${agencySlug}`}
+              href={buildPath('/')}
               className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
             >
               Return to Homepage
@@ -260,7 +260,7 @@ export default function GuarantorFormPage({ params }: PageProps) {
               Thank you for completing the guarantor form. The letting agent will be in touch soon.
             </p>
             <Link
-              href={`/${agencySlug}`}
+              href={buildPath('/')}
               className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
             >
               Return to Homepage

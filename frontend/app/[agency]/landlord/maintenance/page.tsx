@@ -23,7 +23,7 @@ import { getErrorMessage } from '@/lib/types';
 export default function LandlordMaintenancePage() {
   const router = useRouter();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MaintenanceRequestListItem[]>([]);
   const [summary, setSummary] = useState<MaintenanceSummary | null>(null);
@@ -69,7 +69,7 @@ export default function LandlordMaintenancePage() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <Link href={`/${agencySlug}/landlord`} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
+              <Link href={buildPath('/landlord')} className="text-white/80 hover:text-white text-sm mb-2 inline-flex items-center gap-1">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
@@ -154,7 +154,7 @@ export default function LandlordMaintenancePage() {
                   <div
                     key={request.id}
                     className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/${agencySlug}/landlord/maintenance/${request.id}`)}
+                    onClick={() => router.push(buildPath(`/landlord/maintenance/${request.id}`))}
                   >
                     <div className="flex flex-col md:flex-row md:items-start gap-4">
                       <div className="text-3xl">{categoryInfo.icon}</div>
@@ -188,7 +188,7 @@ export default function LandlordMaintenancePage() {
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/${agencySlug}/landlord/maintenance/${request.id}`);
+                            router.push(buildPath(`/landlord/maintenance/${request.id}`));
                           }}
                           className="w-full md:w-auto"
                         >

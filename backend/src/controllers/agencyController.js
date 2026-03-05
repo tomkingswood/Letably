@@ -88,6 +88,35 @@ exports.getBySlug = asyncHandler(async (req, res) => {
 }, 'get agency');
 
 /**
+ * Resolve custom domain to agency slug
+ *
+ * GET /api/agencies/resolve-domain?domain=portal.example.com
+ * Public endpoint used by Next.js middleware for custom domain routing
+ */
+exports.resolveDomain = asyncHandler(async (req, res) => {
+  const rawDomain = req.query.domain;
+
+  if (!rawDomain) {
+    return res.status(400).json({ error: 'domain query parameter is required' });
+  }
+
+  // Normalize: take first element if array, trim, lowercase
+  const domain = (Array.isArray(rawDomain) ? rawDomain[0] : String(rawDomain)).trim().toLowerCase();
+
+  if (!domain) {
+    return res.status(400).json({ error: 'domain query parameter is required' });
+  }
+
+  const agency = await AgencyModel.findByDomain(domain);
+
+  if (!agency || !agency.is_active) {
+    return res.status(404).json({ error: 'No agency found for this domain' });
+  }
+
+  res.json({ slug: agency.slug });
+}, 'resolve domain');
+
+/**
  * Get current agency info (authenticated admin)
  *
  * GET /api/agencies/current
@@ -181,56 +210,6 @@ exports.revokeApiKey = asyncHandler(async (req, res) => {
 
   res.json({ message: 'API key revoked' });
 }, 'revoke API key');
-
-/**
- * Setup custom domain (premium feature)
- *
- * POST /api/agencies/custom-domain
- */
-exports.setupCustomDomain = asyncHandler(async (req, res) => {
-  const { domain } = req.body;
-
-  if (!domain) {
-    return res.status(400).json({ error: 'Domain is required' });
-  }
-
-  // Check premium subscription
-  const agency = await AgencyModel.findById(req.agencyId);
-  if (!agency) {
-    return res.status(404).json({ error: 'Agency not found' });
-  }
-  if (agency.subscription_tier !== 'premium') {
-    return res.status(403).json({ error: 'Custom domains require a premium subscription' });
-  }
-
-  try {
-    const result = await agencyService.setupCustomDomain(req.agencyId, domain);
-
-    res.json({
-      message: 'Domain configured. Please add the DNS record to verify ownership.',
-      ...result
-    });
-  } catch (err) {
-    if (err.message && (err.message.includes('Invalid') || err.message.includes('already in use'))) {
-      return res.status(400).json({ error: err.message });
-    }
-    throw err;
-  }
-}, 'setup custom domain');
-
-/**
- * Verify custom domain
- *
- * POST /api/agencies/custom-domain/verify
- */
-exports.verifyCustomDomain = asyncHandler(async (req, res) => {
-  const result = await agencyService.verifyCustomDomain(req.agencyId);
-
-  res.json({
-    message: result.verified ? 'Domain verified successfully' : 'Domain verification failed',
-    verified: result.verified
-  });
-}, 'verify custom domain');
 
 /**
  * Check subscription status

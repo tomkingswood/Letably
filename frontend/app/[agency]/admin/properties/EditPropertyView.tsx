@@ -19,7 +19,7 @@ interface EditPropertyViewProps {
 }
 
 export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) {
-  const { agencySlug, agency } = useAgency();
+  const { agencySlug, agency, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -840,7 +840,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
           {certificateTypes.length === 0 ? (
             <p className="text-gray-500 text-center py-4">
               No certificate types configured.
-              <a href={`/${agencySlug}/admin?section=certificate-types`} className="text-primary hover:underline ml-1">
+              <a href={buildPath('/admin?section=certificate-types')} className="text-primary hover:underline ml-1">
                 Add certificate types
               </a>
             </p>

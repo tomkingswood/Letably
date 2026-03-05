@@ -19,7 +19,7 @@ interface Application {
 
 export default function MyApplicationsPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [myApplications, setMyApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [adminEmail, setAdminEmail] = useState<string>('');
@@ -104,7 +104,7 @@ export default function MyApplicationsPage() {
               it will appear here.
             </p>
             <Link
-              href={`/${agencySlug}`}
+              href={buildPath('/')}
               className="text-primary hover:text-primary-dark font-semibold"
             >
               Browse Properties
@@ -174,7 +174,7 @@ export default function MyApplicationsPage() {
                 )}
 
                 <Link
-                  href={`/${agencySlug}/applications/${app.id}`}
+                  href={buildPath(`/applications/${app.id}`)}
                   className="inline-block bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                 >
                   {app.status === 'pending' ? 'Complete Application' : 'View Application'}

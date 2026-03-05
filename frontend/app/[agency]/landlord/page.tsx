@@ -47,7 +47,7 @@ interface MaintenanceRequest {
 export default function LandlordDashboard() {
   const router = useRouter();
   const { isLoading: authLoading, isAuthenticated, logout } = useAuth();
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   const [loading, setLoading] = useState(true);
   const [tenancies, setTenancies] = useState<Tenancy[]>([]);
   const [landlordName, setLandlordName] = useState('');
@@ -99,7 +99,7 @@ export default function LandlordDashboard() {
 
   const handleLogout = () => {
     logout();
-    router.push(`/${agencySlug}`);
+    router.push(buildPath('/'));
   };
 
   if (authLoading || loading) {
@@ -150,7 +150,7 @@ export default function LandlordDashboard() {
         {/* Quick Actions */}
         <div className="mb-6 flex flex-wrap gap-3">
           <Button
-            onClick={() => router.push(`/${agencySlug}/landlord/payment-calendar`)}
+            onClick={() => router.push(buildPath('/landlord/payment-calendar'))}
             className="w-full sm:w-auto flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,7 +159,7 @@ export default function LandlordDashboard() {
             Payment Calendar
           </Button>
           <Button
-            onClick={() => router.push(`/${agencySlug}/landlord/maintenance`)}
+            onClick={() => router.push(buildPath('/landlord/maintenance'))}
             variant="secondary"
             className="w-full sm:w-auto flex items-center gap-2"
           >
@@ -170,7 +170,7 @@ export default function LandlordDashboard() {
             View All Maintenance
           </Button>
           <Button
-            onClick={() => router.push(`/${agencySlug}/landlord/communication`)}
+            onClick={() => router.push(buildPath('/landlord/communication'))}
             variant="secondary"
             className="w-full sm:w-auto flex items-center gap-2"
           >
@@ -180,7 +180,7 @@ export default function LandlordDashboard() {
             View All Communications
           </Button>
           <Button
-            onClick={() => router.push(`/${agencySlug}/landlord/statements`)}
+            onClick={() => router.push(buildPath('/landlord/statements'))}
             variant="secondary"
             className="w-full sm:w-auto flex items-center gap-2"
           >
@@ -190,7 +190,7 @@ export default function LandlordDashboard() {
             Financial Statements
           </Button>
           <Button
-            onClick={() => router.push(`/${agencySlug}/landlord/reports`)}
+            onClick={() => router.push(buildPath('/landlord/reports'))}
             variant="secondary"
             className="w-full sm:w-auto flex items-center gap-2"
           >
@@ -243,7 +243,7 @@ export default function LandlordDashboard() {
                 <div
                   key={tenancy.id}
                   className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => router.push(`/${agencySlug}/landlord/${tenancy.id}`)}
+                  onClick={() => router.push(buildPath(`/landlord/${tenancy.id}`))}
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="flex-1">
@@ -266,7 +266,7 @@ export default function LandlordDashboard() {
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/${agencySlug}/landlord/${tenancy.id}`);
+                          router.push(buildPath(`/landlord/${tenancy.id}`));
                         }}
                         className="w-full md:w-auto"
                       >
@@ -286,7 +286,7 @@ export default function LandlordDashboard() {
             <div className="p-6 border-b flex items-center justify-between">
               <h2 className="text-2xl font-bold">Active Maintenance Requests</h2>
               <Button
-                onClick={() => router.push(`/${agencySlug}/landlord/maintenance`)}
+                onClick={() => router.push(buildPath('/landlord/maintenance'))}
                 variant="secondary"
                 className="text-sm"
               >
@@ -298,7 +298,7 @@ export default function LandlordDashboard() {
                 <div
                   key={request.id}
                   className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => router.push(`/${agencySlug}/landlord/maintenance/${request.id}`)}
+                  onClick={() => router.push(buildPath(`/landlord/maintenance/${request.id}`))}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -338,7 +338,7 @@ export default function LandlordDashboard() {
             <div className="p-6 border-b flex items-center justify-between">
               <h2 className="text-2xl font-bold">Recent Communications</h2>
               <Button
-                onClick={() => router.push(`/${agencySlug}/landlord/communication`)}
+                onClick={() => router.push(buildPath('/landlord/communication'))}
                 variant="secondary"
                 className="text-sm"
               >
@@ -350,7 +350,7 @@ export default function LandlordDashboard() {
                 <CommunicationListItem
                   key={comm.id}
                   tenancy={comm}
-                  href={`/${agencySlug}/landlord/communication/${comm.id}`}
+                  href={buildPath(`/landlord/communication/${comm.id}`)}
                   variant="compact"
                 />
               ))}

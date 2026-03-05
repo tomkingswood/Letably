@@ -29,7 +29,7 @@ async function getAgencyByDomain(domain) {
             show_powered_by, subscription_tier, subscription_expires_at, is_active,
             custom_portal_domain
      FROM agencies
-     WHERE custom_portal_domain = $1 AND custom_domain_verified = true`,
+     WHERE custom_portal_domain = $1`,
     [domain]
   );
   return result.rows[0] || null;

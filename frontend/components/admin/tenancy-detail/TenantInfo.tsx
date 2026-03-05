@@ -65,7 +65,7 @@ export function TenantInfo({
     onRegenerateToken: onRegenerateGuarantorToken,
   },
 }: TenantInfoProps) {
-  const { agencySlug } = useAgency();
+  const { agencySlug, buildPath } = useAgency();
   return (
     <div className="pt-6">
       <h3 className="text-xl font-bold text-gray-900 mb-4">Tenant Information</h3>
@@ -173,7 +173,7 @@ export function TenantInfo({
             {/* View Application - only if application exists */}
             {selectedMember.application_id ? (
               <Link
-                href={`/${agencySlug}/admin?section=applications&action=view&id=${selectedMember.application_id}`}
+                href={buildPath(`/admin?section=applications&action=view&id=${selectedMember.application_id}`)}
                 className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

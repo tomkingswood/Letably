@@ -15,7 +15,7 @@ import { validatePassword } from '@/lib/validation';
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { agency, agencySlug, isLoading: agencyLoading } = useAgency();
+  const { agency, agencySlug, buildPath, isLoading: agencyLoading } = useAgency();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -116,7 +116,7 @@ function RegisterForm() {
               Your account has been created. You can now log in to access your portal.
             </p>
 
-            <Link href={`/${agencySlug}`}>
+            <Link href={buildPath('/')}>
               <Button
                 fullWidth
                 size="lg"
@@ -248,7 +248,7 @@ function RegisterForm() {
             <p className="text-gray-600">
               Already have an account?{' '}
               <Link
-                href={`/${agencySlug}`}
+                href={buildPath('/')}
                 className="font-semibold hover:underline"
                 style={{ color: agency?.primary_color }}
               >
@@ -262,7 +262,7 @@ function RegisterForm() {
             <p className="text-xs text-gray-500">
               By creating an account, you agree to our{' '}
               <Link
-                href={`/${agencySlug}/terms-and-conditions`}
+                href={buildPath('/terms-and-conditions')}
                 className="hover:underline"
                 style={{ color: agency?.primary_color }}
               >
@@ -270,7 +270,7 @@ function RegisterForm() {
               </Link>{' '}
               and{' '}
               <Link
-                href={`/${agencySlug}/privacy-policy`}
+                href={buildPath('/privacy-policy')}
                 className="hover:underline"
                 style={{ color: agency?.primary_color }}
               >
