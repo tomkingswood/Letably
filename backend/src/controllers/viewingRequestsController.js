@@ -6,7 +6,7 @@ const { formatDate } = require('../utils/dateFormatter');
 const { validateFormSubmission, validateHoneypot } = require('../utils/spamDetection');
 const { getAgencyBranding } = require('../services/brandingService');
 const asyncHandler = require('../utils/asyncHandler');
-const { getFrontendBaseUrl } = require('../utils/urlBuilder');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 
 const formatFullAddress = (row) => {
   return [row.address_line1, row.address_line2, row.city, row.postcode]
@@ -17,9 +17,8 @@ const formatFullAddress = (row) => {
 /**
  * Generate email notification for new viewing request
  */
-const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipientEmail, agencySlug) => {
-  const frontendUrl = getFrontendBaseUrl();
-  const adminUrl = `${frontendUrl}/${agencySlug || ''}/admin?section=viewing-requests`;
+const generateNewViewingRequestEmail = (viewingRequest, propertyAddress, recipientEmail, agencySlug, customDomain) => {
+  const adminUrl = buildAgencyUrl(agencySlug || '', 'admin?section=viewing-requests', customDomain);
 
   const bodyContent = `
     <h1>New Viewing Request</h1>
@@ -338,7 +337,8 @@ exports.createViewingRequest = asyncHandler(async (req, res) => {
         viewingRequestData,
         fullAddress,
         recipientEmail,
-        req.agency?.slug
+        req.agency?.slug,
+        req.agency?.custom_portal_domain
       );
 
       await queueEmail({

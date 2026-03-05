@@ -7,7 +7,7 @@ const { getAgencyBranding } = require('../services/brandingService');
 const handleError = require('../utils/handleError');
 const asyncHandler = require('../utils/asyncHandler');
 const maintenanceRepo = require('../repositories/maintenanceRepository');
-const { getFrontendBaseUrl } = require('../utils/urlBuilder');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 
 // Category display names
 const CATEGORY_LABELS = {
@@ -208,18 +208,18 @@ async function sendMaintenanceNotifications(requestId, eventType, actingUser, ex
     }
 
     // Send emails
-    const frontendUrl = getFrontendBaseUrl();
     const slug = branding.agencySlug || '';
+    const customDomain = branding.customDomain;
 
     for (const recipient of recipients) {
       // Generate role-specific URL
       let viewUrl;
       if (recipient.isAdmin) {
-        viewUrl = `${frontendUrl}/${slug}/admin/maintenance/${requestId}`;
+        viewUrl = buildAgencyUrl(slug, `admin/maintenance/${requestId}`, customDomain);
       } else if (recipient.isLandlord) {
-        viewUrl = `${frontendUrl}/${slug}/landlord/maintenance/${requestId}`;
+        viewUrl = buildAgencyUrl(slug, `landlord/maintenance/${requestId}`, customDomain);
       } else {
-        viewUrl = `${frontendUrl}/${slug}/tenancy/maintenance/${requestId}`;
+        viewUrl = buildAgencyUrl(slug, `tenancy/maintenance/${requestId}`, customDomain);
       }
 
       const buttonHtml = createButton(viewUrl, 'View Maintenance Request');

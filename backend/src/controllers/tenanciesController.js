@@ -13,11 +13,11 @@ const {
 } = require('../validators/tenancyValidator');
 
 const {
-  getBaseUrl,
   getTenancyMembersForEmail
 } = require('../repositories/tenancyRepository');
 
 const { buildSigningNotificationEmail } = require('../utils/tenancyEmailBuilder');
+const { buildAgencyUrl } = require('../utils/urlBuilder');
 
 /**
  * Get all tenancies with member details and filtering
@@ -677,13 +677,11 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
       // Get all tenancy members with their user info
       const members = await getTenancyMembersForEmail(id, agencyId);
 
-      // Get base URL from repository
-      const baseUrl = await getBaseUrl(agencyId);
-
       // Send email to each tenant using email builder
       for (const member of members) {
         const agencySlug = req.agency?.slug || '';
-        const signingUrl = `${baseUrl}/${agencySlug}/agreements/sign/${id}/${member.id}`;
+        const customDomain = req.agency?.custom_portal_domain;
+        const signingUrl = buildAgencyUrl(agencySlug, `agreements/sign/${id}/${member.id}`, customDomain);
 
         const { html, text, subject } = buildSigningNotificationEmail({
           tenantFirstName: member.first_name,

@@ -265,7 +265,7 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
 
   // Generate reset URL and queue email
   try {
-    const resetUrl = buildAgencyUrl(agency.slug, `reset-password?token=${token}`);
+    const resetUrl = buildAgencyUrl(agency.slug, `reset-password?token=${token}`, agency.custom_portal_domain);
     const branding = await getAgencyBranding(agency.id);
     const companyName = branding?.companyName || 'Letably';
 
@@ -821,7 +821,7 @@ exports.adminResetPassword = asyncHandler(async (req, res) => {
 
     // Build and queue password reset email
     try {
-      const setupUrl = buildAgencyUrl(req.agency.slug, `setup-password/${setupToken}`);
+      const setupUrl = buildAgencyUrl(req.agency.slug, `setup-password/${setupToken}`, req.agency.custom_portal_domain);
       const branding = await getAgencyBranding(agencyId);
       const companyName = branding?.companyName || 'Letably';
 

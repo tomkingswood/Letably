@@ -13,7 +13,7 @@ const db = require('../db');
 async function getAgencyBySlug(slug) {
   const result = await db.systemQuery(
     `SELECT id, name, slug, email, phone, logo_url, primary_color, secondary_color,
-            show_powered_by, subscription_tier, subscription_expires_at, is_active
+            show_powered_by, custom_portal_domain, subscription_tier, subscription_expires_at, is_active
      FROM agencies WHERE slug = $1`,
     [slug]
   );

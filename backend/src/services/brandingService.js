@@ -16,7 +16,7 @@ async function getAgencyBranding(agencyId) {
   try {
     // Get agency info
     const agencyResult = await db.query(
-      'SELECT name, slug, email, phone, primary_color, logo_url FROM agencies WHERE id = $1',
+      'SELECT name, slug, email, phone, primary_color, logo_url, custom_portal_domain FROM agencies WHERE id = $1',
       [agencyId],
       agencyId
     );
@@ -51,6 +51,7 @@ async function getAgencyBranding(agencyId) {
       primaryColor: agency.primary_color || '#1E3A5F',
       agencyName: agency.name,
       agencySlug: agency.slug,
+      customDomain: agency.custom_portal_domain || null,
     };
   } catch (err) {
     console.error('Error fetching agency branding:', err);
