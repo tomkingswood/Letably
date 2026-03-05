@@ -83,7 +83,7 @@ export function TenantInfo({
                 <option value="">No specific bedroom</option>
                 {rooms.map(room => (
                   <option key={room.id} value={room.id}>
-                    {room.bedroom_name} - £{room.price_pppw}/week
+                    {room.bedroom_name} - £{Number(room.price_pppw).toFixed(2)}/week
                   </option>
                 ))}
               </select>

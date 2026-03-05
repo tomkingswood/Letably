@@ -30,7 +30,7 @@ interface PropertyOption {
 interface BedroomOption {
   id: number;
   bedroom_name: string;
-  price_pppw?: number;
+  price_pppw?: string | number;
 }
 
 export default function HoldingDepositApprovalModal({
@@ -348,7 +348,7 @@ export default function HoldingDepositApprovalModal({
                         <option value="">Select bedroom...</option>
                         {bedroomOptions.map(b => (
                           <option key={b.id} value={b.id}>
-                            {b.bedroom_name}{b.price_pppw ? ` - £${b.price_pppw}/pw` : ''}
+                            {b.bedroom_name}{b.price_pppw ? ` - £${Number(b.price_pppw).toFixed(2)}/pw` : ''}
                           </option>
                         ))}
                       </select>

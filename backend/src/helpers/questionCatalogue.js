@@ -822,7 +822,7 @@ const QUESTION_CATALOGUE = [
     required: true,
     storage: 'form_data',
     options: null,
-    dependsOn: { key: 'guarantor_required', value: true },
+    dependsOn: { key: 'guarantor_required', value: 'true' },
     placeholder: '',
     gridCols: 2,
   },

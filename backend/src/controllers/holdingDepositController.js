@@ -63,8 +63,8 @@ exports.createDeposit = asyncHandler(async (req, res) => {
 
   // Check for existing holding deposit on this application
   const existingDeposit = await holdingDepositRepo.getByApplicationId(application_id, agencyId);
-  if (existingDeposit && existingDeposit.status === 'held') {
-    return res.status(400).json({ error: 'This application already has an active holding deposit' });
+  if (existingDeposit) {
+    return res.status(400).json({ error: 'This application already has a holding deposit' });
   }
 
   // Validate bedroom and property exist if provided

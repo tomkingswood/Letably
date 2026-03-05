@@ -30,6 +30,8 @@ ALTER TABLE applications ADD COLUMN IF NOT EXISTS declaration_date TIMESTAMPTZ;
 -- Workflow
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS guarantor_token VARCHAR(255);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_guarantor_token
+  ON applications(guarantor_token) WHERE guarantor_token IS NOT NULL;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS guarantor_token_expires_at TIMESTAMPTZ;
 
 -- Guarantor personal info (written by separate guarantor form flow)
@@ -76,8 +78,8 @@ CREATE TABLE IF NOT EXISTS signed_documents (
   document_type VARCHAR(100) NOT NULL,
   reference_id INTEGER NOT NULL,
   user_id INTEGER REFERENCES users(id),
-  member_id INTEGER,
-  participant_id INTEGER,
+  member_id INTEGER REFERENCES tenancy_members(id) ON DELETE CASCADE,
+  participant_id INTEGER, -- intentionally unconstrained: reserved for future use, no single referenced table
   signature_data TEXT,
   signed_html TEXT,
   document_hash VARCHAR(255),
@@ -100,7 +102,7 @@ CREATE POLICY signed_documents_agency_isolation ON signed_documents
 CREATE TABLE IF NOT EXISTS tenant_documents (
   id SERIAL PRIMARY KEY,
   agency_id INTEGER NOT NULL REFERENCES agencies(id),
-  tenancy_member_id INTEGER NOT NULL,
+  tenancy_member_id INTEGER NOT NULL REFERENCES tenancy_members(id) ON DELETE CASCADE,
   document_type VARCHAR(100) NOT NULL,
   original_filename VARCHAR(500) NOT NULL,
   file_path VARCHAR(1000) NOT NULL,

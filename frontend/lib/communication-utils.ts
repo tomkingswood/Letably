@@ -95,6 +95,7 @@ export const mapApiMessage = (message: any): CommunicationMessage => ({
   user_name: message.user_name || `${message.first_name || ''} ${message.last_name || ''}`.trim(),
   user_role: message.user_role || message.role || 'tenant',
   attachments: message.attachments || [],
+  is_private: message.is_private != null ? Boolean(message.is_private) : undefined,
 });
 
 export { formatDateMonthShort as formatTenancyDate } from './dateUtils';

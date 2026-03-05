@@ -162,6 +162,7 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
     startDate: testData.start_date,
     endDate: testData.end_date,
     isRollingMonthly: testData.is_rolling_monthly,
+    councilTaxIncluded: testData.council_tax_included,
   });
 
   const handlePreviewAgreement = async (tenancyType: 'room_only' | 'whole_house') => {

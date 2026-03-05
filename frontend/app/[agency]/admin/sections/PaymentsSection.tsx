@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { payments as paymentsApi } from '@/lib/api';
-import { useAgency } from '@/lib/agency-context';
 import { getErrorMessage } from '@/lib/types';
 import { RecordPaymentModal, EditPaymentScheduleModal } from '@/components/admin/tenancy-detail/PaymentModals';
 import { MessageAlert } from '@/components/ui/MessageAlert';
@@ -60,7 +59,6 @@ function getStatusDotColor(status: string) {
 }
 
 export default function PaymentsSection({ onNavigate, action, itemId, onBack }: SectionProps) {
-  const { agencySlug } = useAgency();
   const [schedules, setSchedules] = useState<PaymentSchedule[]>([]);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -251,7 +249,7 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
     pending: schedules.filter(s => s.status === 'pending').length,
     paid: schedules.filter(s => s.status === 'paid').length,
     overdue: schedules.filter(s => s.status === 'overdue').length,
-    totalDue: schedules.reduce((sum, s) => sum + (parseFloat(s.amount_due as unknown as string) || 0), 0),
+    totalDue: schedules.reduce((sum, s) => sum + (Number(s.amount_due) || 0), 0),
   };
 
   const getStatusColor = (status: string) => {
