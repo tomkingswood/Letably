@@ -285,7 +285,12 @@ exports.deleteDocument = asyncHandler(async (req, res) => {
     agencyId
   );
 
-  // Only unlink file if a row was actually deleted
+  // If no row was deleted, tenancy status changed between check and DELETE
+  if (deleteResult.rowCount === 0) {
+    return res.status(409).json({ error: 'Document could not be deleted — tenancy may no longer be active' });
+  }
+
+  // Unlink encrypted file from disk
   if (deleteResult.rows[0]?.file_path) {
     const filePath = path.join(TENANT_DOCS_DIR, path.basename(deleteResult.rows[0].file_path));
     try {
