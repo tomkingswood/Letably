@@ -28,7 +28,7 @@ export default function TenantPortalLayout({ children }: { children: React.React
     if (user?.role !== 'tenant') {
       router.push(buildPath('/'));
     }
-  }, [agencyLoading, authLoading, isAuthenticated, user, agencySlug, router]);
+  }, [agencyLoading, authLoading, isAuthenticated, user, agencySlug, router, buildPath]);
 
   // Show loading while checking auth
   if (agencyLoading || authLoading) {

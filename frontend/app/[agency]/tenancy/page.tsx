@@ -410,7 +410,6 @@ export default function TenancyPortalPage() {
               setNewRequestForm={setNewRequestForm}
               submittingRequest={submittingRequest}
               onSubmitRequest={handleSubmitMaintenanceRequest}
-              agencySlug={agencySlug || ''}
             />
 
             <CommunicationCard

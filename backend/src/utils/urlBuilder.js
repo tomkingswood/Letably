@@ -16,12 +16,12 @@ function getFrontendBaseUrl() {
  * Otherwise, uses FRONTEND_URL/slug/path.
  */
 function buildAgencyUrl(agencySlug, path, customDomain) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   if (customDomain) {
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}://${customDomain}${normalizedPath}`;
   }
-  return `${getFrontendBaseUrl()}/${agencySlug}/${path}`;
+  return `${getFrontendBaseUrl()}/${agencySlug}${normalizedPath}`;
 }
 
 function buildPublicUrl(path) {

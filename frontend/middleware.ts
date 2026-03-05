@@ -4,15 +4,17 @@ import type { NextRequest } from 'next/server';
 // In-memory cache for domain → slug resolution (persists across requests in the same edge worker)
 const domainCache = new Map<string, { slug: string; expiresAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX_ENTRIES = 1000;
 
 /**
  * Known platform hostnames that are NOT custom domains
  */
 function isPlatformHost(host: string): boolean {
+  const h = host.split(':')[0].toLowerCase();
   return (
-    host.includes('localhost') ||
-    host.includes('letably.com') ||
-    host.includes('vercel.app')
+    h === 'localhost' || h === '127.0.0.1' ||
+    h === 'letably.com' || h.endsWith('.letably.com') ||
+    h === 'vercel.app' || h.endsWith('.vercel.app')
   );
 }
 
@@ -20,10 +22,23 @@ function isPlatformHost(host: string): boolean {
  * Resolve custom domain to agency slug via backend API
  */
 async function resolveCustomDomain(domain: string): Promise<string | null> {
-  // Check cache first
+  // Check cache first, delete if expired
   const cached = domainCache.get(domain);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.slug;
+  if (cached) {
+    if (cached.expiresAt > Date.now()) {
+      return cached.slug || null;
+    }
+    domainCache.delete(domain);
+  }
+
+  // Prune expired entries and enforce max size
+  if (domainCache.size > CACHE_MAX_ENTRIES) {
+    const now = Date.now();
+    for (const [key, entry] of domainCache) {
+      if (entry.expiresAt <= now || domainCache.size > CACHE_MAX_ENTRIES) {
+        domainCache.delete(key);
+      }
+    }
   }
 
   try {

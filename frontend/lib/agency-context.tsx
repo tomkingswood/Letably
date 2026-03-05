@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 /**
  * Agency type representing the current agency context
@@ -129,16 +129,20 @@ export function AgencyProvider({
 
   // Detect custom domain: check if current hostname differs from platform hosts
   const isCustomDomain = initialIsCustomDomain || (typeof window !== 'undefined' && (() => {
-    const host = window.location.hostname;
-    return !host.includes('localhost') && !host.includes('letably.com') && !host.includes('vercel.app');
+    const host = window.location.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1') return false;
+    if (host === 'letably.com' || host.endsWith('.letably.com')) return false;
+    if (host === 'vercel.app' || host.endsWith('.vercel.app')) return false;
+    return true;
   })());
 
   // Build a path that includes the slug prefix only on platform domains
-  const buildPath = (path: string) => {
+  const buildPath = useCallback((path: string) => {
     const normalized = path.startsWith('/') ? path : `/${path}`;
     if (isCustomDomain) return normalized;
+    if (!agencySlug) return normalized;
     return `/${agencySlug}${normalized}`;
-  };
+  }, [isCustomDomain, agencySlug]);
 
   const value: AgencyContextType = {
     agency,

@@ -26,12 +26,20 @@ CREATE TABLE IF NOT EXISTS holding_deposits (
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_agency_id ON holding_deposits(agency_id);
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_application_id ON holding_deposits(application_id);
 -- Deduplicate any legacy duplicate (agency_id, application_id) pairs before adding unique index
+-- Keeps the most recently updated row per pair, tie-broken by id DESC
 DO $$
 BEGIN
   DELETE FROM holding_deposits
-  WHERE id NOT IN (
-    SELECT MAX(id) FROM holding_deposits
-    GROUP BY agency_id, application_id
+  WHERE id IN (
+    SELECT id FROM (
+      SELECT id,
+        ROW_NUMBER() OVER (
+          PARTITION BY agency_id, application_id
+          ORDER BY COALESCE(updated_at, created_at) DESC, id DESC
+        ) AS rn
+      FROM holding_deposits
+    ) ranked
+    WHERE rn > 1
   );
 END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_holding_deposits_agency_application_unique

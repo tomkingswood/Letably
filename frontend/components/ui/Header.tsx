@@ -7,8 +7,11 @@ import { RoleBanner, RoleIcon } from '@/components/ui/RoleBanner';
 
 function isCustomDomainHost(): boolean {
   if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  return !host.includes('localhost') && !host.includes('letably.com') && !host.includes('vercel.app');
+  const host = window.location.hostname.toLowerCase();
+  if (host === 'localhost' || host === '127.0.0.1') return false;
+  if (host === 'letably.com' || host.endsWith('.letably.com')) return false;
+  if (host === 'vercel.app' || host.endsWith('.vercel.app')) return false;
+  return true;
 }
 
 function getPortalHref(role: string, agencySlug: string | null): string {

@@ -19,7 +19,6 @@ interface MaintenanceCardProps {
   setNewRequestForm: (form: NewRequestForm) => void;
   submittingRequest: boolean;
   onSubmitRequest: (e: React.FormEvent) => void;
-  agencySlug?: string;
 }
 
 export function MaintenanceCard({
@@ -31,7 +30,6 @@ export function MaintenanceCard({
   setNewRequestForm,
   submittingRequest,
   onSubmitRequest,
-  agencySlug: _agencySlug,
 }: MaintenanceCardProps) {
   const { buildPath } = useAgency();
   if (isExpired) return null;

@@ -28,7 +28,7 @@ export default function AgencyAdminLayout({ children }: { children: React.ReactN
     if (user?.role !== 'admin') {
       router.push(buildPath('/'));
     }
-  }, [agencyLoading, authLoading, isAuthenticated, user, agencySlug, router]);
+  }, [agencyLoading, authLoading, isAuthenticated, user, agencySlug, router, buildPath]);
 
   // Show loading while checking auth
   if (agencyLoading || authLoading) {

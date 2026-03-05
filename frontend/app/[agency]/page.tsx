@@ -39,7 +39,7 @@ export default function AgencyPage() {
           break;
       }
     }
-  }, [authLoading, agencyLoading, isAuthenticated, user, agencySlug, router]);
+  }, [authLoading, agencyLoading, isAuthenticated, user, agencySlug, router, buildPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

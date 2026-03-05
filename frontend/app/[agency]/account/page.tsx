@@ -63,7 +63,7 @@ export default function AccountPage() {
     };
 
     fetchUser();
-  }, [authLoading, isAuthenticated, agencySlug, router, logout]);
+  }, [authLoading, isAuthenticated, agencySlug, router, logout, buildPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

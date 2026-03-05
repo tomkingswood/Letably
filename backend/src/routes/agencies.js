@@ -24,7 +24,7 @@ router.post('/register', authLimiter, agencyController.register);
  * Resolve custom domain to agency slug
  * GET /api/agencies/resolve-domain?domain=portal.example.com
  */
-router.get('/resolve-domain', agencyController.resolveDomain);
+router.get('/resolve-domain', authLimiter, agencyController.resolveDomain);
 
 // Protected routes (require authentication)
 

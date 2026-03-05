@@ -84,7 +84,7 @@ export default function SetupPasswordPage({ params }: { params: Promise<{ token:
         localStorage.setItem('lastAgencySlug', slug);
         window.dispatchEvent(new Event('headerStateChanged'));
         // Redirect to tenant portal
-        router.push(`/${slug}/tenancy`);
+        router.push(buildPath('/tenancy'));
         return;
       }
 

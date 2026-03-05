@@ -43,7 +43,7 @@ export default function SignAgreementPage({ params }: PageProps) {
     if (!authLoading && user) {
       fetchAgreement();
     }
-  }, [authLoading, user, tenancyId, memberId]);
+  }, [authLoading, user, tenancyId, memberId, router, buildPath]);
 
   const fetchAgreement = async () => {
     try {

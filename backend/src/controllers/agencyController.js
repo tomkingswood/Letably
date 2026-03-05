@@ -94,7 +94,14 @@ exports.getBySlug = asyncHandler(async (req, res) => {
  * Public endpoint used by Next.js middleware for custom domain routing
  */
 exports.resolveDomain = asyncHandler(async (req, res) => {
-  const { domain } = req.query;
+  const rawDomain = req.query.domain;
+
+  if (!rawDomain) {
+    return res.status(400).json({ error: 'domain query parameter is required' });
+  }
+
+  // Normalize: take first element if array, trim, lowercase
+  const domain = (Array.isArray(rawDomain) ? rawDomain[0] : String(rawDomain)).trim().toLowerCase();
 
   if (!domain) {
     return res.status(400).json({ error: 'domain query parameter is required' });
