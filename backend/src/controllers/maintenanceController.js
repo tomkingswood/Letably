@@ -222,11 +222,12 @@ async function sendMaintenanceNotifications(requestId, eventType, actingUser, ex
         viewUrl = buildAgencyUrl(slug, `tenancy/maintenance/${requestId}`, customDomain);
       }
 
-      const buttonHtml = createButton(viewUrl, 'View Maintenance Request');
+      const buttonHtml = createButton(viewUrl, 'View Maintenance Request', branding.primaryColor);
 
       const emailHtml = createEmailTemplate(
         subject,
-        `<p>Hi ${recipient.name.split(' ')[0]},</p>${htmlContent}<div style="text-align: center;">${buttonHtml}</div>`
+        `<p>Hi ${recipient.name.split(' ')[0]},</p>${htmlContent}<div style="text-align: center;">${buttonHtml}</div>`,
+        branding
       );
 
       await queueEmail({

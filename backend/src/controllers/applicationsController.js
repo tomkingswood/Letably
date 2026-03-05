@@ -221,7 +221,7 @@ exports.createApplication = asyncHandler(async (req, res) => {
       <p>Once your password is set, you can complete your application here:</p>
 
       <div style="text-align: center;">
-        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`, branding.customDomain)}`, 'Complete Application')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`, branding.customDomain)}`, 'Complete Application', branding.primaryColor)}
       </div>
 
       ${createInfoBox(`
@@ -279,7 +279,7 @@ ${companyName}`;
       <p>Please click the button below to complete your application:</p>
 
       <div style="text-align: center;">
-        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`, branding.customDomain)}`, 'Complete Application')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `applications/${applicationId}`, branding.customDomain)}`, 'Complete Application', branding.primaryColor)}
       </div>
 
       ${createInfoBox(`
@@ -621,7 +621,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
       `, 'info')}
 
       <div style="text-align: center;">
-        ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${id}`, branding.customDomain)}`, 'View Application Details')}
+        ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${id}`, branding.customDomain)}`, 'View Application Details', branding.primaryColor)}
       </div>
 
       <p style="color: #666; font-size: 14px; margin-top: 30px;">
@@ -664,7 +664,7 @@ exports.updateApplication = asyncHandler(async (req, res) => {
         <p>Click the button below to access the guarantor form:</p>
 
         <div style="text-align: center;">
-          ${createButton(guarantorLink, 'Complete Guarantor Form')}
+          ${createButton(guarantorLink, 'Complete Guarantor Form', branding.primaryColor)}
         </div>
 
         ${createInfoBox(`
@@ -876,7 +876,7 @@ exports.submitGuarantorForm = asyncHandler(async (req, res) => {
     <p>The application is now complete and ready for review.</p>
 
     <div style="text-align: center;">
-      ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${applicationDetails.id}`, branding.customDomain)}`, 'View Complete Application')}
+      ${createButton(`${buildAgencyUrl(branding.agencySlug, `admin?section=applications&action=view&id=${applicationDetails.id}`, branding.customDomain)}`, 'View Complete Application', branding.primaryColor)}
     </div>
   `;
 
@@ -936,7 +936,7 @@ exports.regenerateGuarantorToken = asyncHandler(async (req, res) => {
       `, 'info')}
 
       <div style="text-align: center;">
-        ${createButton(guarantorLink, 'Complete Guarantor Form')}
+        ${createButton(guarantorLink, 'Complete Guarantor Form', branding.primaryColor)}
       </div>
 
       ${createInfoBox(`

@@ -215,13 +215,8 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
       return;
     }
 
-    // Get site settings
-    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings WHERE agency_id = $1', [agencyId], agencyId);
-    const siteSettings = siteSettingsResult.rows;
-    const settings = {};
-    siteSettings.forEach(setting => {
-      settings[setting.setting_key] = setting.setting_value;
-    });
+    // Get agency branding
+    const branding = await getAgencyBranding(agencyId);
 
     // Get tenancy info and agency slug
     const tenancyResult = await db.query(`
@@ -240,7 +235,7 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
     for (const agreement of agreements) {
       // Generate signing URL
       const signingUrl = buildAgencyUrl(tenancy.agency_slug, `guarantor/sign/${agreement.token}`, tenancy.custom_portal_domain);
-      const companyName = settings.company_name || 'Letably';
+      const companyName = branding.companyName || 'Letably';
 
       // Generate email body content using template system
       const bodyContent = `
@@ -258,7 +253,7 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
         <p>Please review and sign the guarantor agreement by clicking the button below:</p>
 
         <div style="text-align: center;">
-          ${createButton(signingUrl, 'Review and Sign Agreement')}
+          ${createButton(signingUrl, 'Review and Sign Agreement', branding.primaryColor)}
         </div>
 
         <p class="text-small text-muted">Or copy and paste this link into your browser:</p>
@@ -272,7 +267,7 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
         `, 'warning')}
       `;
 
-      const emailHtml = createEmailTemplate('Guarantor Agreement - Signature Required', bodyContent);
+      const emailHtml = createEmailTemplate('Guarantor Agreement - Signature Required', bodyContent, branding);
 
       const emailText = `Guarantor Agreement - Signature Required
 

@@ -19,7 +19,15 @@ function buildAgencyUrl(agencySlug, path, customDomain) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   if (customDomain) {
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-    return `${protocol}://${customDomain}${normalizedPath}`;
+    // In development, append the frontend port so links work locally
+    let port = '';
+    if (process.env.NODE_ENV !== 'production' && !customDomain.includes(':')) {
+      try {
+        const frontendUrl = new URL(getFrontendBaseUrl());
+        if (frontendUrl.port) port = `:${frontendUrl.port}`;
+      } catch { /* ignore */ }
+    }
+    return `${protocol}://${customDomain}${port}${normalizedPath}`;
   }
   return `${getFrontendBaseUrl()}/${agencySlug}${normalizedPath}`;
 }
