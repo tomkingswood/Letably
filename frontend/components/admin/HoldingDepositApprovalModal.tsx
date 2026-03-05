@@ -348,7 +348,7 @@ export default function HoldingDepositApprovalModal({
                         <option value="">Select bedroom...</option>
                         {bedroomOptions.map(b => (
                           <option key={b.id} value={b.id}>
-                            {b.bedroom_name}{b.price_pppw ? ` - £${Number(b.price_pppw).toFixed(2)}/pw` : ''}
+                            {b.bedroom_name}{b.price_pppw != null ? ` - £${Number(b.price_pppw).toFixed(2)}/pw` : ''}
                           </option>
                         ))}
                       </select>

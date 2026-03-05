@@ -55,7 +55,7 @@ export default function CertificateTypesSectionBase({
       const response = await certificateTypes.getAll(apiType);
       const data = (response.data.certificateTypes || []).map((t: CertificateType) => ({
         ...t,
-        default_validity_months: Number(t.default_validity_months) || 12,
+        default_validity_months: Number.isFinite(Number(t.default_validity_months)) ? Number(t.default_validity_months) : 12,
       }));
       setTypes(data);
     } catch (err: unknown) {

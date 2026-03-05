@@ -30,6 +30,16 @@ ALTER TABLE applications ADD COLUMN IF NOT EXISTS declaration_date TIMESTAMPTZ;
 -- Workflow
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS guarantor_token VARCHAR(255);
+-- Deduplicate any existing guarantor_token values before adding unique index
+DO $$
+BEGIN
+  UPDATE applications SET guarantor_token = NULL
+  WHERE id NOT IN (
+    SELECT MIN(id) FROM applications
+    WHERE guarantor_token IS NOT NULL
+    GROUP BY guarantor_token
+  ) AND guarantor_token IS NOT NULL;
+END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_guarantor_token
   ON applications(guarantor_token) WHERE guarantor_token IS NOT NULL;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS guarantor_token_expires_at TIMESTAMPTZ;
@@ -89,6 +99,18 @@ CREATE TABLE IF NOT EXISTS signed_documents (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Retroactively add FK on member_id for existing tables (CREATE TABLE IF NOT EXISTS won't alter existing)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'signed_documents' AND constraint_name = 'signed_documents_member_id_fkey'
+  ) THEN
+    ALTER TABLE signed_documents ADD CONSTRAINT signed_documents_member_id_fkey
+      FOREIGN KEY (member_id) REFERENCES tenancy_members(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
 -- Add RLS policy for signed_documents
 ALTER TABLE signed_documents ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS signed_documents_agency_isolation ON signed_documents;
@@ -112,6 +134,18 @@ CREATE TABLE IF NOT EXISTS tenant_documents (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Retroactively add FK on tenancy_member_id for existing tables
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'tenant_documents' AND constraint_name = 'tenant_documents_tenancy_member_id_fkey'
+  ) THEN
+    ALTER TABLE tenant_documents ADD CONSTRAINT tenant_documents_tenancy_member_id_fkey
+      FOREIGN KEY (tenancy_member_id) REFERENCES tenancy_members(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 -- Add RLS policy for tenant_documents
 ALTER TABLE tenant_documents ENABLE ROW LEVEL SECURITY;

@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS holding_deposits (
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_agency_id ON holding_deposits(agency_id);
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_application_id ON holding_deposits(application_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_holding_deposits_agency_application_unique
+  ON holding_deposits(agency_id, application_id);
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_bedroom_id ON holding_deposits(bedroom_id);
 CREATE INDEX IF NOT EXISTS idx_holding_deposits_status ON holding_deposits(status);
 
