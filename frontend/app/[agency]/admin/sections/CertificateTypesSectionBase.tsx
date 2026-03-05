@@ -16,7 +16,7 @@ interface CertificateType {
 }
 
 interface CertificateTypesSectionBaseProps {
-  apiType: 'tenancy' | 'property';
+  apiType: 'tenancy' | 'property' | 'agency';
   title: string;
   subtitle: string;
   infoText: string;
