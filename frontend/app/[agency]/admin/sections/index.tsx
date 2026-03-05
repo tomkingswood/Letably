@@ -271,7 +271,7 @@ export const sections: Record<string, {
       bgColor: 'bg-green-100',
     },
   },
-  'certificate-types': {
+  'tenancy-certificate-types': {
     component: dynamic(() => import('./CertificateTypesSection'), { loading: SectionLoading }),
     meta: {
       title: 'Tenancy Document Types',

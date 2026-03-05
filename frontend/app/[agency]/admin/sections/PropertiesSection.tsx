@@ -170,6 +170,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
     if (targetIndex < 0 || targetIndex >= properties.length) return;
     if (savingOrder) return;
 
+    const prev = [...properties];
     const newOrder = [...properties];
     [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
     setProperties(newOrder);
@@ -179,7 +180,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
       await propertiesApi.updateDisplayOrder(newOrder.map(p => p.id));
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to save property order'));
-      setProperties(properties); // revert on error
+      setProperties(prev);
     } finally {
       setSavingOrder(false);
     }
@@ -627,9 +628,8 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
               {filteredProperties.map((property) => {
-                const lowestPrice = property.bedrooms && property.bedrooms.length > 0
-                  ? Math.min(...property.bedrooms.filter(r => r.price_pppw != null).map(r => r.price_pppw!))
-                  : null;
+                const mobilePrices = property.bedrooms?.filter(r => r.price_pppw != null).map(r => Number(r.price_pppw)) ?? [];
+                const lowestPrice = mobilePrices.length > 0 ? Math.min(...mobilePrices) : null;
                 const vacantCount = property.bedrooms?.filter(r => r.is_occupied === false).length || 0;
                 const realIndex = properties.indexOf(property);
 
