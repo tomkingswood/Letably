@@ -89,14 +89,10 @@ CREATE TABLE IF NOT EXISTS signed_documents (
 
 -- Add RLS policy for signed_documents
 ALTER TABLE signed_documents ENABLE ROW LEVEL SECURITY;
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'signed_documents_agency_isolation') THEN
-    CREATE POLICY signed_documents_agency_isolation ON signed_documents
-      USING (agency_id = current_setting('app.agency_id', true)::integer)
-      WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
-  END IF;
-END $$;
+DROP POLICY IF EXISTS signed_documents_agency_isolation ON signed_documents;
+CREATE POLICY signed_documents_agency_isolation ON signed_documents
+  USING (agency_id = current_setting('app.agency_id', true)::integer)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
 
 -- =============================================
 -- 4. tenant_documents table - create if not exists
@@ -117,11 +113,7 @@ CREATE TABLE IF NOT EXISTS tenant_documents (
 
 -- Add RLS policy for tenant_documents
 ALTER TABLE tenant_documents ENABLE ROW LEVEL SECURITY;
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'tenant_documents_agency_isolation') THEN
-    CREATE POLICY tenant_documents_agency_isolation ON tenant_documents
-      USING (agency_id = current_setting('app.agency_id', true)::integer)
-      WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
-  END IF;
-END $$;
+DROP POLICY IF EXISTS tenant_documents_agency_isolation ON tenant_documents;
+CREATE POLICY tenant_documents_agency_isolation ON tenant_documents
+  USING (agency_id = current_setting('app.agency_id', true)::integer)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);

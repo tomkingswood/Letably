@@ -271,9 +271,16 @@ exports.deleteDocument = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Documents can only be deleted for active tenancies' });
   }
 
-  // Delete DB row first to avoid dangling records if DELETE fails
+  // Delete DB row first, enforcing active tenancy status atomically to avoid TOCTOU race
   const deleteResult = await db.query(
-    `DELETE FROM tenant_documents WHERE id = $1 AND agency_id = $2 RETURNING file_path`,
+    `DELETE FROM tenant_documents
+     WHERE id = $1 AND agency_id = $2
+       AND tenancy_member_id IN (
+         SELECT tm.id FROM tenancy_members tm
+         JOIN tenancies t ON tm.tenancy_id = t.id
+         WHERE t.status = 'active' AND t.agency_id = $2
+       )
+     RETURNING file_path`,
     [id, agencyId],
     agencyId
   );
