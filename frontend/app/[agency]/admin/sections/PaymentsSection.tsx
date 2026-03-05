@@ -459,7 +459,7 @@ export default function PaymentsSection({ onNavigate, action, itemId, onBack }: 
                             <span
                               key={p.id}
                               className={`w-2 h-2 rounded-full ${getStatusDotColor(p.status)}`}
-                              title={`${p.tenant_name}: £${parseFloat(p.amount_due as unknown as string)?.toFixed(2)} (${p.status})`}
+                              title={`${p.tenant_name}: £${parseAmount(p.amount_due).toFixed(2)} (${p.status})`}
                             />
                           ))}
                           {dayPayments.length > 6 && (

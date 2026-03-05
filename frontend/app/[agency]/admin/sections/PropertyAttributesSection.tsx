@@ -70,6 +70,12 @@ function AttributePanel({ api, entityLabel }: { api: typeof propertyApi; entityL
 
     const cleanOptions = formOptions.filter(o => o.trim() !== '');
 
+    if (formType === 'dropdown' && cleanOptions.length === 0) {
+      setError('Dropdown attributes require at least one option');
+      setSaving(false);
+      return;
+    }
+
     try {
       if (editingId) {
         await api.updateDefinition(editingId, {

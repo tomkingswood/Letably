@@ -244,7 +244,8 @@ async function validateCommentForTenant(commentId, requestId, userId, agencyId) 
     JOIN maintenance_requests mr ON mc.request_id = mr.id
     JOIN tenancy_members tm ON mr.tenancy_id = tm.tenancy_id
     WHERE mc.id = $1 AND mc.request_id = $2 AND tm.user_id = $3 AND mc.user_id = $4
-  `, [commentId, requestId, userId, userId], agencyId);
+      AND mr.agency_id = $5
+  `, [commentId, requestId, userId, userId, agencyId], agencyId);
   return result.rows[0] || null;
 }
 
@@ -687,11 +688,11 @@ async function getRequestForNotification(requestId, agencyId) {
  */
 async function getAdminEmail(agencyId) {
   const result = await db.query(
-    "SELECT setting_value FROM site_settings WHERE setting_key = 'email_address'",
-    [],
+    "SELECT email FROM agencies WHERE id = $1",
+    [agencyId],
     agencyId
   );
-  return result.rows[0]?.setting_value || 'support@letably.com';
+  return result.rows[0]?.email || 'support@letably.com';
 }
 
 /**

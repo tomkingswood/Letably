@@ -209,7 +209,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
       return {
         memberName: member ? `${member.first_name} ${member.last_name}` : 'Unknown',
         dueDate: p.due_date,
-        amount: p.amount_due - (p.amount_paid || 0)
+        amount: Number(p.amount_due) - Number(p.amount_paid || 0)
       };
     });
 
@@ -469,8 +469,8 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
 
     setMemberFormData({
       bedroom_id: selectedMember.bedroom_id || null,
-      rent_pppw: selectedMember.rent_pppw,
-      deposit_amount: selectedMember.deposit_amount,
+      rent_pppw: Number(selectedMember.rent_pppw),
+      deposit_amount: Number(selectedMember.deposit_amount),
     });
 
     // Fetch bedrooms for the property
@@ -578,7 +578,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
   const openRecordPaymentModal = (payment: PaymentSchedule) => {
     setSelectedPayment(payment);
     setPaymentFormData({
-      amount_paid: payment.amount_due - payment.amount_paid,
+      amount_paid: Number(payment.amount_due) - Number(payment.amount_paid),
       paid_date: new Date().toISOString().split('T')[0],
       payment_reference: '',
     });
@@ -643,7 +643,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
   const openEditPaymentModal = (payment: PaymentSchedule) => {
     setSelectedPayment(payment);
     setEditPaymentFormData({
-      amount_due: payment.amount_due,
+      amount_due: Number(payment.amount_due),
       due_date: payment.due_date,
       payment_type: payment.payment_type,
       description: payment.description || '',
@@ -694,7 +694,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
     setSelectedSinglePayment(payment);
     setSelectedPayment(memberPayments.find(p => p.id === scheduleId) || null);
     setSinglePaymentFormData({
-      amount: payment.amount,
+      amount: Number(payment.amount),
       payment_date: payment.payment_date,
       payment_reference: payment.payment_reference || '',
     });
@@ -932,8 +932,8 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
     tenancy.members.forEach(member => {
       selectedMembers[member.id] = true; // All selected by default
       memberDetails[member.id] = {
-        rent_pppw: member.rent_pppw,
-        deposit_amount: member.deposit_amount,
+        rent_pppw: Number(member.rent_pppw),
+        deposit_amount: Number(member.deposit_amount),
         bedroom_id: member.bedroom_id || null,
       };
     });

@@ -1002,7 +1002,7 @@ const deleteAgency = asyncHandler(async (req, res) => {
   function isWithinBase(baseDir, targetPath) {
     const resolvedBase = path.resolve(baseDir);
     const resolvedTarget = path.resolve(targetPath);
-    return resolvedTarget.startsWith(resolvedBase + path.sep) || resolvedTarget === resolvedBase;
+    return resolvedTarget.startsWith(resolvedBase + path.sep);
   }
 
   // Helper to safely delete a file (with path traversal guard)

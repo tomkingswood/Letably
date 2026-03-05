@@ -278,21 +278,7 @@ export default function CommunicationsSection({ onNavigate, action, itemId }: Se
 
   const isViewMode = action === 'view' && !!itemId;
 
-  // Refresh list when returning from view mode
-  useEffect(() => {
-    if (prevViewMode.current && !isViewMode) {
-      fetchTenancies();
-    }
-    prevViewMode.current = isViewMode;
-  }, [isViewMode]);
-
-  useEffect(() => {
-    if (!isViewMode) {
-      fetchTenancies();
-    }
-  }, [filterMessages]);
-
-  const fetchTenancies = async () => {
+  const fetchTenancies = useCallback(async () => {
     try {
       setLoading(true);
       const params = filterMessages === 'has_messages' ? { has_messages: 'true' } : {};
@@ -303,7 +289,21 @@ export default function CommunicationsSection({ onNavigate, action, itemId }: Se
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterMessages]);
+
+  // Refresh list when returning from view mode
+  useEffect(() => {
+    if (prevViewMode.current && !isViewMode) {
+      fetchTenancies();
+    }
+    prevViewMode.current = isViewMode;
+  }, [isViewMode, fetchTenancies]);
+
+  useEffect(() => {
+    if (!isViewMode) {
+      fetchTenancies();
+    }
+  }, [fetchTenancies]);
 
   // Render inline thread view
   if (isViewMode) {

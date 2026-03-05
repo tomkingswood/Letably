@@ -113,9 +113,9 @@ export default function DynamicApplicationForm({
     // Handle declaration name signature validation
     if (key === 'declaration_name') {
       const strVal = String(value).trim();
-      if (strVal && formData.first_name && formData.surname) {
+      if (strVal && updated.first_name && updated.surname) {
         if (!validateSignature(strVal)) {
-          const expectedName = `${formData.first_name} ${formData.surname}`.toString().trim();
+          const expectedName = `${updated.first_name} ${updated.surname}`.toString().trim();
           onSignatureErrorChange(`Signature name must match "${expectedName}"`);
         } else {
           onSignatureErrorChange('');

@@ -194,7 +194,7 @@ async function saveSignedDocument({ documentType, referenceId, userId, memberId,
 exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
   try {
     // Get site settings (company address, etc.)
-    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings', [], agencyId);
+    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings WHERE agency_id = $1', [agencyId], agencyId);
     const settings = {};
     siteSettingsResult.rows.forEach(setting => {
       settings[setting.setting_key] = setting.setting_value;
@@ -235,8 +235,8 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
       FROM tenancies t
       JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.id = $1
-    `, [tenancyId], agencyId);
+      WHERE t.id = $1 AND t.agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
     const tenancy = tenancyResult.rows[0];
 
     if (!tenancy) {
@@ -254,9 +254,9 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
       FROM tenancy_members tm
       JOIN users u ON tm.user_id = u.id
       LEFT JOIN bedrooms b ON tm.bedroom_id = b.id
-      WHERE tm.tenancy_id = $1
+      WHERE tm.tenancy_id = $1 AND tm.agency_id = $2
       ORDER BY tm.first_name ASC
-    `, [tenancyId], agencyId);
+    `, [tenancyId, agencyId], agencyId);
     const members = membersResult.rows;
 
     if (members.length === 0) {

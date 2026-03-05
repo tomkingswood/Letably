@@ -32,4 +32,5 @@ CREATE INDEX IF NOT EXISTS idx_holding_deposits_status ON holding_deposits(statu
 ALTER TABLE holding_deposits ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY holding_deposits_agency_isolation ON holding_deposits
-  USING (agency_id = current_setting('app.agency_id', true)::integer);
+  USING (agency_id = current_setting('app.agency_id', true)::integer)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);

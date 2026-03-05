@@ -31,7 +31,6 @@ interface PendingTenancy {
 
 interface PendingTenanciesViewProps {
   tenancies: PendingTenancy[];
-  currentUserId?: number;
 }
 
 export function PendingTenanciesView({ tenancies }: PendingTenanciesViewProps) {

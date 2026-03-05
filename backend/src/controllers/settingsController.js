@@ -146,8 +146,8 @@ const updateSettings = asyncHandler(async (req, res) => {
     await updateSetting(facebook_url || '', 'facebook_url');
     await updateSetting(twitter_url || '', 'twitter_url');
     await updateSetting(instagram_url || '', 'instagram_url');
-    await updateSetting(redress_scheme_name, 'redress_scheme_name');
-    await updateSetting(redress_scheme_number, 'redress_scheme_number');
+    await updateSetting(redress_scheme_name || '', 'redress_scheme_name');
+    await updateSetting(redress_scheme_number || '', 'redress_scheme_number');
     await updateSetting(redress_scheme_url || '', 'redress_scheme_url');
     if (cmp_certificate_filename) await updateSetting(cmp_certificate_filename, 'cmp_certificate_filename');
     if (prs_certificate_filename) await updateSetting(prs_certificate_filename, 'prs_certificate_filename');

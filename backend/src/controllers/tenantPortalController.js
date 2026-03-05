@@ -73,7 +73,7 @@ exports.getMyActiveTenancy = asyncHandler(async (req, res) => {
   const allMyTenancies = allMyTenanciesResult.rows;
 
   if (allMyTenancies.length === 0) {
-    return res.status(404).json({ error: 'No tenancies found not found' });
+    return res.status(404).json({ error: 'No tenancies found' });
   }
 
   // Determine which tenancy to show full details for
@@ -209,7 +209,7 @@ exports.getTenantAgreement = asyncHandler(async (req, res) => {
   const member = memberResult.rows[0];
 
   if (!member) {
-    return res.status(404).json({ error: 'Agreement or you do not have permission to view it not found' });
+    return res.status(404).json({ error: 'Agreement not found or you do not have permission to view it' });
   }
 
   // Don't allow viewing if status is 'pending'

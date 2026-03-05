@@ -382,7 +382,7 @@ const QUESTION_CATALOGUE = [
     section: 'pets_smoking',
     sectionLabel: 'Pets & Lifestyle',
     scope: 'all',
-    core: true,
+    core: false,
     required: true,
     storage: 'form_data',
     options: null,

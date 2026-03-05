@@ -272,7 +272,7 @@ exports.deleteDocument = asyncHandler(async (req, res) => {
   }
 
   // Delete file from filesystem
-  const filePath = path.join(TENANT_DOCS_DIR, document.stored_filename);
+  const filePath = path.join(TENANT_DOCS_DIR, path.basename(document.file_path));
   try {
     await fs.unlink(filePath);
   } catch (fileError) {
@@ -283,13 +283,7 @@ exports.deleteDocument = asyncHandler(async (req, res) => {
   // Defense-in-depth: explicit agency_id filtering
   // Delete from database (explicit agency check via tenancy join for defense-in-depth)
   await db.query(
-    `DELETE FROM tenant_documents
-     WHERE id = $1
-     AND tenancy_member_id IN (
-       SELECT tm.id FROM tenancy_members tm
-       INNER JOIN tenancies t ON tm.tenancy_id = t.id
-       WHERE t.agency_id = $2
-     )`,
+    `DELETE FROM tenant_documents WHERE id = $1 AND agency_id = $2`,
     [id, agencyId],
     agencyId
   );

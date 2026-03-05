@@ -127,6 +127,7 @@ exports.signAgreement = asyncHandler(async (req, res) => {
   // Use transaction for signing
   await db.transaction(async (client) => {
     // Update member signature and store agreement HTML (keeping for backwards compatibility)
+    // Defense-in-depth: explicit agency_id filtering
     await client.query(`
       UPDATE tenancy_members
       SET signature_data = $1,
@@ -134,8 +135,8 @@ exports.signAgreement = asyncHandler(async (req, res) => {
           is_signed = true,
           signed_agreement_html = $2,
           payment_option = $3
-      WHERE id = $4
-    `, [signature_data, agreementHTML, payment_option, memberId]);
+      WHERE id = $4 AND agency_id = $5
+    `, [signature_data, agreementHTML, payment_option, memberId, agencyId]);
 
     // Also save to centralized signed_documents table with audit trail
     await saveSignedDocument({

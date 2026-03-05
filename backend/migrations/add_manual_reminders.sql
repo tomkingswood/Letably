@@ -22,7 +22,8 @@ ALTER TABLE manual_reminders ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'manual_reminders' AND policyname = 'manual_reminders_agency_isolation') THEN
     CREATE POLICY manual_reminders_agency_isolation ON manual_reminders
-      USING (agency_id = current_setting('app.current_agency_id', true)::int);
+      USING (agency_id = current_setting('app.agency_id', true)::int)
+      WITH CHECK (agency_id = current_setting('app.agency_id', true)::int);
   END IF;
 END $$;
 
@@ -44,7 +45,8 @@ ALTER TABLE reminder_email_notifications ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'reminder_email_notifications' AND policyname = 'reminder_email_notif_agency_isolation') THEN
     CREATE POLICY reminder_email_notif_agency_isolation ON reminder_email_notifications
-      USING (agency_id = current_setting('app.current_agency_id', true)::int);
+      USING (agency_id = current_setting('app.agency_id', true)::int)
+      WITH CHECK (agency_id = current_setting('app.agency_id', true)::int);
   END IF;
 END $$;
 

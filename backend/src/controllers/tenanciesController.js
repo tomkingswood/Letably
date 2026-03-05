@@ -35,10 +35,10 @@ exports.getAllTenancies = asyncHandler(async (req, res) => {
     startDateTo
   } = req.query;
 
-  // Build dynamic WHERE clause
-  const conditions = [];
-  const params = [];
-  let paramIndex = 1;
+  // Build dynamic WHERE clause — always start with agency_id filter
+  const conditions = ['t.agency_id = $1'];
+  const params = [agencyId];
+  let paramIndex = 2;
 
   // Status group filter (current, workflow, active, expired)
   // 'current' = workflow + active (excludes expired)
@@ -80,7 +80,7 @@ exports.getAllTenancies = asyncHandler(async (req, res) => {
     params.push(startDateTo);
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
   const tenanciesResult = await db.query(`
     SELECT t.*, p.address_line1 as property_address, p.location as property_location,
@@ -141,7 +141,8 @@ exports.getAllTenancies = asyncHandler(async (req, res) => {
       SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
       SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired
     FROM tenancies
-  `, [], agencyId);
+    WHERE agency_id = $1
+  `, [agencyId], agencyId);
 
   const statsQuery = statsResult.rows[0];
   const stats = {
@@ -219,8 +220,9 @@ exports.getApprovedApplicants = asyncHandler(async (req, res) => {
     FROM applications a
     INNER JOIN users u ON a.user_id = u.id
     WHERE a.status = 'approved'
+      AND a.agency_id = $1
     ORDER BY a.created_at DESC
-  `, [], agencyId);
+  `, [agencyId], agencyId);
 
   res.json({
     applicants: applicantsResult.rows.map(a => ({
@@ -759,12 +761,12 @@ exports.deleteTenancy = asyncHandler(async (req, res) => {
     // Revert application statuses back to approved (so they can be used again without re-approval)
     for (const { application_id } of applicationIds) {
       if (application_id) {
-        await client.query('UPDATE applications SET status = $1 WHERE id = $2', ['approved', application_id]);
+        await client.query('UPDATE applications SET status = $1 WHERE id = $2 AND agency_id = $3', ['approved', application_id, agencyId]);
       }
     }
 
     // Delete related signed documents (uses reference_id with document_type, verified via tenancy agency)
-    await client.query("DELETE FROM signed_documents WHERE document_type = 'tenancy_agreement' AND reference_id = $1 AND reference_id IN (SELECT id FROM tenancies WHERE agency_id = $2)", [id, agencyId]);
+    await client.query("DELETE FROM signed_documents WHERE document_type = 'tenancy_agreement' AND reference_id = $1 AND agency_id = $2", [id, agencyId]);
 
     // payment_schedules, payments, and guarantor_agreements have CASCADE delete - handled automatically
 

@@ -61,9 +61,11 @@ ALTER TABLE bedroom_attribute_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bedroom_attribute_values ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY bad_agency_isolation ON bedroom_attribute_definitions
-  USING (agency_id = current_setting('app.current_agency_id', true)::integer);
+  USING (agency_id = current_setting('app.agency_id', true)::integer)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
 
 CREATE POLICY bav_agency_isolation ON bedroom_attribute_values
-  USING (agency_id = current_setting('app.current_agency_id', true)::integer);
+  USING (agency_id = current_setting('app.agency_id', true)::integer)
+  WITH CHECK (agency_id = current_setting('app.agency_id', true)::integer);
 
 COMMIT;

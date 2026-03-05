@@ -216,7 +216,7 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
     }
 
     // Get site settings
-    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings', [], agencyId);
+    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings WHERE agency_id = $1', [agencyId], agencyId);
     const siteSettings = siteSettingsResult.rows;
     const settings = {};
     siteSettings.forEach(setting => {
@@ -233,6 +233,9 @@ async function sendGuarantorAgreementEmails(agreements, tenancyId, agencyId) {
     `, [tenancyId, agencyId], agencyId);
 
     const tenancy = tenancyResult.rows[0];
+    if (!tenancy) {
+      throw new Error('Tenancy not found');
+    }
 
     for (const agreement of agreements) {
       // Generate signing URL
@@ -316,8 +319,8 @@ async function checkGuarantorAgreementsComplete(tenancyId, agencyId) {
       SELECT COUNT(*) as count
       FROM guarantor_agreements ga
       JOIN tenancy_members tm ON ga.tenancy_member_id = tm.id
-      WHERE tm.tenancy_id = $1 AND ga.is_signed = false
-    `, [tenancyId], agencyId);
+      WHERE tm.tenancy_id = $1 AND ga.agency_id = $2 AND ga.is_signed = false
+    `, [tenancyId, agencyId], agencyId);
 
     const incomplete = incompleteResult.rows[0];
 
@@ -360,8 +363,8 @@ async function getGuarantorAgreementByToken(token, agencyId) {
       JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
       JOIN agencies ag ON ga.agency_id = ag.id
-      WHERE ga.guarantor_token = $1
-    `, [token], agencyId);
+      WHERE ga.guarantor_token = $1 AND ga.agency_id = $2
+    `, [token, agencyId], agencyId);
 
     const agreement = agreementResult.rows[0];
 
@@ -370,7 +373,7 @@ async function getGuarantorAgreementByToken(token, agencyId) {
     }
 
     // Get company details from site settings
-    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings', [], agencyId);
+    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings WHERE agency_id = $1', [agencyId], agencyId);
     const siteSettings = siteSettingsResult.rows;
     const settings = {};
     siteSettings.forEach(setting => {
@@ -406,7 +409,7 @@ async function signGuarantorAgreement(token, signatureData, agencyId) {
     }
 
     // Get site settings
-    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings', [], agencyId);
+    const siteSettingsResult = await db.query('SELECT setting_key, setting_value FROM site_settings WHERE agency_id = $1', [agencyId], agencyId);
     const siteSettings = siteSettingsResult.rows;
     const settings = {};
     siteSettings.forEach(setting => {
@@ -438,11 +441,13 @@ async function signGuarantorAgreement(token, signatureData, agencyId) {
         end_date: agreement.tenancy_end_date
       },
       landlord: {
+        company_name: agreement.company_name || settings.company_name || 'Letably',
+        company_address_line1: agreement.company_address_line1 || settings.company_address_line1 || '',
+        company_address_line2: agreement.company_address_line2 || settings.company_address_line2 || '',
+        company_city: agreement.company_city || settings.company_city || '',
+        company_postcode: agreement.company_postcode || settings.company_postcode || '',
         name: agreement.landlord_name,
-        legal_name: agreement.landlord_legal_name,
-        address_line1: agreement.landlord_address_line1,
-        city: agreement.landlord_city,
-        postcode: agreement.landlord_postcode
+        legal_name: agreement.landlord_legal_name
       },
       settings,
       signature: signatureData,
@@ -458,9 +463,9 @@ async function signGuarantorAgreement(token, signatureData, agencyId) {
         signature_data = $1,
         signed_agreement_html = $2,
         updated_at = CURRENT_TIMESTAMP
-      WHERE guarantor_token = $3
+      WHERE guarantor_token = $3 AND agency_id = $4
       RETURNING *
-    `, [signatureData, agreementHTML, token], agencyId);
+    `, [signatureData, agreementHTML, token, agencyId], agencyId);
 
     return updatedResult.rows[0];
   } catch (error) {
@@ -480,9 +485,9 @@ async function getGuarantorAgreementsByTenancy(tenancyId, agencyId) {
         tm.surname as tenant_surname
       FROM guarantor_agreements ga
       JOIN tenancy_members tm ON ga.tenancy_member_id = tm.id
-      WHERE tm.tenancy_id = $1
+      WHERE tm.tenancy_id = $1 AND ga.agency_id = $2
       ORDER BY ga.created_at ASC
-    `, [tenancyId], agencyId);
+    `, [tenancyId, agencyId], agencyId);
 
     return agreementsResult.rows;
   } catch (error) {
@@ -500,11 +505,11 @@ async function createGuarantorAgreementForMember(tenancyId, memberId, agencyId) 
     const memberResult = await db.query(`
       SELECT tm.*
       FROM tenancy_members tm
-      WHERE tm.id = $1 AND tm.tenancy_id = $2
+      WHERE tm.id = $1 AND tm.tenancy_id = $2 AND tm.agency_id = $3
       AND tm.guarantor_required = true
       AND tm.guarantor_name IS NOT NULL
       AND tm.guarantor_email IS NOT NULL
-    `, [memberId, tenancyId], agencyId);
+    `, [memberId, tenancyId, agencyId], agencyId);
 
     const member = memberResult.rows[0];
     if (!member) {
@@ -514,8 +519,8 @@ async function createGuarantorAgreementForMember(tenancyId, memberId, agencyId) 
     // Check if agreement already exists (idempotent)
     const existingResult = await db.query(`
       SELECT id FROM guarantor_agreements
-      WHERE tenancy_member_id = $1
-    `, [member.id], agencyId);
+      WHERE tenancy_member_id = $1 AND agency_id = $2
+    `, [member.id, agencyId], agencyId);
 
     if (existingResult.rows[0]) {
       return null; // Agreement already exists
@@ -575,8 +580,8 @@ async function checkTenancySigningComplete(tenancyId, agencyId) {
     const unsignedMembersResult = await db.query(`
       SELECT COUNT(*) as count
       FROM tenancy_members
-      WHERE tenancy_id = $1 AND (is_signed = false OR is_signed IS NULL)
-    `, [tenancyId], agencyId);
+      WHERE tenancy_id = $1 AND agency_id = $2 AND (is_signed = false OR is_signed IS NULL)
+    `, [tenancyId, agencyId], agencyId);
 
     if (parseInt(unsignedMembersResult.rows[0].count) > 0) {
       return false;
