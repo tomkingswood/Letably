@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { properties as propertiesApi, landlords as landlordsApi, propertyAttributes as propertyAttributesApi } from '@/lib/api';
 import { Property, Landlord, LETTING_TYPES, PropertyAttributeDefinition, getErrorMessage } from '@/lib/types';
@@ -24,11 +24,7 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLocation, setFilterLocation] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [reorderMode, setReorderMode] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
-  const [originalOrder, setOriginalOrder] = useState<Property[]>([]);
-  const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
 
   // Landlords for dropdown
   const [landlords, setLandlords] = useState<Landlord[]>([]);
@@ -168,52 +164,21 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
     }
   };
 
-  const enterReorderMode = () => {
-    setOriginalOrder([...properties]);
-    setReorderMode(true);
-  };
-
-  const cancelReorder = () => {
-    setProperties(originalOrder);
-    setReorderMode(false);
-    setOriginalOrder([]);
-  };
-
-  const handleDragStart = (index: number) => {
-    dragItem.current = index;
-  };
-
-  const handleDragEnter = (index: number) => {
-    dragOverItem.current = index;
-  };
-
-  const handleDragEnd = () => {
-    if (dragItem.current === null || dragOverItem.current === null) return;
-    if (dragItem.current === dragOverItem.current) {
-      dragItem.current = null;
-      dragOverItem.current = null;
-      return;
-    }
+  const moveProperty = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= properties.length) return;
+    if (savingOrder) return;
 
     const newOrder = [...properties];
-    const draggedItem = newOrder[dragItem.current];
-    newOrder.splice(dragItem.current, 1);
-    newOrder.splice(dragOverItem.current, 0, draggedItem);
-
+    [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
     setProperties(newOrder);
-    dragItem.current = null;
-    dragOverItem.current = null;
-  };
 
-  const saveOrder = async () => {
     setSavingOrder(true);
     try {
-      const propertyIds = properties.map(p => p.id);
-      await propertiesApi.updateDisplayOrder(propertyIds);
-      setReorderMode(false);
-      setOriginalOrder([]);
+      await propertiesApi.updateDisplayOrder(newOrder.map(p => p.id));
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to save property order'));
+      setProperties(properties); // revert on error
     } finally {
       setSavingOrder(false);
     }
@@ -437,48 +402,15 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
           <p className="text-gray-600">Manage all property listings</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          {reorderMode ? (
-            <>
-              <button
-                onClick={saveOrder}
-                disabled={savingOrder}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-50"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                {savingOrder ? 'Saving...' : 'Save Order'}
-              </button>
-              <button
-                onClick={cancelReorder}
-                disabled={savingOrder}
-                className="bg-gray-200 text-gray-700 hover:bg-gray-300 px-6 py-2 rounded-lg font-semibold transition-colors w-full sm:w-auto disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => onNavigate?.('properties', { action: 'new' })}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Property
-              </button>
-              <button
-                onClick={enterReorderMode}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                Reorder
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => onNavigate?.('properties', { action: 'new' })}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Property
+          </button>
         </div>
       </div>
 
@@ -547,60 +479,43 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
         </div>
       </div>
 
-      {/* Filters - hidden in reorder mode */}
-      {!reorderMode && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <input
-              type="text"
-              placeholder="Search by address..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <input
+            type="text"
+            placeholder="Search by address..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          />
 
-            <select
-              value={filterLocation}
-              onChange={(e) => setFilterLocation(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="all">All Locations</option>
-              {locations.map(location => (
-                <option key={location} value={location}>{location}</option>
-              ))}
-            </select>
+          <select
+            value={filterLocation}
+            onChange={(e) => setFilterLocation(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          >
+            <option value="all">All Locations</option>
+            {locations.map(location => (
+              <option key={location} value={location}>{location}</option>
+            ))}
+          </select>
 
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="all">All Status</option>
-              <option value="live">Live</option>
-              <option value="draft">Draft</option>
-            </select>
-          </div>
-
-          <p className="text-sm text-gray-600">
-            Showing {filteredProperties.length} of {properties.length} properties
-          </p>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          >
+            <option value="all">All Status</option>
+            <option value="live">Live</option>
+            <option value="draft">Draft</option>
+          </select>
         </div>
-      )}
 
-      {/* Reorder Mode Banner */}
-      {reorderMode && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-3">
-            <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-            </svg>
-            <div>
-              <p className="font-medium text-purple-900">Reorder Mode Active</p>
-              <p className="text-sm text-purple-700">Drag rows to reorder. This changes the display order on the public properties page.</p>
-            </div>
-          </div>
-        </div>
-      )}
+        <p className="text-sm text-gray-600">
+          Showing {filteredProperties.length} of {properties.length} properties
+        </p>
+      </div>
 
       {/* Properties Table/Cards */}
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -615,41 +530,52 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-gray-50">
-                    {reorderMode && <th className="w-12 py-3 px-2"></th>}
+                    <th className="w-16 py-3 px-2 font-semibold text-gray-700 text-center">Order</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Address</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Location</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Bedrooms</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Price PPPW</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Available From</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                    {!reorderMode && <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>}
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(reorderMode ? properties : filteredProperties).map((property, index) => {
+                  {filteredProperties.map((property, index) => {
                     const pricesAvailable = property.bedrooms?.filter(r => r.price_pppw != null).map(r => Number(r.price_pppw)) ?? [];
                     const lowestPrice = pricesAvailable.length > 0 ? Math.min(...pricesAvailable) : null;
                     const vacantCount = property.bedrooms?.filter(r => r.is_occupied === false).length || 0;
+                    const realIndex = properties.indexOf(property);
 
                     return (
                       <tr
                         key={property.id}
-                        draggable={reorderMode}
-                        onDragStart={() => reorderMode && handleDragStart(index)}
-                        onDragEnter={() => reorderMode && handleDragEnter(index)}
-                        onDragEnd={() => reorderMode && handleDragEnd()}
-                        onDragOver={(e) => reorderMode && e.preventDefault()}
-                        className={`border-b transition-colors ${reorderMode ? 'cursor-move hover:bg-purple-50' : 'hover:bg-gray-50'}`}
+                        className="border-b transition-colors hover:bg-gray-50"
                       >
-                        {reorderMode && (
-                          <td className="py-3 px-2 text-center">
-                            <div className="flex items-center justify-center text-gray-400">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                        <td className="py-3 px-2 text-center">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button
+                              onClick={() => moveProperty(realIndex, 'up')}
+                              disabled={realIndex === 0 || savingOrder}
+                              className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                              title="Move up"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                               </svg>
-                            </div>
-                          </td>
-                        )}
+                            </button>
+                            <button
+                              onClick={() => moveProperty(realIndex, 'down')}
+                              disabled={realIndex === properties.length - 1 || savingOrder}
+                              className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                              title="Move down"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
                         <td className="py-3 px-4 font-medium">{property.address_line1}</td>
                         <td className="py-3 px-4">{property.location}</td>
                         <td className="py-3 px-4">
@@ -669,24 +595,22 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                             {getStatusLabel('property', property.is_live ? 'live' : 'draft')}
                           </span>
                         </td>
-                        {!reorderMode && (
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                onClick={() => onNavigate?.('properties', { action: 'edit', id: property.id.toString() })}
-                                className="px-3 py-1.5 bg-primary text-white rounded hover:bg-primary-dark transition-colors text-sm font-medium"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(property.id)}
-                                className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm font-medium"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        )}
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => onNavigate?.('properties', { action: 'edit', id: property.id.toString() })}
+                              className="px-3 py-1.5 bg-primary text-white rounded hover:bg-primary-dark transition-colors text-sm font-medium"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(property.id)}
+                              className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -696,30 +620,39 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
 
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
-              {(reorderMode ? properties : filteredProperties).map((property, index) => {
+              {filteredProperties.map((property) => {
                 const lowestPrice = property.bedrooms && property.bedrooms.length > 0
                   ? Math.min(...property.bedrooms.filter(r => r.price_pppw != null).map(r => r.price_pppw!))
                   : null;
                 const vacantCount = property.bedrooms?.filter(r => r.is_occupied === false).length || 0;
+                const realIndex = properties.indexOf(property);
 
                 return (
                   <div
                     key={property.id}
-                    draggable={reorderMode}
-                    onDragStart={() => reorderMode && handleDragStart(index)}
-                    onDragEnter={() => reorderMode && handleDragEnter(index)}
-                    onDragEnd={() => reorderMode && handleDragEnd()}
-                    onDragOver={(e) => reorderMode && e.preventDefault()}
-                    className={`border rounded-lg p-4 transition-shadow ${reorderMode ? 'border-purple-200 cursor-move hover:bg-purple-50' : 'border-gray-200 hover:shadow-md'}`}
+                    className="border rounded-lg p-4 transition-shadow border-gray-200 hover:shadow-md"
                   >
                     <div className="flex items-start justify-between mb-3">
-                      {reorderMode && (
-                        <div className="mr-3 text-gray-400">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                      <div className="flex flex-col items-center mr-3 gap-0.5">
+                        <button
+                          onClick={() => moveProperty(realIndex, 'up')}
+                          disabled={realIndex === 0 || savingOrder}
+                          className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                           </svg>
-                        </div>
-                      )}
+                        </button>
+                        <button
+                          onClick={() => moveProperty(realIndex, 'down')}
+                          disabled={realIndex === properties.length - 1 || savingOrder}
+                          className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      </div>
                       <div className="flex-1">
                         <h3 className="font-bold text-gray-900 mb-1">{property.address_line1}</h3>
                         <p className="text-sm text-gray-600">{property.location}</p>
@@ -751,22 +684,20 @@ export default function PropertiesSection({ onNavigate, action, itemId, onBack }
                       </div>
                     </div>
 
-                    {!reorderMode && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => onNavigate?.('properties', { action: 'edit', id: property.id.toString() })}
-                          className="flex-1 px-3 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors text-sm font-medium"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(property.id)}
-                          className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm font-medium"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onNavigate?.('properties', { action: 'edit', id: property.id.toString() })}
+                        className="flex-1 px-3 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors text-sm font-medium"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(property.id)}
+                        className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm font-medium"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 );
               })}
