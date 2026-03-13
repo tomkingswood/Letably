@@ -1,6 +1,6 @@
 'use client';
 
-export type TypeFilter = 'all' | 'room_only' | 'whole_house' | 'rolling_monthly';
+export type TypeFilter = 'all' | 'room_only' | 'whole_house';
 
 interface TenancyFiltersProps {
   searchQuery: string;
@@ -48,7 +48,6 @@ export default function TenancyFilters({
             <option value="all">All Types</option>
             <option value="room_only">Room Only</option>
             <option value="whole_house">Whole House</option>
-            <option value="rolling_monthly">Rolling Monthly</option>
           </select>
         </div>
 

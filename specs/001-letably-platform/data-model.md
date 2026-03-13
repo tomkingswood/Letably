@@ -349,8 +349,7 @@ CREATE TABLE tenancies (
     payment_option TEXT DEFAULT 'monthly', -- 'monthly', 'quarterly', 'monthly_to_quarterly', 'upfront'
     deposit_amount NUMERIC(10,2),
 
-    -- Tenancy Type
-    is_rolling_monthly BOOLEAN DEFAULT false,
+    -- All tenancies are periodic (rolling monthly) per Renters' Rights Act 2025
     auto_generate_payments BOOLEAN DEFAULT true,
 
     -- Agreement

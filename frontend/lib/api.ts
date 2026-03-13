@@ -509,7 +509,7 @@ export const tenancies = {
     search?: string;
     status?: string;
     statusGroup?: 'workflow' | 'active' | 'expired';
-    type?: 'room_only' | 'whole_house' | 'rolling_monthly';
+    type?: 'room_only' | 'whole_house';
     property_id?: string | number;
     startDateFrom?: string;
     startDateTo?: string;

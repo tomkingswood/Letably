@@ -93,8 +93,8 @@ async function seed() {
       section_title: 'Term of the Tenancy',
       section_order: 3,
       section_content: `<p>This tenancy is a <strong>periodic (rolling monthly) tenancy</strong> commencing on <strong>{{start_date}}</strong>.</p>
-<p>This tenancy will continue on a month-to-month basis until terminated by either party giving at least <strong>one calendar month's notice</strong> in writing, to expire at the end of a rental period.</p>
-<p>The Landlord must give at least two months' notice to the Tenant in accordance with Section 21 of the Housing Act 1988.</p>`
+<p>This tenancy will continue on a month-to-month basis until terminated by either party in accordance with the provisions of this agreement.</p>
+<p>The Landlord may only seek possession by serving the appropriate notice under Section 8 of the Housing Act 1988 (as amended), using one of the grounds specified in Schedule 2 of that Act.</p>`
     },
 
     // ── Section 4: Rent ──────────────────────────────────────────────
@@ -282,7 +282,7 @@ async function seed() {
       section_content: `<p>Either party may end this periodic tenancy by giving notice:</p>
 <ul>
 <li><strong>Tenant:</strong> At least one calendar month's written notice, to expire at the end of a rental period</li>
-<li><strong>Landlord:</strong> At least two months' notice under Section 21 of the Housing Act 1988</li>
+<li><strong>Landlord:</strong> By serving the appropriate notice under Section 8 of the Housing Act 1988 (as amended), on one of the grounds specified in Schedule 2</li>
 </ul>
 <p>At the end of the tenancy, the Tenant must:</p>
 <ol>
