@@ -113,7 +113,7 @@ async function getTenancyStats(landlordId, agencyId) {
     .join('properties', 'p', 't.property_id = p.id', 'INNER')
     .leftJoin('tenancy_members', 'tm', 't.id = tm.tenancy_id')
     .where("t.status = 'active'")
-    .whereAgency(agencyId);
+    .whereAgency(agencyId, 't');
 
   if (landlordId) {
     qb.where('p.landlord_id = ?', landlordId);

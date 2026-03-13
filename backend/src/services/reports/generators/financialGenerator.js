@@ -100,7 +100,7 @@ async function getMonthlyData(landlordId, propertyId, year, month, agencyId) {
     .join('tenancies', 't', 'ps.tenancy_id = t.id', 'INNER')
     .join('properties', 'p', 't.property_id = p.id', 'INNER')
     .leftJoin('pay_sum', 'pay_sum', 'ps.id = pay_sum.payment_schedule_id')
-    .whereAgency(agencyId)
+    .whereAgency(agencyId, 'ps')
     .whereLandlord(landlordId)
     .whereProperty(propertyId)
     .whereYearMonth('ps.due_date', year, month);

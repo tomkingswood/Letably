@@ -441,8 +441,8 @@ async function seedTestData() {
         const tenancyInfo = { id: tenId, status, start: startDate, end: tenancyEndDate, memberIds, memberTenants, propertyIdx: pi, monthlyRent };
 
         // --- Payment schedules ---
-        // For expired tenancies, use endDate (always set) to determine recency
-        const monthsAgo = endDate ? monthsBetween(endDate, todayStr) : 0;
+        // For expired tenancies, use endDate (always set in loop) to determine recency
+        const monthsAgo = monthsBetween(endDate, todayStr);
 
         if (status === 'active') {
           // Active: deposit (paid) + full monthly rent history + 1 future month

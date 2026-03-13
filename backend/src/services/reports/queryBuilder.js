@@ -148,10 +148,10 @@ class ReportQueryBuilder {
    * @param {string} tableAlias - Alias for table with agency_id column (default 'p')
    */
   whereAgency(agencyId, tableAlias = 'p') {
-    if (agencyId !== null && agencyId !== undefined) {
-      return this.where(`${tableAlias}.agency_id = ?`, agencyId);
+    if (agencyId === null || agencyId === undefined) {
+      throw new Error('whereAgency: agencyId is required — queries must always be scoped to an agency');
     }
-    return this;
+    return this.where(`${tableAlias}.agency_id = ?`, agencyId);
   }
 
   /**
