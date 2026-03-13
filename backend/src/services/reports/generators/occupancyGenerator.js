@@ -140,7 +140,8 @@ async function getProperties(landlordId, includeLandlordInfo, agencyId) {
       .select(['l.id as landlord_id', 'l.name as landlord_name']);
   }
 
-  qb.whereLandlord(landlordId);
+  qb.whereAgency(agencyId)
+    .whereLandlord(landlordId);
 
   if (includeLandlordInfo) {
     qb.orderBy('l.name').orderBy('p.address_line1');

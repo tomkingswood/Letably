@@ -76,23 +76,25 @@ async function getPropertySummary(landlordId, agencyId) {
   ])
     .from('properties', 'p');
 
+  qb.whereAgency(agencyId);
+
   if (landlordId) {
     qb.where('p.landlord_id = ?', landlordId);
-    // Subquery for bedrooms count filtered by landlord
+    // Subquery for bedrooms count filtered by landlord and agency
     qb.select([
-      `(SELECT COUNT(*) FROM bedrooms b WHERE b.property_id IN (SELECT id FROM properties WHERE landlord_id = ?)) as total_rooms`,
+      `(SELECT COUNT(*) FROM bedrooms b INNER JOIN properties pp ON b.property_id = pp.id WHERE pp.landlord_id = ? AND pp.agency_id = ?) as total_rooms`,
     ]);
     const { sql, params } = qb.build();
-    // Need to add landlordId param for subquery
-    const result = await db.query(sql, [...params, landlordId], agencyId);
+    // Need to add landlordId and agencyId params for subquery
+    const result = await db.query(sql, [...params, landlordId, agencyId], agencyId);
     return result.rows[0];
   } else {
     qb.select([
-      '(SELECT COUNT(*) FROM bedrooms) as total_rooms',
+      `(SELECT COUNT(*) FROM bedrooms b INNER JOIN properties pp ON b.property_id = pp.id WHERE pp.agency_id = ?) as total_rooms`,
       'COUNT(DISTINCT p.landlord_id) as total_landlords',
     ]);
     const { sql, params } = qb.build();
-    const result = await db.query(sql, params, agencyId);
+    const result = await db.query(sql, [...params, agencyId], agencyId);
     return result.rows[0];
   }
 }
@@ -108,12 +110,13 @@ async function getTenancyStats(landlordId, agencyId) {
     'COUNT(DISTINCT tm.id) as total_tenants',
   ])
     .from('tenancies', 't')
+    .join('properties', 'p', 't.property_id = p.id', 'INNER')
     .leftJoin('tenancy_members', 'tm', 't.id = tm.tenancy_id')
-    .where("t.status = 'active'");
+    .where("t.status = 'active'")
+    .whereAgency(agencyId);
 
   if (landlordId) {
-    qb.join('properties', 'p', 't.property_id = p.id', 'INNER')
-      .where('p.landlord_id = ?', landlordId);
+    qb.where('p.landlord_id = ?', landlordId);
   }
 
   const { sql, params } = qb.build();
@@ -159,7 +162,8 @@ async function getRoomOccupancy(landlordId, includeLandlordInfo, today, agencyId
       .select(['l.name as landlord_name']);
   }
 
-  qb.whereLandlord(landlordId);
+  qb.whereAgency(agencyId)
+    .whereLandlord(landlordId);
 
   if (includeLandlordInfo) {
     qb.orderBy('l.name').orderBy('p.address_line1').orderBy('b.id');

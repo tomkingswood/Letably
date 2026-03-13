@@ -252,3 +252,29 @@ export function isKnownVariable(name: string): boolean {
     cat.variables.some(v => v.name === name)
   );
 }
+
+// Helper to check if a variable is a known loop field (e.g. {{name}}, {{email}} inside {{#each tenants}})
+export function isLoopField(name: string): boolean {
+  return loopBlocks.some(loop =>
+    loop.fields.some(f => f.name === name)
+  );
+}
+
+// Get display name for a loop field
+export function getLoopFieldDisplayName(name: string): string {
+  for (const loop of loopBlocks) {
+    const field = loop.fields.find(f => f.name === name);
+    if (field) return field.displayName;
+  }
+  return name;
+}
+
+// Get conditional block by name (supports both special and regular conditionals)
+export function getConditionalByName(name: string): ConditionalBlock | undefined {
+  return conditionalBlocks.find(c => c.name === name);
+}
+
+// Get loop block by name
+export function getLoopByName(name: string): LoopBlock | undefined {
+  return loopBlocks.find(l => l.name === name);
+}

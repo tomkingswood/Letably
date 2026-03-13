@@ -76,7 +76,8 @@ async function getEndingsData(landlordId, propertyId, daysAhead, includeLandlord
       .select(['l.id as landlord_id', 'l.name as landlord_name']);
   }
 
-  qb.where("t.status = 'active'")
+  qb.whereAgency(agencyId, 'p')
+    .where("t.status = 'active'")
     .whereLandlord(landlordId)
     .whereProperty(propertyId)
     .whereDaysAhead('t.end_date', daysAhead)

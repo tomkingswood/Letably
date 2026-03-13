@@ -78,6 +78,11 @@ function renderTemplate(template, data) {
     rendered = rendered.replace(new RegExp(`{{${key}}}`, 'g'), value);
   });
 
+  // Clean up empty <li> tags left behind when loop/conditional control tags
+  // (e.g. {{#each tenants}}, {{/each}}) were inside list items in the WYSIWYG editor.
+  // TipTap wraps content in <p> tags, so empty items may be <li><p></p></li>
+  rendered = rendered.replace(/<li[^>]*>(\s|<p[^>]*>\s*<\/p>|<br\s*\/?>)*<\/li>/g, '');
+
   return rendered;
 }
 

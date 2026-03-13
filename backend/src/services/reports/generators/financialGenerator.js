@@ -100,6 +100,7 @@ async function getMonthlyData(landlordId, propertyId, year, month, agencyId) {
     .join('tenancies', 't', 'ps.tenancy_id = t.id', 'INNER')
     .join('properties', 'p', 't.property_id = p.id', 'INNER')
     .leftJoin('pay_sum', 'pay_sum', 'ps.id = pay_sum.payment_schedule_id')
+    .whereAgency(agencyId)
     .whereLandlord(landlordId)
     .whereProperty(propertyId)
     .whereYearMonth('ps.due_date', year, month);
@@ -159,7 +160,8 @@ async function getPropertyBreakdown(landlordId, year, includeLandlordInfo, agenc
       .select(['l.id as landlord_id', 'l.name as landlord_name']);
   }
 
-  qb.whereLandlord(landlordId)
+  qb.whereAgency(agencyId)
+    .whereLandlord(landlordId)
     .groupBy('p.id')
     .groupBy('p.address_line1');
 

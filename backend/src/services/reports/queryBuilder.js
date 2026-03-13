@@ -140,6 +140,21 @@ class ReportQueryBuilder {
   }
 
   /**
+   * Add agency filter - CRITICAL SECURITY FILTER
+   * Must be applied to every query to ensure multi-tenancy isolation.
+   * Dev uses postgres superuser which bypasses RLS, so explicit WHERE is required.
+   *
+   * @param {number} agencyId - Agency ID to filter by
+   * @param {string} tableAlias - Alias for table with agency_id column (default 'p')
+   */
+  whereAgency(agencyId, tableAlias = 'p') {
+    if (agencyId !== null && agencyId !== undefined) {
+      return this.where(`${tableAlias}.agency_id = ?`, agencyId);
+    }
+    return this;
+  }
+
+  /**
    * Add landlord filter - CRITICAL SECURITY FILTER
    * This is the primary data isolation mechanism for multi-tenant security.
    * Landlord users MUST have this filter applied to prevent data leakage.
