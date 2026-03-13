@@ -158,7 +158,6 @@ async function getUserTenancies(userId, agencyId) {
         t.status,
         t.start_date,
         t.end_date,
-        t.is_rolling_monthly,
         p.address_line1 as property_address,
         p.location,
         tm.id as member_id,

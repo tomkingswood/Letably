@@ -69,7 +69,7 @@ export default function AgreementDocument({
             ASSURED SHORTHOLD TENANCY AGREEMENT
           </h1>
           <p className="text-base text-gray-500 mb-2">
-            {agreement.is_rolling_monthly ? 'Periodic (Rolling Monthly) Tenancy' : 'Fixed Term Tenancy'}
+            Periodic (Rolling Monthly) Tenancy
           </p>
           <p className="text-sm text-gray-600">
             Provided under part 1 of the Housing Act 1988 and amended under part 3 of the Housing

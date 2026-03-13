@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { tenancies as tenanciesApi, bedrooms as bedroomsApi, properties as propertiesApi, holdingDeposits } from '@/lib/api';
+import { tenancies as tenanciesApi, bedrooms as bedroomsApi, properties as propertiesApi, holdingDeposits, certificates as certificatesApi } from '@/lib/api';
 import type { Bedroom, Property, ApprovedApplicant, HoldingDeposit } from '@/lib/types';
 import { getErrorMessage } from '@/lib/types';
 
@@ -47,9 +47,12 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
   const [tenancyType, setTenancyType] = useState<'room_only' | 'whole_house'>('room_only');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [isRollingMonthly, setIsRollingMonthly] = useState(false);
   const [autoGeneratePayments, setAutoGeneratePayments] = useState(true);
   const [memberForms, setMemberForms] = useState<MemberForm[]>([]);
+
+  // Compliance state
+  const [complianceIssues, setComplianceIssues] = useState<{ type_name: string; reason: string; scope?: string }[]>([]);
+  const [checkingCompliance, setCheckingCompliance] = useState(false);
 
   // Search/filter state
   const [propertySearch, setPropertySearch] = useState('');
@@ -120,17 +123,33 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
     setSelectedPropertyId(propertyId);
     const property = properties.find(p => p.id === propertyId);
     setSelectedProperty(property || null);
+    setComplianceIssues([]);
+    setCheckingCompliance(true);
 
-    // Fetch bedrooms for the selected property
     try {
-      const bedroomsRes = await bedroomsApi.getByProperty(propertyId);
-      setPropertyRooms(bedroomsRes.data.bedrooms || []);
-    } catch (err: unknown) {
-      console.error('Error fetching bedrooms:', err);
-      setPropertyRooms([]);
-    }
+      // Fetch bedrooms and check compliance in parallel
+      const [bedroomsRes, complianceRes] = await Promise.all([
+        bedroomsApi.getByProperty(propertyId),
+        certificatesApi.checkPropertyCompliance(propertyId),
+      ]);
 
-    setCurrentStep('applicants');
+      setPropertyRooms(bedroomsRes.data.bedrooms || []);
+
+      const issues = complianceRes.data.issues || [];
+      setComplianceIssues(issues);
+
+      if (issues.length === 0) {
+        setCurrentStep('applicants');
+      }
+      // If issues exist, stay on property step — warning will show
+    } catch (err: unknown) {
+      console.error('Error during property selection:', err);
+      setPropertyRooms([]);
+      // Don't block on compliance check failure — proceed
+      setCurrentStep('applicants');
+    } finally {
+      setCheckingCompliance(false);
+    }
   };
 
   const handleApplicantToggle = (applicantId: number) => {
@@ -208,11 +227,6 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
       return;
     }
 
-    if (!isRollingMonthly && !endDate) {
-      onError('Please fill in end date for fixed-term tenancies');
-      return;
-    }
-
     for (const form of memberForms) {
       if (!form.rent_pppw || !form.deposit_amount) {
         onError('Please fill in rent and deposit for all tenants');
@@ -233,7 +247,7 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
       }
     }
 
-    if (!isRollingMonthly && endDate) {
+    if (endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
       if (end <= start) {
@@ -247,9 +261,8 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
         property_id: selectedPropertyId,
         tenancy_type: tenancyType,
         start_date: startDate,
-        end_date: isRollingMonthly ? '' : endDate,
+        end_date: endDate,
         status: 'pending',
-        is_rolling_monthly: isRollingMonthly,
         auto_generate_payments: autoGeneratePayments,
         members: memberForms.map(form => ({
           application_id: form.application_id,
@@ -291,7 +304,6 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
     setMemberForms([]);
     setStartDate('');
     setEndDate('');
-    setIsRollingMonthly(false);
     setAutoGeneratePayments(true);
     setCurrentStep('property');
     onBack();
@@ -416,6 +428,64 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
                   </p>
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Compliance Warning */}
+          {checkingCompliance && (
+            <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+              Checking property compliance...
+            </div>
+          )}
+
+          {complianceIssues.length > 0 && !checkingCompliance && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex gap-3">
+                <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <h4 className="font-semibold text-red-800 mb-1">
+                    Cannot create tenancy — compliance issues found
+                  </h4>
+                  <p className="text-sm text-red-700 mb-2">
+                    The following compliance certificates must be resolved before a tenancy can be created:
+                  </p>
+                  {complianceIssues.some(i => i.scope === 'property') && (
+                    <div className="mb-2">
+                      <p className="text-sm font-medium text-red-800">Property — {selectedProperty?.address_line1}</p>
+                      <ul className="list-disc list-inside text-sm text-red-700 space-y-1 ml-2">
+                        {complianceIssues.filter(i => i.scope === 'property').map((issue, idx) => (
+                          <li key={idx}>
+                            <strong>{issue.type_name}</strong> — {issue.reason === 'missing' ? 'not uploaded' : 'expired'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {complianceIssues.some(i => i.scope === 'agency') && (
+                    <div className="mb-2">
+                      <p className="text-sm font-medium text-red-800">Agency Documents</p>
+                      <ul className="list-disc list-inside text-sm text-red-700 space-y-1 ml-2">
+                        {complianceIssues.filter(i => i.scope === 'agency').map((issue, idx) => (
+                          <li key={idx}>
+                            <strong>{issue.type_name}</strong> — {issue.reason === 'missing' ? 'not uploaded' : 'expired'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="text-sm text-red-600 mt-3">
+                    Please upload the required certificates before creating a tenancy.
+                  </p>
+                  <button
+                    onClick={() => { setComplianceIssues([]); setSelectedPropertyId(null); setSelectedProperty(null); }}
+                    className="mt-3 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+                  >
+                    Select a different property
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -545,47 +615,6 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
           </div>
 
           <form onSubmit={handleSubmitTenancy} className="space-y-6">
-            {/* Rolling Monthly Toggle */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <input
-                  type="checkbox"
-                  id="isRollingMonthly"
-                  checked={isRollingMonthly}
-                  onChange={(e) => {
-                    setIsRollingMonthly(e.target.checked);
-                    if (e.target.checked) setEndDate('');
-                  }}
-                  className="mt-1 h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
-                />
-                <div className="ml-3">
-                  <label htmlFor="isRollingMonthly" className="font-medium text-gray-900 cursor-pointer">
-                    Rolling Monthly Tenancy
-                  </label>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Enable for professional lets that continue indefinitely until manually terminated.
-                  </p>
-                </div>
-              </div>
-
-              {isRollingMonthly && (
-                <div className="mt-3 ml-7 pt-3 border-t border-blue-200">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="autoGeneratePayments"
-                      checked={autoGeneratePayments}
-                      onChange={(e) => setAutoGeneratePayments(e.target.checked)}
-                      className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
-                    />
-                    <label htmlFor="autoGeneratePayments" className="ml-2 text-sm text-gray-700 cursor-pointer">
-                      Auto-generate monthly payments
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Dates */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -595,23 +624,15 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
                 onChange={(e) => setStartDate(e.target.value)}
                 required
               />
-              {isRollingMonthly ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                  <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
-                    No fixed end date (Rolling)
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Set an end date later to terminate.</p>
-                </div>
-              ) : (
+              <div>
                 <Input
-                  label="End Date"
+                  label="End Date (Optional)"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  required
                 />
-              )}
+                <p className="text-xs text-gray-500 mt-1">Leave empty if no termination date has been set.</p>
+              </div>
             </div>
 
             {/* Member Forms */}

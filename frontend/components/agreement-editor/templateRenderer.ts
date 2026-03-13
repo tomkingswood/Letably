@@ -39,14 +39,6 @@ export function renderTemplate(template: string, data: TemplateData): string {
     return data.individual_deposits ? content : '';
   });
 
-  rendered = rendered.replace(/{{#if_rolling_monthly}}([\s\S]*?){{\/if_rolling_monthly}}/g, (_match, content) => {
-    return data.is_rolling_monthly ? content : '';
-  });
-
-  rendered = rendered.replace(/{{#if_fixed_term}}([\s\S]*?){{\/if_fixed_term}}/g, (_match, content) => {
-    return !data.is_rolling_monthly ? content : '';
-  });
-
   // Handle each loops BEFORE regular conditionals: {{#each array}}...{{/each}}
   rendered = rendered.replace(/{{#each\s+(\w+)}}([\s\S]*?){{\/each}}/g, (_match, arrayName, itemTemplate) => {
     const array = data[arrayName as keyof TemplateData];

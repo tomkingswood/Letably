@@ -203,7 +203,6 @@ exports.generateRollingMonthlyPayments = async (agencyId) => {
 
     // Get all rolling tenancies that need payment generation
     // Criteria:
-    // - is_rolling_monthly = true
     // - auto_generate_payments = true
     // - status is 'approval' or 'active'
     // - end_date is NULL (ongoing) OR end_date >= start of target month (not yet ended)
@@ -214,8 +213,7 @@ exports.generateRollingMonthlyPayments = async (agencyId) => {
       FROM tenancies t
       INNER JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.is_rolling_monthly = true
-        AND t.auto_generate_payments = true
+      WHERE t.auto_generate_payments = true
         AND t.status IN ('approval', 'active')
         AND (t.end_date IS NULL OR t.end_date >= $1)
     `, [targetMonthStart], agencyId);
@@ -396,8 +394,7 @@ exports.getRollingTenanciesSummary = async (agencyId) => {
         SUM(CASE WHEN end_date IS NOT NULL THEN 1 ELSE 0 END) as terminating,
         SUM(CASE WHEN auto_generate_payments = true THEN 1 ELSE 0 END) as auto_generate_enabled
       FROM tenancies
-      WHERE is_rolling_monthly = true
-        AND status IN ('approval', 'active')
+      WHERE status IN ('approval', 'active')
     `, [], agencyId);
 
     return result.rows[0];

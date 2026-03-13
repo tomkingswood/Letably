@@ -61,7 +61,6 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
     property_postcode: 'S1 2AB',
     start_date: '2025-09-01',
     end_date: '2026-08-31',
-    is_rolling_monthly: false,
     council_tax_included: true,
   });
 
@@ -161,7 +160,6 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
     },
     startDate: testData.start_date,
     endDate: testData.end_date,
-    isRollingMonthly: testData.is_rolling_monthly,
     councilTaxIncluded: testData.council_tax_included,
   });
 
@@ -422,25 +420,11 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
                       type="date"
                       value={testData.end_date}
                       onChange={(e) => setTestData(prev => ({ ...prev, end_date: e.target.value }))}
-                      disabled={testData.is_rolling_monthly}
-                      className={`${inputClass} ${testData.is_rolling_monthly ? 'bg-gray-100 text-gray-400' : ''}`}
+                      className={inputClass}
                     />
                   </div>
                 </div>
                 <div className="space-y-2 pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={testData.is_rolling_monthly}
-                      onChange={(e) => setTestData(prev => ({
-                        ...prev,
-                        is_rolling_monthly: e.target.checked,
-                        end_date: e.target.checked ? '' : prev.end_date
-                      }))}
-                      className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-blue-900">Rolling monthly tenancy</span>
-                  </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"

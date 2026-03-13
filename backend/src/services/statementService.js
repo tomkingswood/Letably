@@ -20,7 +20,7 @@ async function calculateRollingMonthlyEstimate(year, month, landlordId = null, a
     const monthEnd = `${year}-${paddedMonth}-${lastDay.toString().padStart(2, '0')}`;
 
     // Find all tenancy members from rolling monthly tenancies that:
-    // 1. Have is_rolling_monthly = true and auto_generate_payments = true
+    // 1. Have auto_generate_payments = true
     // 2. Are in active/approval status
     // 3. Started on or before the end of the target month
     // 4. Haven't ended before the start of the target month (or have no end date)
@@ -41,7 +41,6 @@ async function calculateRollingMonthlyEstimate(year, month, landlordId = null, a
       INNER JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
       WHERE t.agency_id = $1
-        AND t.is_rolling_monthly = true
         AND t.auto_generate_payments = true
         AND t.status IN ('active', 'approval')
         AND t.start_date <= $2

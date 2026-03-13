@@ -66,12 +66,6 @@ export default function TenancyCard({ tenancy, onDelete, onView }: TenancyCardPr
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {getStatusLabel('tenancyType', tenancy.tenancy_type)}
                 </span>
-                {/* Rolling Monthly */}
-                {!!tenancy.is_rolling_monthly && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                    Rolling
-                  </span>
-                )}
               </div>
             </div>
 

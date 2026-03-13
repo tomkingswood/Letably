@@ -443,7 +443,7 @@ exports.generatePaymentSchedulesForTenancy = async (tenancyId, agencyId) => {
     // Get tenancy details with landlord's manage_rent setting and rolling monthly flag
     // Using LEFT JOIN for landlord since it's optional
     const tenancyResult = await db.query(`
-      SELECT t.start_date, t.end_date, t.is_rolling_monthly, t.auto_generate_payments, l.manage_rent
+      SELECT t.start_date, t.end_date, t.auto_generate_payments, l.manage_rent
       FROM tenancies t
       INNER JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
@@ -458,7 +458,6 @@ exports.generatePaymentSchedulesForTenancy = async (tenancyId, agencyId) => {
 
     // Check if landlord manages rent (default to true if no landlord or not set)
     const manageRent = tenancy.manage_rent !== null && tenancy.manage_rent !== undefined ? tenancy.manage_rent : true;
-    const isRollingMonthly = tenancy.is_rolling_monthly === true;
 
     // Get all members
     const membersResult = await db.query(`
@@ -508,66 +507,29 @@ exports.generatePaymentSchedulesForTenancy = async (tenancyId, agencyId) => {
 
       // Generate rent payment schedule ONLY if landlord manages rent
       if (manageRent) {
-        if (isRollingMonthly) {
-          // For rolling monthly tenancies, only generate the first month's payment
-          // Subsequent months are handled by the daily cron job
-          const firstMonthPayment = exports.generateFirstMonthPayment(
-            tenancy.start_date,
-            member.rent_pppw
-          );
+        const firstMonthPayment = exports.generateFirstMonthPayment(
+          tenancy.start_date,
+          member.rent_pppw
+        );
 
-          if (firstMonthPayment) {
-            await db.query(`
-              INSERT INTO payment_schedules (
-                agency_id, tenancy_id, tenancy_member_id, payment_type, description, due_date, amount_due, status, schedule_type, covers_from, covers_to
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'automated', $8, $9)
-              RETURNING *
-            `, [
-              agencyId,
-              tenancyId,
-              member.id,
-              'rent',
-              firstMonthPayment.description || 'Rent Payment',
-              firstMonthPayment.due_date,
-              firstMonthPayment.amount_due,
-              firstMonthPayment.covers_from || null,
-              firstMonthPayment.covers_to || null
-            ], agencyId);
-            totalPaymentsCreated++;
-          }
-        } else {
-          // For fixed-term tenancies, generate the full schedule
-          const schedule = exports.generatePaymentSchedule(
-            tenancy.start_date,
-            tenancy.end_date,
-            member.payment_option,
-            member.rent_pppw
-          );
-
-          // Insert each rent payment
-          for (const payment of schedule) {
-            // Use period_description with "Rent - " prefix for consistency with rolling payments
-            const description = payment.period_description
-              ? `Rent - ${payment.period_description}`
-              : (payment.description || 'Rent Payment');
-            await db.query(`
-              INSERT INTO payment_schedules (
-                agency_id, tenancy_id, tenancy_member_id, payment_type, description, due_date, amount_due, status, schedule_type, covers_from, covers_to
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'automated', $8, $9)
-              RETURNING *
-            `, [
-              agencyId,
-              tenancyId,
-              member.id,
-              'rent',
-              description,
-              payment.due_date,
-              payment.amount_due,
-              payment.covers_from || null,
-              payment.covers_to || null
-            ], agencyId);
-            totalPaymentsCreated++;
-          }
+        if (firstMonthPayment) {
+          await db.query(`
+            INSERT INTO payment_schedules (
+              agency_id, tenancy_id, tenancy_member_id, payment_type, description, due_date, amount_due, status, schedule_type, covers_from, covers_to
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'automated', $8, $9)
+            RETURNING *
+          `, [
+            agencyId,
+            tenancyId,
+            member.id,
+            'rent',
+            firstMonthPayment.description || 'Rent Payment',
+            firstMonthPayment.due_date,
+            firstMonthPayment.amount_due,
+            firstMonthPayment.covers_from || null,
+            firstMonthPayment.covers_to || null
+          ], agencyId);
+          totalPaymentsCreated++;
         }
       }
 
@@ -578,8 +540,7 @@ exports.generatePaymentSchedulesForTenancy = async (tenancyId, agencyId) => {
     return {
       success: true,
       membersProcessed: members.length,
-      paymentsCreated: totalPaymentsCreated,
-      isRollingMonthly
+      paymentsCreated: totalPaymentsCreated
     };
   } catch (error) {
     console.error('Error generating payment schedules for tenancy:', error);

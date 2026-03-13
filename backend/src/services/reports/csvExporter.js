@@ -260,7 +260,6 @@ const exportConfigs = {
         { header: 'Weekly Rent', accessor: row => formatCurrency(row.total_weekly_rent) },
         { header: 'End Date', accessor: row => formatDate(row.end_date) },
         { header: 'Days Until End', accessor: 'days_until_end' },
-        { header: 'Rolling Monthly', accessor: row => row.is_rolling_monthly ? 'Yes' : 'No' },
       ];
 
       // Add landlord column for admin viewing all

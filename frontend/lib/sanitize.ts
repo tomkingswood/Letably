@@ -2,8 +2,9 @@ import DOMPurify from 'dompurify';
 
 // Allowed HTML tags for agreement content
 const ALLOWED_TAGS = [
-  'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3',
-  'ul', 'ol', 'li', 'a', 'span', 'div'
+  'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4',
+  'ul', 'ol', 'li', 'a', 'span', 'div',
+  'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
 ];
 
 const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style'];

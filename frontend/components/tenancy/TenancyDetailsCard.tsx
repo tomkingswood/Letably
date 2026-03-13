@@ -43,11 +43,14 @@ export function TenancyDetailsCard({ tenancy, myMember, paymentOptionLabels }: T
         <div>
           <p className="text-sm text-gray-600 mb-1">End Date</p>
           <p className="font-medium text-gray-900">
-            {tenancy?.end_date && new Date(tenancy.end_date).toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric'
-            })}
+            {tenancy?.end_date
+              ? new Date(tenancy.end_date).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                })
+              : <span className="text-blue-600">No fixed end date</span>
+            }
           </p>
         </div>
 

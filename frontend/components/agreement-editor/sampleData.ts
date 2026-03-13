@@ -48,7 +48,6 @@ export interface SampleTemplateData {
   start_date: string;
   end_date: string;
   status: string;
-  is_rolling_monthly: boolean;
 
   // Primary tenant
   primary_tenant_name: string;
@@ -124,7 +123,6 @@ export const sampleRoomOnlyData: SampleTemplateData = {
   start_date: '01/07/2025',
   end_date: '30/06/2026',
   status: 'pending',
-  is_rolling_monthly: false,
 
   // Primary tenant
   primary_tenant_name: 'Mr John Smith',
@@ -213,7 +211,6 @@ export const sampleWholeHouseData: SampleTemplateData = {
   start_date: '01/07/2025',
   end_date: '30/06/2026',
   status: 'pending',
-  is_rolling_monthly: false,
 
   // Primary tenant
   primary_tenant_name: 'Ms Alice Johnson',

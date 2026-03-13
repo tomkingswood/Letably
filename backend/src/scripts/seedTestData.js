@@ -129,8 +129,8 @@ async function seedTestData() {
     }
 
     async function insertTenancy(data) {
-      const r = await client.query(`INSERT INTO tenancies (agency_id, property_id, tenancy_type, start_date, end_date, rent_amount, status, is_rolling_monthly, auto_generate_payments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-        [agencyId, data.propertyId, data.type, data.start, data.end || null, data.rent, data.status, data.rolling || false, data.autoPayments !== false]);
+      const r = await client.query(`INSERT INTO tenancies (agency_id, property_id, tenancy_type, start_date, end_date, rent_amount, status, auto_generate_payments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        [agencyId, data.propertyId, data.type, data.start, data.end || null, data.rent, data.status, data.autoPayments !== false]);
       return r.rows[0].id;
     }
 
@@ -382,13 +382,12 @@ async function seedTestData() {
         const totalRentPPPW = prop.bedroomPrices.slice(0, occupancy).reduce((s, p) => s + p, 0);
         const monthlyRent = Math.round(totalRentPPPW * 52 / 12);
 
-        let status, rolling = false, autoPayments = true;
+        let status, autoPayments = true;
         if (isPast) {
           status = 'expired';
           autoPayments = false;
         } else if (isCurrentlyActive) {
           status = 'active';
-          rolling = rand() > 0.8;
         } else {
           // Would start in the future — skip for most properties
           break;
@@ -396,8 +395,8 @@ async function seedTestData() {
 
         const tenId = await insertTenancy({
           propertyId: prop.id, type: prop.type,
-          start: startDate, end: rolling ? null : endDate,
-          rent: monthlyRent, status, rolling, autoPayments
+          start: startDate, end: endDate,
+          rent: monthlyRent, status, autoPayments
         });
 
         const memberIds = [];

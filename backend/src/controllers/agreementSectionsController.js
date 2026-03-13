@@ -340,7 +340,6 @@ exports.previewDefaultAgreement = asyncHandler(async (req, res) => {
       propertyData,
       startDate: safeTestData.startDate || '2025-09-01',
       endDate: safeTestData.endDate || '2026-08-31',
-      isRollingMonthly: safeTestData.isRollingMonthly || false,
     },
     agencyId,
     generateAgreement

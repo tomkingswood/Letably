@@ -91,17 +91,9 @@ async function seed() {
       section_key: 'tenancy_term',
       section_title: 'Term of the Tenancy',
       section_order: 3,
-      section_content: `{{#if_fixed_term}}<p>This tenancy is granted for a <strong>fixed term</strong> beginning on <strong>{{start_date}}</strong> and ending on <strong>{{end_date}}</strong>.</p>
-<p>At the end of the fixed term, if neither party serves notice, the tenancy will automatically become a periodic (rolling monthly) tenancy under the same terms and conditions.</p>
-<p>During the fixed term, the Tenant may not terminate this agreement early unless:</p>
-<ul>
-<li>A break clause has been agreed in writing between both parties</li>
-<li>The Landlord agrees in writing to an early surrender of the tenancy</li>
-<li>A suitable replacement tenant is found and approved by the Landlord/Agent</li>
-</ul>{{/if_fixed_term}}
-{{#if_rolling_monthly}}<p>This tenancy is a <strong>periodic (rolling monthly) tenancy</strong> commencing on <strong>{{start_date}}</strong>.</p>
+      section_content: `<p>This tenancy is a <strong>periodic (rolling monthly) tenancy</strong> commencing on <strong>{{start_date}}</strong>.</p>
 <p>This tenancy will continue on a month-to-month basis until terminated by either party giving at least <strong>one calendar month's notice</strong> in writing, to expire at the end of a rental period.</p>
-<p>The Landlord must give at least two months' notice to the Tenant in accordance with Section 21 of the Housing Act 1988.</p>{{/if_rolling_monthly}}`
+<p>The Landlord must give at least two months' notice to the Tenant in accordance with Section 21 of the Housing Act 1988.</p>`
     },
 
     // ── Section 4: Rent ──────────────────────────────────────────────
@@ -286,17 +278,11 @@ async function seed() {
       section_key: 'ending_tenancy',
       section_title: 'Ending the Tenancy',
       section_order: 11,
-      section_content: `{{#if_fixed_term}}<p>This tenancy will end on <strong>{{end_date}}</strong> unless:</p>
-<ul>
-<li>Both parties agree in writing to renew or extend the tenancy</li>
-<li>The tenancy becomes periodic (rolling monthly) by operation of law</li>
-</ul>
-<p>If the Tenant wishes to leave at the end of the fixed term, the Tenant must give at least <strong>one month's written notice</strong> before the end date.</p>{{/if_fixed_term}}
-{{#if_rolling_monthly}}<p>Either party may end this periodic tenancy by giving notice:</p>
+      section_content: `<p>Either party may end this periodic tenancy by giving notice:</p>
 <ul>
 <li><strong>Tenant:</strong> At least one calendar month's written notice, to expire at the end of a rental period</li>
 <li><strong>Landlord:</strong> At least two months' notice under Section 21 of the Housing Act 1988</li>
-</ul>{{/if_rolling_monthly}}
+</ul>
 <p>At the end of the tenancy, the Tenant must:</p>
 <ol>
 <li>Remove all personal belongings and any rubbish</li>
@@ -348,8 +334,6 @@ async function seed() {
   console.log('  • Simple variables: {{landlord_display_name}}, {{property_address}}, etc.');
   console.log('  • Room-only conditionals: {{#if_room_only}}...{{/if_room_only}}');
   console.log('  • Whole-house conditionals: {{#if_whole_house}}...{{/if_whole_house}}');
-  console.log('  • Fixed-term conditionals: {{#if_fixed_term}}...{{/if_fixed_term}}');
-  console.log('  • Rolling monthly conditionals: {{#if_rolling_monthly}}...{{/if_rolling_monthly}}');
   console.log('  • Individual rent conditionals: {{#if individual_rents}}...{{/if}}');
   console.log('  • Individual deposit conditionals: {{#if individual_deposits}}...{{/if}}');
   console.log('  • Utilities cap conditionals: {{#if utilities_cap}}...{{/if}}');

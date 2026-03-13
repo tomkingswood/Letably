@@ -257,7 +257,7 @@ export default function GuarantorAgreementSigningPage({ params }: PageProps) {
               <p className="text-blue-700 font-medium">Tenancy Period</p>
               <p className="text-blue-900">
                 {agreement?.tenancy_start_date && new Date(agreement.tenancy_start_date).toLocaleDateString('en-GB')} -{' '}
-                {agreement?.tenancy_end_date && new Date(agreement.tenancy_end_date).toLocaleDateString('en-GB')}
+                {agreement?.tenancy_end_date ? new Date(agreement.tenancy_end_date).toLocaleDateString('en-GB') : 'Rolling'}
               </p>
             </div>
           </div>

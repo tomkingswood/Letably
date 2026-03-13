@@ -337,3 +337,73 @@ exports.getWithTypes = asyncHandler(async (req, res) => {
 
   res.json({ documentTypes: combined });
 }, 'fetch certificates with types');
+
+// Check compliance for tenancy creation - returns missing/expired property AND agency compliance certificates
+exports.checkPropertyCompliance = asyncHandler(async (req, res) => {
+  const agencyId = req.agencyId;
+  const { propertyId } = req.params;
+  const today = new Date().toISOString().split('T')[0];
+  const issues = [];
+
+  // Check property compliance certificates
+  const propertyTypesResult = await db.query(`
+    SELECT id, display_name, has_expiry
+    FROM certificate_types
+    WHERE agency_id = $1 AND type = 'property' AND is_compliance = true AND is_active = true
+    ORDER BY display_order ASC
+  `, [agencyId], agencyId);
+
+  if (propertyTypesResult.rows.length > 0) {
+    const propertyCertsResult = await db.query(`
+      SELECT certificate_type_id, expiry_date
+      FROM certificates
+      WHERE entity_type = 'property' AND entity_id = $1 AND agency_id = $2
+    `, [propertyId, agencyId], agencyId);
+
+    const propertyCertsByType = {};
+    for (const cert of propertyCertsResult.rows) {
+      propertyCertsByType[cert.certificate_type_id] = cert;
+    }
+
+    for (const type of propertyTypesResult.rows) {
+      const cert = propertyCertsByType[type.id];
+      if (!cert) {
+        issues.push({ type_name: type.display_name, reason: 'missing', scope: 'property' });
+      } else if (type.has_expiry && cert.expiry_date && cert.expiry_date.toISOString().split('T')[0] < today) {
+        issues.push({ type_name: type.display_name, reason: 'expired', scope: 'property' });
+      }
+    }
+  }
+
+  // Check agency compliance certificates
+  const agencyTypesResult = await db.query(`
+    SELECT id, display_name, has_expiry
+    FROM certificate_types
+    WHERE agency_id = $1 AND type = 'agency' AND is_compliance = true AND is_active = true
+    ORDER BY display_order ASC
+  `, [agencyId], agencyId);
+
+  if (agencyTypesResult.rows.length > 0) {
+    const agencyCertsResult = await db.query(`
+      SELECT certificate_type_id, expiry_date
+      FROM certificates
+      WHERE entity_type = 'agency' AND entity_id = $1 AND agency_id = $2
+    `, [agencyId, agencyId], agencyId);
+
+    const agencyCertsByType = {};
+    for (const cert of agencyCertsResult.rows) {
+      agencyCertsByType[cert.certificate_type_id] = cert;
+    }
+
+    for (const type of agencyTypesResult.rows) {
+      const cert = agencyCertsByType[type.id];
+      if (!cert) {
+        issues.push({ type_name: type.display_name, reason: 'missing', scope: 'agency' });
+      } else if (type.has_expiry && cert.expiry_date && cert.expiry_date.toISOString().split('T')[0] < today) {
+        issues.push({ type_name: type.display_name, reason: 'expired', scope: 'agency' });
+      }
+    }
+  }
+
+  res.json({ compliant: issues.length === 0, issues });
+}, 'check compliance');

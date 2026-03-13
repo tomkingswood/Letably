@@ -45,11 +45,6 @@ export default function UpcomingEndingsList({
                       {tenancy.landlord_name}
                     </span>
                   )}
-                  {tenancy.is_rolling_monthly ? (
-                    <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">
-                      Rolling Monthly
-                    </span>
-                  ) : null}
                 </div>
               </div>
               <div className="text-right">

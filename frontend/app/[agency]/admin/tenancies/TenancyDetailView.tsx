@@ -1170,8 +1170,8 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
               {['approval', 'active', 'expired'].includes(tenancy.status) && (
                 <div id="payments" className="pt-6 border-t border-gray-200">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Payment Schedules</h3>
-                  {/* Auto-generate payments notice for rolling tenancies */}
-                  {!!tenancy.is_rolling_monthly && !!tenancy.auto_generate_payments && (
+                  {/* Auto-generate payments notice */}
+                  {!!tenancy.auto_generate_payments && (
                     <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-start">
                         <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1180,13 +1180,13 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
                         <div>
                           <h4 className="font-medium text-blue-800">Automatic Payment Generation Enabled</h4>
                           <p className="text-sm text-blue-700 mt-1">
-                            This is a rolling monthly tenancy with automatic payment generation enabled.
+                            Automatic payment generation is enabled.
                             New monthly rent payments will be generated automatically at <strong>1:30 AM</strong> each day
                             for the current month if one doesn&apos;t already exist.
                           </p>
                           {!tenancy.end_date && (
                             <p className="text-sm text-blue-600 mt-2">
-                              To stop automatic payments, use &quot;Edit Rolling Settings&quot; above to either disable auto-generation or set a tenancy end date.
+                              To stop automatic payments, edit the tenancy above to either disable auto-generation or set an end date.
                             </p>
                           )}
                           {tenancy.end_date && (

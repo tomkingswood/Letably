@@ -61,8 +61,6 @@ exports.getAllTenancies = asyncHandler(async (req, res) => {
   if (type === 'room_only' || type === 'whole_house') {
     conditions.push(`t.tenancy_type = $${paramIndex++}`);
     params.push(type);
-  } else if (type === 'rolling_monthly') {
-    conditions.push(`t.is_rolling_monthly = true`);
   }
 
   // Property filter
@@ -253,7 +251,6 @@ exports.createTenancy = asyncHandler(async (req, res) => {
     start_date,
     end_date,
     status = 'pending',
-    is_rolling_monthly = false,
     auto_generate_payments = true,
     members // Array of { application_id, bedroom_id (optional), rent_pppw, deposit_amount }
   } = req.body;
@@ -261,16 +258,6 @@ exports.createTenancy = asyncHandler(async (req, res) => {
   // Validation - end_date is optional for rolling monthly tenancies
   if (!property_id || !tenancy_type || !start_date || !members || members.length === 0) {
     return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  // Rolling monthly tenancies must NOT have an end_date
-  if (is_rolling_monthly && end_date) {
-    return res.status(400).json({ error: 'Rolling monthly tenancies cannot have an end date' });
-  }
-
-  // Non-rolling tenancies MUST have an end_date
-  if (!is_rolling_monthly && !end_date) {
-    return res.status(400).json({ error: 'End date is required for fixed-term tenancies' });
   }
 
   if (!['room_only', 'whole_house'].includes(tenancy_type)) {
@@ -288,8 +275,7 @@ exports.createTenancy = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Invalid start date' });
   }
 
-  // Only validate end_date for non-rolling tenancies
-  if (!is_rolling_monthly) {
+  if (end_date) {
     const endDate = new Date(end_date);
 
     if (isNaN(endDate.getTime())) {
@@ -299,6 +285,74 @@ exports.createTenancy = asyncHandler(async (req, res) => {
     if (endDate <= startDate) {
       return res.status(400).json({ error: 'End date must be after start date' });
     }
+  }
+
+  // Check compliance - property and agency certificates must be valid
+  const today = new Date().toISOString().split('T')[0];
+  const complianceIssues = [];
+
+  // Check property compliance certificates
+  const propertyComplianceTypes = await db.query(`
+    SELECT id, display_name, has_expiry
+    FROM certificate_types
+    WHERE agency_id = $1 AND type = 'property' AND is_compliance = true AND is_active = true
+  `, [agencyId], agencyId);
+
+  if (propertyComplianceTypes.rows.length > 0) {
+    const propertyCerts = await db.query(`
+      SELECT certificate_type_id, expiry_date
+      FROM certificates
+      WHERE entity_type = 'property' AND entity_id = $1 AND agency_id = $2
+    `, [property_id, agencyId], agencyId);
+
+    const propertyCertsByType = {};
+    for (const cert of propertyCerts.rows) {
+      propertyCertsByType[cert.certificate_type_id] = cert;
+    }
+
+    for (const type of propertyComplianceTypes.rows) {
+      const cert = propertyCertsByType[type.id];
+      if (!cert) {
+        complianceIssues.push(`${type.display_name} (missing - property)`);
+      } else if (type.has_expiry && cert.expiry_date && cert.expiry_date.toISOString().split('T')[0] < today) {
+        complianceIssues.push(`${type.display_name} (expired - property)`);
+      }
+    }
+  }
+
+  // Check agency compliance certificates
+  const agencyComplianceTypes = await db.query(`
+    SELECT id, display_name, has_expiry
+    FROM certificate_types
+    WHERE agency_id = $1 AND type = 'agency' AND is_compliance = true AND is_active = true
+  `, [agencyId], agencyId);
+
+  if (agencyComplianceTypes.rows.length > 0) {
+    const agencyCerts = await db.query(`
+      SELECT certificate_type_id, expiry_date
+      FROM certificates
+      WHERE entity_type = 'agency' AND entity_id = $1 AND agency_id = $2
+    `, [agencyId, agencyId], agencyId);
+
+    const agencyCertsByType = {};
+    for (const cert of agencyCerts.rows) {
+      agencyCertsByType[cert.certificate_type_id] = cert;
+    }
+
+    for (const type of agencyComplianceTypes.rows) {
+      const cert = agencyCertsByType[type.id];
+      if (!cert) {
+        complianceIssues.push(`${type.display_name} (missing - agency)`);
+      } else if (type.has_expiry && cert.expiry_date && cert.expiry_date.toISOString().split('T')[0] < today) {
+        complianceIssues.push(`${type.display_name} (expired - agency)`);
+      }
+    }
+  }
+
+  if (complianceIssues.length > 0) {
+    return res.status(400).json({
+      error: `Missing valid compliance certificates: ${complianceIssues.join(', ')}. Please upload valid certificates before creating a tenancy.`
+    });
   }
 
   // Validate all applications exist and are approved
@@ -364,8 +418,8 @@ exports.createTenancy = asyncHandler(async (req, res) => {
 
     // Insert tenancy
     const tenancyResult = await client.query(`
-      INSERT INTO tenancies (agency_id, property_id, tenancy_type, start_date, end_date, rent_amount, status, is_rolling_monthly, auto_generate_payments)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO tenancies (agency_id, property_id, tenancy_type, start_date, end_date, rent_amount, status, auto_generate_payments)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [
       agencyId,
@@ -375,7 +429,6 @@ exports.createTenancy = asyncHandler(async (req, res) => {
       end_date || null,
       totalRent,
       status,
-      is_rolling_monthly,
       auto_generate_payments
     ]);
 
@@ -383,16 +436,7 @@ exports.createTenancy = asyncHandler(async (req, res) => {
 
     // Helper function to map application payment_plan to tenancy payment_option
     const mapPaymentPlanToOption = (paymentPlan) => {
-      // Rolling monthly tenancies are forced to use monthly payment option
-      if (is_rolling_monthly) {
-        return 'monthly';
-      }
-
-      if (!paymentPlan) return null;
-      const plan = paymentPlan.toLowerCase().trim();
-      if (plan.includes('quarterly')) return 'quarterly';
-      if (plan.includes('upfront') || plan.includes('full')) return 'upfront';
-      // Default to monthly for any monthly plan or unrecognized plans
+      if (!paymentPlan) return 'monthly';
       return 'monthly';
     };
 
@@ -537,13 +581,11 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
   }
 
   // Defense-in-depth: explicit agency_id filtering
-  const tenancyResult = await db.query('SELECT id, status, start_date, end_date, is_rolling_monthly, auto_generate_payments FROM tenancies WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);
+  const tenancyResult = await db.query('SELECT id, status, start_date, end_date, auto_generate_payments FROM tenancies WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);
   const tenancy = tenancyResult.rows[0];
   if (!tenancy) {
     return res.status(404).json({ error: 'Tenancy not found' });
   }
-
-  const isRollingMonthly = tenancy.is_rolling_monthly === true;
 
   // Validate dates
   const startDate = new Date(start_date);
@@ -552,24 +594,9 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Invalid start date' });
   }
 
-  // For rolling tenancies, end_date can be null (ongoing) or set (terminating)
-  // For fixed tenancies, end_date is always required
-  let validatedEndDate = end_date;
+  let validatedEndDate = end_date || null;
 
-  if (isRollingMonthly) {
-    // Rolling tenancy: end_date can be null or a valid date (for termination)
-    if (end_date) {
-      const endDate = new Date(end_date);
-      if (isNaN(endDate.getTime())) {
-        return res.status(400).json({ error: 'Invalid end date' });
-      }
-      if (endDate <= startDate) {
-        return res.status(400).json({ error: 'End date must be after start date' });
-      }
-    }
-    validatedEndDate = end_date || null;
-  } else {
-    // Fixed tenancy: end_date is required
+  if (end_date) {
     const endDate = new Date(end_date);
     if (isNaN(endDate.getTime())) {
       return res.status(400).json({ error: 'Invalid end date' });
@@ -589,16 +616,7 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
       return res.status(400).json({ error: 'Cannot change start date after tenancy has been checked. Start date is locked once tenancy moves beyond pending status.' });
     }
 
-    // For non-rolling tenancies, lock end_date EXCEPT for active tenancies (to allow early termination)
-    if (!isRollingMonthly && tenancy.status !== 'active') {
-      const currentEndDate = tenancy.end_date ? new Date(tenancy.end_date).toISOString().split('T')[0] : null;
-      const newEndDate = validatedEndDate ? new Date(validatedEndDate).toISOString().split('T')[0] : null;
-
-      if (newEndDate !== currentEndDate) {
-        return res.status(400).json({ error: 'Cannot change end date after tenancy has been checked. Dates are locked until tenancy is active.' });
-      }
-    }
-    // For rolling tenancies and active tenancies, we allow setting end_date (for termination/early termination)
+    // For active tenancies, allow setting end_date (for termination)
   }
 
   // Enforce status workflow - status must always flow forwards
@@ -650,6 +668,46 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
   const newAutoGeneratePayments = auto_generate_payments !== undefined
     ? auto_generate_payments
     : tenancy.auto_generate_payments;
+
+  // Check tenancy compliance certificates before activating
+  if (isActivating) {
+    const tenancyComplianceTypes = await db.query(`
+      SELECT id, display_name, has_expiry
+      FROM certificate_types
+      WHERE agency_id = $1 AND type = 'tenancy' AND is_compliance = true AND is_active = true
+    `, [agencyId], agencyId);
+
+    if (tenancyComplianceTypes.rows.length > 0) {
+      const tenancyCerts = await db.query(`
+        SELECT certificate_type_id, expiry_date
+        FROM certificates
+        WHERE entity_type = 'tenancy' AND entity_id = $1 AND agency_id = $2
+      `, [id, agencyId], agencyId);
+
+      const tenancyCertsByType = {};
+      for (const cert of tenancyCerts.rows) {
+        tenancyCertsByType[cert.certificate_type_id] = cert;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const tenancyIssues = [];
+
+      for (const type of tenancyComplianceTypes.rows) {
+        const cert = tenancyCertsByType[type.id];
+        if (!cert) {
+          tenancyIssues.push(`${type.display_name} (missing)`);
+        } else if (type.has_expiry && cert.expiry_date && cert.expiry_date.toISOString().split('T')[0] < today) {
+          tenancyIssues.push(`${type.display_name} (expired)`);
+        }
+      }
+
+      if (tenancyIssues.length > 0) {
+        return res.status(400).json({
+          error: `Cannot activate tenancy — missing valid compliance documents: ${tenancyIssues.join(', ')}. Please upload the required documents before activating.`
+        });
+      }
+    }
+  }
 
   // Defense-in-depth: explicit agency_id filtering
   await db.query(`
