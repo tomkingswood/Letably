@@ -10,6 +10,7 @@ interface CertificateType {
   name: string;
   display_name: string;
   has_expiry: boolean;
+  is_compliance: boolean;
   display_order: number;
   is_active: boolean;
 }
@@ -44,6 +45,7 @@ export default function CertificateTypesSectionBase({
   const [formData, setFormData] = useState({
     name: '',
     has_expiry: true,
+    is_compliance: false,
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -91,12 +93,17 @@ export default function CertificateTypesSectionBase({
     setFormData({
       name: type.name,
       has_expiry: type.has_expiry,
+      is_compliance: type.is_compliance,
     });
     setShowForm(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this type?')) return;
+    const type = types.find(t => t.id === id);
+    const message = type?.is_compliance
+      ? 'This is marked as a legal/compliance requirement. Are you sure you want to delete it?'
+      : 'Are you sure you want to delete this type?';
+    if (!confirm(message)) return;
 
     try {
       await certificateTypes.delete(id);
@@ -113,6 +120,7 @@ export default function CertificateTypesSectionBase({
     setFormData({
       name: '',
       has_expiry: true,
+      is_compliance: false,
     });
   };
 
@@ -176,17 +184,31 @@ export default function CertificateTypesSectionBase({
                 required
               />
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id={checkboxId}
-                checked={formData.has_expiry}
-                onChange={(e) => setFormData({ ...formData, has_expiry: e.target.checked })}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <label htmlFor={checkboxId} className="text-sm text-gray-700">
-                This type has an expiry date
-              </label>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={checkboxId}
+                  checked={formData.has_expiry}
+                  onChange={(e) => setFormData({ ...formData, has_expiry: e.target.checked })}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor={checkboxId} className="text-sm text-gray-700">
+                  Has expiry date
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`${checkboxId}_compliance`}
+                  checked={formData.is_compliance}
+                  onChange={(e) => setFormData({ ...formData, is_compliance: e.target.checked })}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor={`${checkboxId}_compliance`} className="text-sm text-gray-700">
+                  Legal/compliance requirement
+                </label>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -240,6 +262,11 @@ export default function CertificateTypesSectionBase({
                     }`}>
                       {type.has_expiry ? 'Has Expiry' : 'No Expiry'}
                     </span>
+                    {type.is_compliance && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+                        Compliance
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2">

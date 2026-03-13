@@ -85,18 +85,18 @@ async function registerAgency(data) {
 
     // Seed default certificate types
     const defaultCertificateTypes = [
-      { name: 'Gas Safety', type: 'property', has_expiry: true, display_order: 1 },
-      { name: 'EPC', type: 'property', has_expiry: true, display_order: 2 },
-      { name: 'EICR', type: 'property', has_expiry: true, display_order: 3 },
-      { name: 'Deposit Protection Certificate', type: 'agency', has_expiry: true, display_order: 1 },
-      { name: 'How to Rent Guide', type: 'agency', has_expiry: false, display_order: 2 },
+      { name: 'Gas Safety', type: 'property', has_expiry: true, is_compliance: true, display_order: 1 },
+      { name: 'EPC', type: 'property', has_expiry: true, is_compliance: true, display_order: 2 },
+      { name: 'EICR', type: 'property', has_expiry: true, is_compliance: true, display_order: 3 },
+      { name: 'Deposit Protection Certificate', type: 'agency', has_expiry: true, is_compliance: true, display_order: 1 },
+      { name: 'How to Rent Guide', type: 'agency', has_expiry: false, is_compliance: true, display_order: 2 },
     ];
 
     for (const ct of defaultCertificateTypes) {
       await client.query(
-        `INSERT INTO certificate_types (agency_id, name, display_name, type, has_expiry, display_order, is_active)
-         VALUES ($1, $2, $2, $3, $4, $5, true)`,
-        [agency.id, ct.name, ct.type, ct.has_expiry, ct.display_order]
+        `INSERT INTO certificate_types (agency_id, name, display_name, type, has_expiry, is_compliance, display_order, is_active)
+         VALUES ($1, $2, $2, $3, $4, $5, $6, true)`,
+        [agency.id, ct.name, ct.type, ct.has_expiry, ct.is_compliance, ct.display_order]
       );
     }
 

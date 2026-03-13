@@ -752,6 +752,7 @@ export const certificateTypes = {
     type?: string;
     has_expiry?: boolean;
     default_validity_months?: number;
+    is_compliance?: boolean;
   }) => api.post('/certificate-types', data),
   update: (id: string | number, data: {
     name?: string;
@@ -761,6 +762,7 @@ export const certificateTypes = {
     is_active?: boolean;
     has_expiry?: boolean;
     default_validity_months?: number;
+    is_compliance?: boolean;
   }) => api.put(`/certificate-types/${id}`, data),
   delete: (id: string | number) => api.delete(`/certificate-types/${id}`),
   reorder: (order: Array<{ id: number; display_order: number }>) =>

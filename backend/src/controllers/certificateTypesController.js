@@ -51,7 +51,7 @@ exports.create = asyncHandler(async (req, res) => {
   const agencyId = req.agencyId;
   const {
     name, display_name, display_order,
-    type, has_expiry, default_validity_months
+    type, has_expiry, default_validity_months, is_compliance
   } = req.body;
 
   // Validation
@@ -75,9 +75,9 @@ exports.create = asyncHandler(async (req, res) => {
   const insertResult = await db.query(`
     INSERT INTO certificate_types (
       agency_id, name, display_name, display_order,
-      is_active, type, has_expiry, default_validity_months
+      is_active, type, has_expiry, default_validity_months, is_compliance
     )
-    VALUES ($1, $2, $3, $4, true, $5, $6, $7)
+    VALUES ($1, $2, $3, $4, true, $5, $6, $7, $8)
     RETURNING *
   `, [
     agencyId,
@@ -86,7 +86,8 @@ exports.create = asyncHandler(async (req, res) => {
     display_order || 0,
     validType,
     has_expiry !== undefined ? has_expiry : true,
-    default_validity_months || 12
+    default_validity_months || 12,
+    is_compliance || false
   ], agencyId);
 
   const newType = insertResult.rows[0];
@@ -118,7 +119,7 @@ exports.update = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const {
     name, display_name, display_order, is_active,
-    has_expiry, default_validity_months
+    has_expiry, default_validity_months, is_compliance
   } = req.body;
 
   // Check if exists
@@ -156,8 +157,9 @@ exports.update = asyncHandler(async (req, res) => {
         is_active = $4,
         has_expiry = $5,
         default_validity_months = $6,
+        is_compliance = $7,
         updated_at = CURRENT_TIMESTAMP
-    WHERE id = $7 AND agency_id = $8
+    WHERE id = $8 AND agency_id = $9
     RETURNING *
   `, [
     updatedName,
@@ -166,6 +168,7 @@ exports.update = asyncHandler(async (req, res) => {
     is_active !== undefined ? is_active : existing.is_active,
     has_expiry !== undefined ? has_expiry : existing.has_expiry,
     default_validity_months !== undefined ? default_validity_months : existing.default_validity_months,
+    is_compliance !== undefined ? is_compliance : existing.is_compliance,
     id,
     agencyId
   ], agencyId);
