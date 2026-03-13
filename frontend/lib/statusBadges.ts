@@ -143,10 +143,6 @@ const STATUS_CONFIGS: Record<StatusType, Record<string, StatusConfig>> = {
       badge: 'bg-blue-800 text-white',
       label: 'Whole House'
     },
-    rolling_monthly: {
-      badge: 'bg-blue-800 text-white',
-      label: 'Rolling Monthly'
-    },
   },
 
   payment: {
