@@ -59,6 +59,7 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
       const response = await certificatesApi.getByEntity('agency', agency.id);
       setAgencyCertificates(response.data.certificates || []);
     } catch (err: unknown) {
+      setAgencyCertificates([]);
       setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to load agency certificates') });
     }
   }, [agency?.id]);
@@ -407,18 +408,20 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
                         >
                           View
                         </a>
-                        <label className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm font-medium transition-colors cursor-pointer">
+                        <label className={`px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm font-medium transition-colors cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                           <input
                             type="file"
                             accept="application/pdf,image/*"
                             onChange={handleFileSelect(type.id, type.display_name, type.has_expiry)}
+                            disabled={isUploading}
                             className="hidden"
                           />
-                          Replace
+                          {isUploading ? 'Uploading...' : 'Replace'}
                         </label>
                         <button
                           onClick={() => handleDeleteCertificate(type.id, type.display_name)}
-                          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium transition-colors"
+                          disabled={isUploading}
+                          className={`px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           Remove
                         </button>
