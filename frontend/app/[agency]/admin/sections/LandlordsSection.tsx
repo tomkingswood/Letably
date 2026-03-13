@@ -13,7 +13,7 @@ import { AgreementEditor } from '@/components/agreement-editor';
 import { MessageAlert } from '@/components/ui/MessageAlert';
 import AgreementPreviewBanner from '@/components/admin/AgreementPreviewBanner';
 import AgreementPreviewModal from '@/components/admin/AgreementPreviewModal';
-import TestDataConfigPanel, { defaultTestDataExtended } from '@/components/admin/TestDataConfigPanel';
+import TestDataConfigPanel, { defaultTestDataExtended, buildTestDataPayload } from '@/components/admin/TestDataConfigPanel';
 import type { TestDataState } from '@/components/admin/TestDataConfigPanel';
 
 interface Landlord {
@@ -363,7 +363,7 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
     setPreviewAgreement(null);
 
     try {
-      const response = await landlordsApi.previewAgreement(itemId!, tenancyType, testData);
+      const response = await landlordsApi.previewAgreement(itemId!, tenancyType, buildTestDataPayload(testData));
       setPreviewAgreement(response.data);
     } catch (err: unknown) {
       setPreviewError(getErrorMessage(err, 'Failed to generate preview'));
@@ -980,7 +980,7 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
             onPreviewWholeHouse={() => handlePreviewAgreement('whole_house')}
           >
             {showTestDataConfig && (
-              <TestDataConfigPanel testData={testData} setTestData={setTestData} />
+              <TestDataConfigPanel testData={testData} setTestData={setTestData} showExtendedFields />
             )}
           </AgreementPreviewBanner>
 

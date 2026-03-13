@@ -175,7 +175,7 @@ export const sampleRoomOnlyData: SampleTemplateData = {
   utilities_cap: true,
   utilities_cap_amount: '450.00',
   utilities_cap_annual_amount: '450.00',
-  utilities_cap_period: 'for the period 01/07/2025 to 30/06/2026',
+  utilities_cap_period: 'for the period from the tenancy start date',
   council_tax_included: true,
 };
 
@@ -287,7 +287,7 @@ export const sampleWholeHouseData: SampleTemplateData = {
   utilities_cap: true,
   utilities_cap_amount: '900.00',
   utilities_cap_annual_amount: '900.00',
-  utilities_cap_period: 'for the period 01/07/2025 to 30/06/2026',
+  utilities_cap_period: 'for the period from the tenancy start date',
   council_tax_included: false,
 };
 

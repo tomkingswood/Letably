@@ -467,13 +467,39 @@ export interface LandlordFormData {
 }
 
 export interface AgreementTestData {
-  tenant_name?: string;
-  tenant_email?: string;
-  bedroom_name?: string;
-  rent_pppw?: number;
-  deposit_amount?: number;
-  start_date?: string;
-  end_date?: string;
+  primaryTenant?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    room?: string;
+    rent?: number;
+    deposit?: number;
+  };
+  secondTenant?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    room?: string;
+    rent?: number;
+    deposit?: number;
+  };
+  propertyData?: {
+    address_line1?: string;
+    address_line2?: string;
+    city?: string;
+    postcode?: string;
+    bedrooms?: string;
+    bathrooms?: string;
+  };
+  startDate?: string;
+  endDate?: string;
+  councilTaxIncluded?: boolean;
+  utilitiesCapEnabled?: boolean;
+  utilitiesCapAmount?: string;
 }
 
 export interface ReminderThreshold {

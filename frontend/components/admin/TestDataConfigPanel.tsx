@@ -110,6 +110,22 @@ export default function TestDataConfigPanel({ testData, setTestData, showExtende
             className={inputClass}
           />
           <input
+            type="tel"
+            value={testData.primary_tenant_phone}
+            onChange={(e) => update('primary_tenant_phone', e.target.value)}
+            placeholder="Phone"
+            className={inputClass}
+          />
+          {showExtendedFields && (
+            <input
+              type="text"
+              value={testData.primary_tenant_address || ''}
+              onChange={(e) => update('primary_tenant_address', e.target.value)}
+              placeholder="Address"
+              className={inputClass}
+            />
+          )}
+          <input
             type="text"
             value={testData.primary_tenant_room}
             onChange={(e) => update('primary_tenant_room', e.target.value)}
@@ -165,6 +181,22 @@ export default function TestDataConfigPanel({ testData, setTestData, showExtende
             className={inputClass}
           />
           <input
+            type="tel"
+            value={testData.second_tenant_phone}
+            onChange={(e) => update('second_tenant_phone', e.target.value)}
+            placeholder="Phone"
+            className={inputClass}
+          />
+          {showExtendedFields && (
+            <input
+              type="text"
+              value={testData.second_tenant_address || ''}
+              onChange={(e) => update('second_tenant_address', e.target.value)}
+              placeholder="Address"
+              className={inputClass}
+            />
+          )}
+          <input
             type="text"
             value={testData.second_tenant_room}
             onChange={(e) => update('second_tenant_room', e.target.value)}
@@ -203,6 +235,15 @@ export default function TestDataConfigPanel({ testData, setTestData, showExtende
             placeholder="Address line 1"
             className={inputClass}
           />
+          {showExtendedFields && (
+            <input
+              type="text"
+              value={testData.property_address_line2 || ''}
+              onChange={(e) => update('property_address_line2', e.target.value)}
+              placeholder="Address line 2"
+              className={inputClass}
+            />
+          )}
           <div className="grid grid-cols-2 gap-2">
             <input
               type="text"
@@ -219,6 +260,28 @@ export default function TestDataConfigPanel({ testData, setTestData, showExtende
               className={inputClass}
             />
           </div>
+          {showExtendedFields && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-blue-700">Bedrooms</label>
+                <input
+                  type="number"
+                  value={testData.property_bedrooms || ''}
+                  onChange={(e) => update('property_bedrooms', e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-blue-700">Bathrooms</label>
+                <input
+                  type="number"
+                  value={testData.property_bathrooms || ''}
+                  onChange={(e) => update('property_bathrooms', e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-blue-700">Start date</label>
@@ -230,6 +293,30 @@ export default function TestDataConfigPanel({ testData, setTestData, showExtende
               />
             </div>
           </div>
+          {showExtendedFields && (
+            <div className="space-y-2 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={testData.utilities_cap_enabled ?? true}
+                  onChange={(e) => update('utilities_cap_enabled', e.target.checked)}
+                  className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-blue-900">Utilities cap enabled</span>
+              </label>
+              {testData.utilities_cap_enabled && (
+                <div>
+                  <label className="text-xs text-blue-700">Utilities cap (&pound;/week)</label>
+                  <input
+                    type="number"
+                    value={testData.utilities_cap_amount || ''}
+                    onChange={(e) => update('utilities_cap_amount', e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              )}
+            </div>
+          )}
           <div className="space-y-2 pt-2">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -247,32 +334,46 @@ export default function TestDataConfigPanel({ testData, setTestData, showExtende
   );
 }
 
+function parseNumeric(value: string, fallback: number): number {
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? fallback : parsed;
+}
+
 /** Build the test data payload for the preview API call */
 export function buildTestDataPayload(testData: TestDataState) {
   return {
     primaryTenant: {
       firstName: testData.primary_tenant_first_name,
       lastName: testData.primary_tenant_last_name,
+      email: testData.primary_tenant_email,
       phone: testData.primary_tenant_phone,
+      address: testData.primary_tenant_address,
       room: testData.primary_tenant_room,
-      rent: parseFloat(testData.primary_tenant_rent) || 125,
-      deposit: parseFloat(testData.primary_tenant_deposit) || 500,
+      rent: parseNumeric(testData.primary_tenant_rent, 125),
+      deposit: parseNumeric(testData.primary_tenant_deposit, 500),
     },
     secondTenant: {
       firstName: testData.second_tenant_first_name,
       lastName: testData.second_tenant_last_name,
+      email: testData.second_tenant_email,
       phone: testData.second_tenant_phone,
+      address: testData.second_tenant_address,
       room: testData.second_tenant_room,
-      rent: parseFloat(testData.second_tenant_rent) || 115,
-      deposit: parseFloat(testData.second_tenant_deposit) || 450,
+      rent: parseNumeric(testData.second_tenant_rent, 115),
+      deposit: parseNumeric(testData.second_tenant_deposit, 450),
     },
     propertyData: {
       address_line1: testData.property_address_line1,
+      address_line2: testData.property_address_line2,
       city: testData.property_city,
       postcode: testData.property_postcode,
+      bedrooms: testData.property_bedrooms,
+      bathrooms: testData.property_bathrooms,
     },
     startDate: testData.start_date,
     endDate: testData.end_date,
     councilTaxIncluded: testData.council_tax_included,
+    utilitiesCapEnabled: testData.utilities_cap_enabled,
+    utilitiesCapAmount: testData.utilities_cap_amount,
   };
 }

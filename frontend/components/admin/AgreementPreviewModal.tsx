@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useCallback } from 'react';
 import type { Agreement } from '@/lib/types';
 import { formatTenancyPeriod } from '@/lib/dateUtils';
 import { MessageAlert } from '@/components/ui/MessageAlert';
@@ -24,9 +25,22 @@ export default function AgreementPreviewModal({
   warningTitle = 'Preview Mode — Dummy Data',
   warningText = 'This is a preview using sample data. Actual agreements will use real tenant and property information.',
 }: AgreementPreviewModalProps) {
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [handleEscape]);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div role="dialog" aria-modal="true" aria-label="Agreement Preview" className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="bg-primary text-white px-6 py-4 flex items-center justify-between">
           <div>
             <h3 className="text-2xl font-bold">Agreement Preview</h3>

@@ -29,6 +29,8 @@ export default function AgreementPreviewBanner({
         <div className="flex gap-3 flex-wrap">
           <button
             onClick={onToggleConfig}
+            aria-expanded={showTestDataConfig}
+            aria-controls="test-data-config-panel"
             className={`px-4 py-2 rounded transition-colors flex items-center gap-2 ${
               showTestDataConfig
                 ? 'bg-blue-700 text-white'
@@ -64,7 +66,9 @@ export default function AgreementPreviewBanner({
         </div>
       </div>
 
-      {children}
+      <div id="test-data-config-panel">
+        {children}
+      </div>
     </div>
   );
 }
