@@ -393,9 +393,24 @@ async function seedTestData() {
           break;
         }
 
+        // RRA 2025: all tenancies are periodic (rolling monthly).
+        // Active tenancies mostly have no end date. ~20% have an end date
+        // representing an agreed termination (notice served).
+        // Expired tenancies keep their end date (they ended in the past).
+        let tenancyEndDate = endDate;
+        if (status === 'active') {
+          if (rand() > 0.2) {
+            // ~80% of active tenancies: no end date (rolling periodic)
+            tenancyEndDate = null;
+          } else {
+            // ~20%: notice served, termination date agreed in near future
+            tenancyEndDate = d(Y, M + randInt(1, 3), 1);
+          }
+        }
+
         const tenId = await insertTenancy({
           propertyId: prop.id, type: prop.type,
-          start: startDate, end: endDate,
+          start: startDate, end: tenancyEndDate,
           rent: monthlyRent, status, autoPayments
         });
 
@@ -423,10 +438,11 @@ async function seedTestData() {
           memberTenants.push({ ...tenant, memId, rentPPPW, deposit });
         }
 
-        const tenancyInfo = { id: tenId, status, start: startDate, end: endDate, memberIds, memberTenants, propertyIdx: pi, monthlyRent };
+        const tenancyInfo = { id: tenId, status, start: startDate, end: tenancyEndDate, memberIds, memberTenants, propertyIdx: pi, monthlyRent };
 
         // --- Payment schedules ---
-        const monthsAgo = monthsBetween(endDate, todayStr);
+        // For expired tenancies, use endDate (always set) to determine recency
+        const monthsAgo = endDate ? monthsBetween(endDate, todayStr) : 0;
 
         if (status === 'active') {
           // Active: deposit (paid) + full monthly rent history + 1 future month
@@ -488,7 +504,7 @@ async function seedTestData() {
 
     const penTen = await insertTenancy({
       propertyId: pendingProp.id, type: pendingProp.type,
-      start: d(Y, M + 2, 1), end: d(Y + 1, M + 2, 1),
+      start: d(Y, M + 2, 1), end: null,
       rent: 500, status: 'pending'
     });
     const penTenant = nextTenant();
@@ -502,7 +518,7 @@ async function seedTestData() {
 
     const awTen = await insertTenancy({
       propertyId: awaitProp.id, type: awaitProp.type,
-      start: d(Y, M + 1, 1), end: d(Y + 1, M + 1, 1),
+      start: d(Y, M + 1, 1), end: null,
       rent: 450, status: 'awaiting_signatures'
     });
     for (let ai = 0; ai < Math.min(2, awaitProp.bedroomIds.length); ai++) {
