@@ -247,20 +247,12 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
             <div key={section.id} className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2">
                     <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded">
                       #{index + 1}
                     </span>
                     <h3 className="font-semibold text-gray-900">{section.section_title}</h3>
-                    {!section.landlord_id && (
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                        Default
-                      </span>
-                    )}
                   </div>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-3">
-                    {section.section_content}
-                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button
