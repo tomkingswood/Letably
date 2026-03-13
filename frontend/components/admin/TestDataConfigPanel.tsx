@@ -371,9 +371,9 @@ export function buildTestDataPayload(testData: TestDataState) {
       bathrooms: testData.property_bathrooms,
     },
     startDate: testData.start_date,
-    endDate: testData.end_date,
+    endDate: testData.end_date || undefined,
     councilTaxIncluded: testData.council_tax_included,
-    utilitiesCapEnabled: testData.utilities_cap_enabled,
+    utilitiesCapEnabled: testData.utilities_cap_enabled ?? true,
     utilitiesCapAmount: testData.utilities_cap_amount,
   };
 }
