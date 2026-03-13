@@ -447,13 +447,17 @@ async function seedTestData() {
         if (status === 'active') {
           // Active: deposit (paid) + full monthly rent history + 1 future month
           const monthsSinceStart = monthsBetween(startDate, todayStr);
+          // Cap rent periods at tenancyEndDate if notice has been served
+          const maxRentMonths = tenancyEndDate
+            ? Math.min(monthsSinceStart + 1, monthsBetween(startDate, tenancyEndDate))
+            : monthsSinceStart + 1;
           for (const mt of memberTenants) {
             const monthlyAmt = Math.round(mt.rentPPPW * 52 / 12);
             // Deposit
             const depSid = await insertSchedule({ tenancyId: tenId, memberId: mt.memId, type: 'deposit', desc: `Deposit - ${mt.firstName} ${mt.lastName}`, due: startDate, amount: mt.deposit, status: 'paid', schedType: 'manual' });
             await insertPayment(depSid, mt.deposit, startDate, `DEP-${mt.lastName.substring(0, 4).toUpperCase()}`);
             // Monthly rent
-            for (let mo = 0; mo <= monthsSinceStart + 1; mo++) {
+            for (let mo = 0; mo <= maxRentMonths; mo++) {
               const dueDay = pick([1, 1, 1, 5, 10, 15, 20]);
               const dueDate = d(cursorYear, cursorMonth + mo, dueDay);
               const coversFrom = d(cursorYear, cursorMonth + mo, 1);

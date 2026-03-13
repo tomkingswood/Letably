@@ -73,30 +73,22 @@ async function getPropertySummary(landlordId, agencyId) {
 
   qb.select([
     'COUNT(DISTINCT p.id) as total_properties',
+    'COUNT(b.id) as total_rooms',
   ])
-    .from('properties', 'p');
+    .from('properties', 'p')
+    .leftJoin('bedrooms', 'b', 'b.property_id = p.id');
 
   qb.whereAgency(agencyId);
 
   if (landlordId) {
     qb.where('p.landlord_id = ?', landlordId);
-    // Subquery for bedrooms count filtered by landlord and agency
-    qb.select([
-      `(SELECT COUNT(*) FROM bedrooms b INNER JOIN properties pp ON b.property_id = pp.id WHERE pp.landlord_id = ? AND pp.agency_id = ?) as total_rooms`,
-    ]);
-    const { sql, params } = qb.build();
-    // Need to add landlordId and agencyId params for subquery
-    const result = await db.query(sql, [...params, landlordId, agencyId], agencyId);
-    return result.rows[0];
   } else {
-    qb.select([
-      `(SELECT COUNT(*) FROM bedrooms b INNER JOIN properties pp ON b.property_id = pp.id WHERE pp.agency_id = ?) as total_rooms`,
-      'COUNT(DISTINCT p.landlord_id) as total_landlords',
-    ]);
-    const { sql, params } = qb.build();
-    const result = await db.query(sql, [...params, agencyId], agencyId);
-    return result.rows[0];
+    qb.select(['COUNT(DISTINCT p.landlord_id) as total_landlords']);
   }
+
+  const { sql, params } = qb.build();
+  const result = await db.query(sql, params, agencyId);
+  return result.rows[0];
 }
 
 /**
