@@ -18,7 +18,7 @@ const {
 
 const { buildSigningNotificationEmail } = require('../utils/tenancyEmailBuilder');
 const { buildAgencyUrl } = require('../utils/urlBuilder');
-const { validateComplianceCertificates } = require('../validators/complianceValidator');
+const { validateComplianceCertificates, validateTenancyComplianceCertificates } = require('../validators/complianceValidator');
 const { getAgencyBranding } = require('../services/brandingService');
 
 /**
@@ -375,18 +375,11 @@ exports.createTenancy = asyncHandler(async (req, res) => {
 
     const tenancyId = tenancyResult.rows[0].id;
 
-    // Helper function to map application payment_plan to tenancy payment_option
-    const mapPaymentPlanToOption = (paymentPlan) => {
-      if (!paymentPlan) return 'monthly';
-      return 'monthly';
-    };
-
     // Insert tenancy members with all data copied from applications (snapshot for decoupling)
     for (const member of members) {
       // Fetch tenant info and guarantor data from application
       const appDataResult = await client.query(`
         SELECT first_name, surname, user_id, title, current_address, application_type,
-               COALESCE(form_data->>'payment_plan', payment_plan) as payment_plan,
                guarantor_required,
                COALESCE(form_data->>'guarantor_name', guarantor_name) as guarantor_name,
                COALESCE(form_data->>'guarantor_dob', guarantor_dob::text) as guarantor_dob,
@@ -402,7 +395,7 @@ exports.createTenancy = asyncHandler(async (req, res) => {
 
       // Map application payment_plan to payment_option and pre-populate as default
       // Tenant can still change this when signing their agreement
-      const defaultPaymentOption = mapPaymentPlanToOption(appData.payment_plan);
+      const defaultPaymentOption = 'monthly';
 
       await client.query(`
         INSERT INTO tenancy_members (
@@ -612,41 +605,11 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
 
   // Check tenancy compliance certificates before activating
   if (isActivating) {
-    const tenancyComplianceTypes = await db.query(`
-      SELECT id, display_name, has_expiry
-      FROM certificate_types
-      WHERE agency_id = $1 AND type = 'tenancy' AND is_compliance = true AND is_active = true
-    `, [agencyId], agencyId);
-
-    if (tenancyComplianceTypes.rows.length > 0) {
-      const tenancyCerts = await db.query(`
-        SELECT certificate_type_id, expiry_date
-        FROM certificates
-        WHERE entity_type = 'tenancy' AND entity_id = $1 AND agency_id = $2
-      `, [id, agencyId], agencyId);
-
-      const tenancyCertsByType = {};
-      for (const cert of tenancyCerts.rows) {
-        tenancyCertsByType[cert.certificate_type_id] = cert;
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-      const tenancyIssues = [];
-
-      for (const type of tenancyComplianceTypes.rows) {
-        const cert = tenancyCertsByType[type.id];
-        if (!cert) {
-          tenancyIssues.push(`${type.display_name} (missing)`);
-        } else if (type.has_expiry && cert.expiry_date && cert.expiry_date.toISOString().split('T')[0] < today) {
-          tenancyIssues.push(`${type.display_name} (expired)`);
-        }
-      }
-
-      if (tenancyIssues.length > 0) {
-        return res.status(400).json({
-          error: `Cannot activate tenancy — missing valid compliance documents: ${tenancyIssues.join(', ')}. Please upload the required documents before activating.`
-        });
-      }
+    const tenancyIssues = await validateTenancyComplianceCertificates(db, agencyId, id);
+    if (tenancyIssues.length > 0) {
+      return res.status(400).json({
+        error: `Cannot activate tenancy — missing valid compliance documents: ${tenancyIssues.join(', ')}. Please upload the required documents before activating.`
+      });
     }
   }
 

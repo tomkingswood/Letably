@@ -521,7 +521,7 @@ export const tenancies = {
     property_id: number;
     tenancy_type: 'room_only' | 'whole_house';
     start_date: string;
-    end_date: string;
+    end_date?: string;
     status?: string;
     auto_generate_payments?: boolean;
     members: Array<{

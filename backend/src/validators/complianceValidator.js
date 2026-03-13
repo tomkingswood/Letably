@@ -10,9 +10,10 @@ async function validateComplianceCertificates(db, agencyId, propertyId) {
 
   if (propertyComplianceTypes.rows.length > 0) {
     const propertyCerts = await db.query(`
-      SELECT certificate_type_id, expiry_date
+      SELECT DISTINCT ON (certificate_type_id) certificate_type_id, expiry_date
       FROM certificates
       WHERE entity_type = 'property' AND entity_id = $1 AND agency_id = $2
+      ORDER BY certificate_type_id, expiry_date DESC NULLS LAST, created_at DESC
     `, [propertyId, agencyId], agencyId);
 
     const propertyCertsByType = {};
@@ -38,9 +39,10 @@ async function validateComplianceCertificates(db, agencyId, propertyId) {
 
   if (agencyComplianceTypes.rows.length > 0) {
     const agencyCerts = await db.query(`
-      SELECT certificate_type_id, expiry_date
+      SELECT DISTINCT ON (certificate_type_id) certificate_type_id, expiry_date
       FROM certificates
       WHERE entity_type = 'agency' AND entity_id = $1 AND agency_id = $2
+      ORDER BY certificate_type_id, expiry_date DESC NULLS LAST, created_at DESC
     `, [agencyId, agencyId], agencyId);
 
     const agencyCertsByType = {};
@@ -61,4 +63,40 @@ async function validateComplianceCertificates(db, agencyId, propertyId) {
   return issues;
 }
 
-module.exports = { validateComplianceCertificates };
+async function validateTenancyComplianceCertificates(db, agencyId, tenancyId) {
+  const today = new Date().toISOString().split('T')[0];
+  const issues = [];
+
+  const tenancyComplianceTypes = await db.query(`
+    SELECT id, display_name, has_expiry
+    FROM certificate_types
+    WHERE agency_id = $1 AND type = 'tenancy' AND is_compliance = true AND is_active = true
+  `, [agencyId], agencyId);
+
+  if (tenancyComplianceTypes.rows.length > 0) {
+    const tenancyCerts = await db.query(`
+      SELECT DISTINCT ON (certificate_type_id) certificate_type_id, expiry_date
+      FROM certificates
+      WHERE entity_type = 'tenancy' AND entity_id = $1 AND agency_id = $2
+      ORDER BY certificate_type_id, expiry_date DESC NULLS LAST, created_at DESC
+    `, [tenancyId, agencyId], agencyId);
+
+    const tenancyCertsByType = {};
+    for (const cert of tenancyCerts.rows) {
+      tenancyCertsByType[cert.certificate_type_id] = cert;
+    }
+
+    for (const type of tenancyComplianceTypes.rows) {
+      const cert = tenancyCertsByType[type.id];
+      if (!cert) {
+        issues.push(`${type.display_name} (missing)`);
+      } else if (type.has_expiry && cert.expiry_date && cert.expiry_date.toISOString().split('T')[0] < today) {
+        issues.push(`${type.display_name} (expired)`);
+      }
+    }
+  }
+
+  return issues;
+}
+
+module.exports = { validateComplianceCertificates, validateTenancyComplianceCertificates };

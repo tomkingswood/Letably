@@ -463,8 +463,8 @@ exports.generatePaymentSchedulesForTenancy = async (tenancyId, agencyId) => {
     const membersResult = await db.query(`
       SELECT id, rent_pppw, payment_option, deposit_amount
       FROM tenancy_members
-      WHERE tenancy_id = $1
-    `, [tenancyId], agencyId);
+      WHERE tenancy_id = $1 AND agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
 
     const members = membersResult.rows;
 

@@ -249,8 +249,8 @@ exports.generateRollingMonthlyPayments = async (agencyId) => {
       const membersResult = await db.query(`
         SELECT id, rent_pppw, payment_option
         FROM tenancy_members
-        WHERE tenancy_id = $1
-      `, [tenancy.id], agencyId);
+        WHERE tenancy_id = $1 AND agency_id = $2
+      `, [tenancy.id, agencyId], agencyId);
 
       const members = membersResult.rows;
 

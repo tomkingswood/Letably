@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { tenancies as tenanciesApi, bedrooms as bedroomsApi, properties as propertiesApi, holdingDeposits, certificates as certificatesApi } from '@/lib/api';
@@ -53,6 +53,9 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
   // Compliance state
   const [complianceIssues, setComplianceIssues] = useState<{ type_name: string; reason: string; scope?: string }[]>([]);
   const [checkingCompliance, setCheckingCompliance] = useState(false);
+
+  // Stale async guard
+  const propertySelectRef = useRef(0);
 
   // Search/filter state
   const [propertySearch, setPropertySearch] = useState('');
@@ -112,7 +115,7 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
               }
             } catch {
               setPropertyRooms([]);
-              setComplianceIssues([{ type_name: 'CHECK_FAILED', reason: 'Unable to verify compliance status. Please try again.' }]);
+              setComplianceIssues([{ type_name: 'CHECK_FAILED', reason: 'Unable to verify compliance status. Please try again.', scope: 'system' }]);
             } finally {
               setCheckingCompliance(false);
             }
@@ -130,6 +133,7 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
   }, [loading, preSelectedApplicationId, approvedApplicants, properties]);
 
   const handlePropertySelect = async (propertyId: number) => {
+    const requestId = ++propertySelectRef.current;
     setSelectedPropertyId(propertyId);
     const property = properties.find(p => p.id === propertyId);
     setSelectedProperty(property || null);
@@ -143,6 +147,8 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
         certificatesApi.checkPropertyCompliance(propertyId),
       ]);
 
+      if (requestId !== propertySelectRef.current) return;
+
       setPropertyRooms(bedroomsRes.data.bedrooms || []);
 
       const issues = complianceRes.data.issues || [];
@@ -153,10 +159,12 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
       }
       // If issues exist, stay on property step — warning will show
     } catch (err: unknown) {
+      if (requestId !== propertySelectRef.current) return;
       console.error('Error during property selection:', err);
       setPropertyRooms([]);
-      setComplianceIssues([{ type_name: 'CHECK_FAILED', reason: 'Unable to verify compliance status. Please try again.' }]);
+      setComplianceIssues([{ type_name: 'CHECK_FAILED', reason: 'Unable to verify compliance status. Please try again.', scope: 'system' }]);
     } finally {
+      if (requestId !== propertySelectRef.current) return;
       setCheckingCompliance(false);
     }
   };
@@ -270,7 +278,7 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
         property_id: selectedPropertyId,
         tenancy_type: tenancyType,
         start_date: startDate,
-        end_date: endDate,
+        end_date: endDate || undefined,
         status: 'pending',
         auto_generate_payments: autoGeneratePayments,
         members: memberForms.map(form => ({
@@ -480,6 +488,15 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
                           <li key={idx}>
                             <strong>{issue.type_name}</strong> — {issue.reason === 'missing' ? 'not uploaded' : 'expired'}
                           </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {complianceIssues.some(i => i.scope === 'system') && (
+                    <div className="mb-2">
+                      <ul className="list-disc list-inside text-sm text-red-700 space-y-1 ml-2">
+                        {complianceIssues.filter(i => i.scope === 'system').map((issue, idx) => (
+                          <li key={idx}>{issue.type_name}: {issue.reason}</li>
                         ))}
                       </ul>
                     </div>

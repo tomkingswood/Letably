@@ -589,7 +589,7 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
 
         {/* Actions */}
         <div className="flex gap-3">
-          <Button type="submit" disabled={submitting || complianceIssues.length > 0}>
+          <Button type="submit" disabled={submitting || checkingCompliance || complianceIssues.length > 0}>
             {submitting ? 'Creating...' : 'Create Migration Tenancy'}
           </Button>
           <Button type="button" variant="outline" onClick={onBack} disabled={submitting}>
