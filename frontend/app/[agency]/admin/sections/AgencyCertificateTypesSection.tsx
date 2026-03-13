@@ -27,7 +27,7 @@ interface Certificate {
 export default function AgencyCertificateTypesSection(_props: SectionProps) {
   const { agency } = useAgency();
   const [types, setTypes] = useState<CertificateType[]>([]);
-  const [agencyCertificates, setAgencyCertificates] = useState<Certificate[]>([]);
+  const [agencyCertificates, setAgencyCertificates] = useState<Certificate[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -332,7 +332,7 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
       ) : (
         <div className="space-y-4">
           {types.map(type => {
-            const existingCert = agencyCertificates.find(c => c.certificate_type_id === type.id);
+            const existingCert = agencyCertificates?.find(c => c.certificate_type_id === type.id);
             const isUploading = uploadingCertificates[type.id];
 
             return (
@@ -373,7 +373,9 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
 
                 {/* Document Upload Area */}
                 <div className="border-t pt-4">
-                  {existingCert ? (
+                  {agencyCertificates === null ? (
+                    <span className="text-sm text-gray-400">Loading documents...</span>
+                  ) : existingCert ? (
                     <div className="flex items-center justify-between flex-wrap gap-3">
                       <div className="flex items-center gap-2 text-sm text-gray-700">
                         <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -387,7 +389,7 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
                             type="date"
                             value={existingCert.expiry_date ? existingCert.expiry_date.split('T')[0] : ''}
                             onChange={(e) => {
-                              setAgencyCertificates(prev => prev.map(c =>
+                              setAgencyCertificates(prev => (prev || []).map(c =>
                                 c.certificate_type_id === type.id
                                   ? { ...c, expiry_date: e.target.value }
                                   : c
