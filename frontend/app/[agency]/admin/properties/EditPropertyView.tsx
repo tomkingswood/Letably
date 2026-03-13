@@ -81,6 +81,8 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
   const [certificateTypes, setCertificateTypes] = useState<any[]>([]);
   const [propertyCertificates, setPropertyCertificates] = useState<any[]>([]);
   const [uploadingCertificates, setUploadingCertificates] = useState<{ [typeId: number]: boolean }>({});
+  const [pendingCertUpload, setPendingCertUpload] = useState<{ typeId: number; typeName: string; file: File } | null>(null);
+  const [certUploadExpiryDate, setCertUploadExpiryDate] = useState('');
 
   // Image viewer state
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -431,7 +433,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
   };
 
   // Dynamic Certificate Upload/Delete Handlers
-  const handleCertificateUpload = (typeId: number, typeName: string) => async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCertificateFileSelect = (typeId: number, typeName: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -441,20 +443,40 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
       return;
     }
 
-    setUploadingCertificates({ ...uploadingCertificates, [typeId]: true });
+    const certType = certificateTypes.find((ct: any) => ct.id === typeId);
+    if (certType?.has_expiry) {
+      setPendingCertUpload({ typeId, typeName, file });
+      setCertUploadExpiryDate('');
+    } else {
+      doCertificateUpload(typeId, typeName, file, null);
+    }
+    e.target.value = '';
+  };
+
+  const handleConfirmCertUpload = () => {
+    if (!pendingCertUpload || !certUploadExpiryDate) return;
+    doCertificateUpload(pendingCertUpload.typeId, pendingCertUpload.typeName, pendingCertUpload.file, certUploadExpiryDate);
+    setPendingCertUpload(null);
+    setCertUploadExpiryDate('');
+  };
+
+  const doCertificateUpload = async (typeId: number, typeName: string, file: File, expiryDate: string | null) => {
+    setUploadingCertificates(prev => ({ ...prev, [typeId]: true }));
     setError('');
 
     try {
       const formData = new FormData();
       formData.append('certificate', file);
+      if (expiryDate) {
+        formData.append('expiry_date', expiryDate);
+      }
       await certificatesApi.upload('property', id, typeId, formData);
       setSuccess(`${typeName} uploaded successfully!`);
       await fetchPropertyCertificates();
     } catch (err: unknown) {
       setError(getErrorMessage(err, `Failed to upload ${typeName}`));
     } finally {
-      setUploadingCertificates({ ...uploadingCertificates, [typeId]: false });
-      e.target.value = '';
+      setUploadingCertificates(prev => ({ ...prev, [typeId]: false }));
     }
   };
 
@@ -475,7 +497,8 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     try {
       await certificatesApi.updateExpiry('property', id, typeId, expiryDate || null);
     } catch (err: unknown) {
-      console.error('Failed to update expiry date:', err);
+      setError(getErrorMessage(err, 'Failed to update expiry date'));
+      await fetchPropertyCertificates();
     }
   };
 
@@ -836,6 +859,42 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
           Upload and manage property certificates. These will be visible to tenants of this property.
         </p>
 
+        {/* Expiry Date Prompt Modal */}
+        {pendingCertUpload && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-2">Expiry Date Required</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Please enter the expiry date for <strong>{pendingCertUpload.typeName}</strong>.
+              </p>
+              <input
+                type="date"
+                value={certUploadExpiryDate}
+                onChange={(e) => setCertUploadExpiryDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent mb-4"
+                autoFocus
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setPendingCertUpload(null); setCertUploadExpiryDate(''); }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCertUpload}
+                  disabled={!certUploadExpiryDate}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium disabled:opacity-50"
+                >
+                  Upload
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-6">
           {certificateTypes.length === 0 ? (
             <p className="text-gray-500 text-center py-4">
@@ -876,7 +935,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
                         <input
                           type="file"
                           accept="application/pdf"
-                          onChange={handleCertificateUpload(certType.id, certType.display_name)}
+                          onChange={handleCertificateFileSelect(certType.id, certType.display_name)}
                           disabled={isUploading}
                           className="hidden"
                         />

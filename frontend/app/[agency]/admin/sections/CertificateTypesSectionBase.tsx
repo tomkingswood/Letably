@@ -9,7 +9,6 @@ interface CertificateType {
   id: number;
   name: string;
   display_name: string;
-  default_validity_months: number;
   has_expiry: boolean;
   display_order: number;
   is_active: boolean;
@@ -44,7 +43,6 @@ export default function CertificateTypesSectionBase({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    default_validity_months: 12,
     has_expiry: true,
   });
   const [saving, setSaving] = useState(false);
@@ -53,11 +51,7 @@ export default function CertificateTypesSectionBase({
   const fetchTypes = useCallback(async () => {
     try {
       const response = await certificateTypes.getAll(apiType);
-      const data = (response.data.certificateTypes || []).map((t: CertificateType) => ({
-        ...t,
-        default_validity_months: Number.isFinite(Number(t.default_validity_months)) ? Number(t.default_validity_months) : 12,
-      }));
-      setTypes(data);
+      setTypes(response.data.certificateTypes || []);
     } catch (err: unknown) {
       setMessage({ type: 'error', text: getErrorMessage(err, `Failed to load ${title.toLowerCase()}`) });
     } finally {
@@ -96,7 +90,6 @@ export default function CertificateTypesSectionBase({
     setEditingId(type.id);
     setFormData({
       name: type.name,
-      default_validity_months: type.default_validity_months || 12,
       has_expiry: type.has_expiry,
     });
     setShowForm(true);
@@ -119,7 +112,6 @@ export default function CertificateTypesSectionBase({
     setEditingId(null);
     setFormData({
       name: '',
-      default_validity_months: 12,
       has_expiry: true,
     });
   };
@@ -173,28 +165,16 @@ export default function CertificateTypesSectionBase({
             {editingId ? 'Edit Type' : 'Add New Type'}
           </h3>
           <form onSubmit={handleSave} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder={placeholder}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Default validity (months)</label>
-                <input
-                  type="number"
-                  value={formData.default_validity_months}
-                  onChange={(e) => setFormData({ ...formData, default_validity_months: parseInt(e.target.value) || 12 })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  min={1}
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder={placeholder}
+                required
+              />
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -255,9 +235,6 @@ export default function CertificateTypesSectionBase({
                     <h3 className="font-semibold text-gray-900">{type.display_name}</h3>
                   </div>
                   <div className="flex items-center flex-wrap gap-2 text-xs">
-                    <span className="text-gray-500">
-                      Valid for {type.default_validity_months} months
-                    </span>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${
                       type.has_expiry ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
                     }`}>

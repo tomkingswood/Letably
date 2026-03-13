@@ -83,6 +83,32 @@ async function registerAgency(data) {
       );
     }
 
+    // Seed default certificate types
+    const defaultCertificateTypes = [
+      { name: 'Gas Safety', type: 'property', has_expiry: true, display_order: 1 },
+      { name: 'EPC', type: 'property', has_expiry: true, display_order: 2 },
+      { name: 'EICR', type: 'property', has_expiry: true, display_order: 3 },
+      { name: 'Deposit Protection Certificate', type: 'agency', has_expiry: true, display_order: 1 },
+      { name: 'How to Rent Guide', type: 'agency', has_expiry: false, display_order: 2 },
+    ];
+
+    for (const ct of defaultCertificateTypes) {
+      await client.query(
+        `INSERT INTO certificate_types (agency_id, name, display_name, type, has_expiry, display_order, is_active)
+         VALUES ($1, $2, $2, $3, $4, $5, true)`,
+        [agency.id, ct.name, ct.type, ct.has_expiry, ct.display_order]
+      );
+    }
+
+    // Create default reminder thresholds for property certificate types
+    for (const ct of defaultCertificateTypes.filter(c => c.type === 'property')) {
+      await client.query(
+        `INSERT INTO reminder_thresholds (agency_id, certificate_type, display_name, critical_days, medium_days, low_days, enabled, display_order)
+         VALUES ($1, $2, $2, 3, 7, 30, true, $3)`,
+        [agency.id, ct.name, ct.display_order]
+      );
+    }
+
     // Hash password
     const passwordHash = await bcrypt.hash(admin_password, 10);
 
