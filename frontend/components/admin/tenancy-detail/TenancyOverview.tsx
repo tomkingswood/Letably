@@ -28,7 +28,7 @@ export interface StatusHandlers {
 
 export interface LifecycleHandlers {
   onDelete: () => void;
-  onOpenCreateRollingModal: () => void;
+  onOpenCreateSuccessorModal: () => void;
 }
 
 interface TenancyOverviewProps {
@@ -64,7 +64,7 @@ export function TenancyOverview({
   },
   lifecycleHandlers: {
     onDelete,
-    onOpenCreateRollingModal,
+    onOpenCreateSuccessorModal,
   },
 }: TenancyOverviewProps) {
   return (
@@ -266,7 +266,7 @@ export function TenancyOverview({
             {/* Create Successor Tenancy - for active tenancies */}
             {tenancy.status === 'active' && (
               <button
-                onClick={onOpenCreateRollingModal}
+                onClick={onOpenCreateSuccessorModal}
                 className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

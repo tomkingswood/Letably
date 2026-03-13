@@ -121,7 +121,8 @@ async function paymentExistsForMonth(tenancyId, memberId, year, month, agencyId)
       AND payment_type = 'rent'
       AND due_date >= $3
       AND due_date <= $4
-  `, [tenancyId, memberId, formatDate(monthStart), formatDate(monthEnd)], agencyId);
+      AND agency_id = $5
+  `, [tenancyId, memberId, formatDate(monthStart), formatDate(monthEnd), agencyId], agencyId);
 
   return result.rows.length > 0;
 }
@@ -177,7 +178,8 @@ async function isMonthCoveredByFirstPayment(tenancyId, memberId, year, month, te
       AND tenancy_member_id = $2
       AND payment_type = 'rent'
       AND due_date = $3
-  `, [tenancyId, memberId, formatDate(firstPaymentDueDate)], agencyId);
+      AND agency_id = $4
+  `, [tenancyId, memberId, formatDate(firstPaymentDueDate), agencyId], agencyId);
 
   return result.rows.length > 0; // Only skip if payment actually exists
 }
@@ -213,10 +215,11 @@ exports.generateRollingMonthlyPayments = async (agencyId) => {
       FROM tenancies t
       INNER JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.auto_generate_payments = true
+      WHERE t.agency_id = $1
+        AND t.auto_generate_payments = true
         AND t.status IN ('approval', 'active')
-        AND (t.end_date IS NULL OR t.end_date >= $1)
-    `, [targetMonthStart], agencyId);
+        AND (t.end_date IS NULL OR t.end_date >= $2)
+    `, [agencyId, targetMonthStart], agencyId);
 
     const tenancies = tenanciesResult.rows;
 
@@ -394,8 +397,8 @@ exports.getRollingTenanciesSummary = async (agencyId) => {
         SUM(CASE WHEN end_date IS NOT NULL THEN 1 ELSE 0 END) as terminating,
         SUM(CASE WHEN auto_generate_payments = true THEN 1 ELSE 0 END) as auto_generate_enabled
       FROM tenancies
-      WHERE status IN ('approval', 'active')
-    `, [], agencyId);
+      WHERE agency_id = $1 AND status IN ('approval', 'active')
+    `, [agencyId], agencyId);
 
     return result.rows[0];
   } catch (error) {

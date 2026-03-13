@@ -447,8 +447,8 @@ exports.generatePaymentSchedulesForTenancy = async (tenancyId, agencyId) => {
       FROM tenancies t
       INNER JOIN properties p ON t.property_id = p.id
       LEFT JOIN landlords l ON p.landlord_id = l.id
-      WHERE t.id = $1
-    `, [tenancyId], agencyId);
+      WHERE t.id = $1 AND t.agency_id = $2
+    `, [tenancyId, agencyId], agencyId);
 
     const tenancy = tenancyResult.rows[0];
 

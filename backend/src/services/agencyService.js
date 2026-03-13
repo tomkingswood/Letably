@@ -109,7 +109,7 @@ async function registerAgency(data) {
       );
     }
 
-    // Seed default agreement sections
+    // Seed default agreement sections (for new agency registration; see also scripts/seed-agreement-sections.js)
     const defaultAgreementSections = [
       {
         section_key: 'important_notice',

@@ -9,6 +9,8 @@ interface TenancyDetailsCardProps {
 }
 
 export function TenancyDetailsCard({ tenancy, myMember, paymentOptionLabels }: TenancyDetailsCardProps) {
+  if (!tenancy) return null;
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center gap-3 mb-6">

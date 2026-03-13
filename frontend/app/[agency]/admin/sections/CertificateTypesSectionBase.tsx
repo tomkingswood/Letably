@@ -100,10 +100,10 @@ export default function CertificateTypesSectionBase({
 
   const handleDelete = async (id: number) => {
     const type = types.find(t => t.id === id);
-    const message = type?.is_compliance
+    const confirmMessage = type?.is_compliance
       ? 'This is marked as a legal/compliance requirement. Are you sure you want to delete it?'
       : 'Are you sure you want to delete this type?';
-    if (!confirm(message)) return;
+    if (!confirm(confirmMessage)) return;
 
     try {
       await certificateTypes.delete(id);

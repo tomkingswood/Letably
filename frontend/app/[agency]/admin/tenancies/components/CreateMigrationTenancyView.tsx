@@ -107,6 +107,7 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
     } catch (err: unknown) {
       console.error('Error during property selection:', err);
       setPropertyRooms([]);
+      setComplianceIssues([{ type_name: 'CHECK_FAILED', reason: 'Unable to verify compliance status. Please try again.', scope: 'property' }]);
     } finally {
       setCheckingCompliance(false);
     }
@@ -317,7 +318,7 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
         <div className="flex items-start gap-4">
           <div className="text-3xl">⚠️</div>
           <div>
-            <h3 className="text-lg font-bold text-amber-800 mb-2">Migration Mode — Compliance Bypassed</h3>
+            <h3 className="text-lg font-bold text-amber-800 mb-2">Migration Mode</h3>
             <p className="text-amber-700 mb-2">
               This creates a tenancy <strong>without</strong> requiring an application or digital signatures.
               Use this only for migrating existing tenancies where paperwork was completed outside of Letably.
@@ -332,10 +333,8 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
             <div className="mt-3 p-3 bg-amber-100 border border-amber-300 rounded-md">
               <p className="text-sm font-semibold text-amber-900 mb-1">Compliance Notice</p>
               <p className="text-sm text-amber-800">
-                By using migration mode, you confirm that all compliance documentation (certificates, tenancy documents, and legal notices)
-                has already been obtained and provided to the tenant outside of Letably.
-                All built-in compliance checks are skipped — your agency is solely responsible for ensuring all legal and regulatory
-                requirements have been met for this tenancy.
+                Migration mode skips applications and digital signatures, but compliance certificates are still required.
+                The selected property must have all required certificates uploaded and valid before a migration tenancy can be created.
               </p>
             </div>
           </div>

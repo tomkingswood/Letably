@@ -53,6 +53,7 @@ async function seed() {
     console.log('Cleared existing default sections');
   }
 
+  // Manual seeding sections (see also agencyService.js for new-registration defaults)
   const sections = [
     // ── Section 1: Parties to the Agreement ──────────────────────────
     {

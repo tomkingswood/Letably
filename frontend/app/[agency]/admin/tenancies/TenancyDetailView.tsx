@@ -1098,7 +1098,7 @@ export default function TenancyDetailView({ id, onBack }: TenancyDetailViewProps
         }}
         lifecycleHandlers={{
           onDelete: handleDelete,
-          onOpenCreateRollingModal: openCreateRollingModal,
+          onOpenCreateSuccessorModal: openCreateRollingModal,
         }}
       />
 

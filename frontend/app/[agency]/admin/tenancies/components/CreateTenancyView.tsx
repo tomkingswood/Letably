@@ -98,14 +98,24 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
           if (property) {
             setSelectedPropertyId(deposit.property_id);
             setSelectedProperty(property);
+            setCheckingCompliance(true);
             try {
-              const bedroomsRes = await bedroomsApi.getByProperty(deposit.property_id);
+              const [bedroomsRes, complianceRes] = await Promise.all([
+                bedroomsApi.getByProperty(deposit.property_id),
+                certificatesApi.checkPropertyCompliance(deposit.property_id),
+              ]);
               setPropertyRooms(bedroomsRes.data.bedrooms || []);
+              const issues = complianceRes.data.issues || [];
+              setComplianceIssues(issues);
+              if (issues.length === 0) {
+                setCurrentStep('applicants');
+              }
             } catch {
               setPropertyRooms([]);
+              setComplianceIssues([{ type_name: 'CHECK_FAILED', reason: 'Unable to verify compliance status. Please try again.' }]);
+            } finally {
+              setCheckingCompliance(false);
             }
-            // Land on applicants step so user can add more applicants
-            setCurrentStep('applicants');
             return;
           }
         }
@@ -145,8 +155,7 @@ export default function CreateTenancyView({ onBack, onSuccess, onError, preSelec
     } catch (err: unknown) {
       console.error('Error during property selection:', err);
       setPropertyRooms([]);
-      // Don't block on compliance check failure — proceed
-      setCurrentStep('applicants');
+      setComplianceIssues([{ type_name: 'CHECK_FAILED', reason: 'Unable to verify compliance status. Please try again.' }]);
     } finally {
       setCheckingCompliance(false);
     }
