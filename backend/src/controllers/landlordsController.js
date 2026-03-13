@@ -312,7 +312,7 @@ exports.generatePreviewAgreement = asyncHandler(async (req, res) => {
     secondTenant,
     propertyData,
     startDate: testData.startDate || '2025-09-01',
-    endDate: testData.endDate || '2026-08-31',
+    endDate: testData.endDate || null,
   }, agencyId, agreementService.generateAgreement);
 
   res.json(agreement);

@@ -339,7 +339,7 @@ exports.previewDefaultAgreement = asyncHandler(async (req, res) => {
       secondTenant,
       propertyData,
       startDate: safeTestData.startDate || '2025-09-01',
-      endDate: safeTestData.endDate || '2026-08-31',
+      endDate: safeTestData.endDate || null,
     },
     agencyId,
     generateAgreement

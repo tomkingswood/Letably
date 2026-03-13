@@ -121,7 +121,7 @@ export const sampleRoomOnlyData: SampleTemplateData = {
   tenancy_type: 'room_only',
   tenancy_type_description: 'Room Only',
   start_date: '01/07/2025',
-  end_date: '30/06/2026',
+  end_date: '',
   status: 'pending',
 
   // Primary tenant
@@ -209,7 +209,7 @@ export const sampleWholeHouseData: SampleTemplateData = {
   tenancy_type: 'whole_house',
   tenancy_type_description: 'Whole House',
   start_date: '01/07/2025',
-  end_date: '30/06/2026',
+  end_date: '',
   status: 'pending',
 
   // Primary tenant
