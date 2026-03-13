@@ -461,7 +461,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
   };
 
   const doCertificateUpload = async (typeId: number, typeName: string, file: File, expiryDate: string | null) => {
-    setUploadingCertificates({ ...uploadingCertificates, [typeId]: true });
+    setUploadingCertificates(prev => ({ ...prev, [typeId]: true }));
     setError('');
 
     try {
@@ -476,7 +476,7 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     } catch (err: unknown) {
       setError(getErrorMessage(err, `Failed to upload ${typeName}`));
     } finally {
-      setUploadingCertificates({ ...uploadingCertificates, [typeId]: false });
+      setUploadingCertificates(prev => ({ ...prev, [typeId]: false }));
     }
   };
 
@@ -497,7 +497,8 @@ export default function EditPropertyView({ id, onBack }: EditPropertyViewProps) 
     try {
       await certificatesApi.updateExpiry('property', id, typeId, expiryDate || null);
     } catch (err: unknown) {
-      console.error('Failed to update expiry date:', err);
+      setError(getErrorMessage(err, 'Failed to update expiry date'));
+      await fetchPropertyCertificates();
     }
   };
 

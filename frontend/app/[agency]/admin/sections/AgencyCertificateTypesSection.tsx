@@ -59,7 +59,7 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
       const response = await certificatesApi.getByEntity('agency', agency.id);
       setAgencyCertificates(response.data.certificates || []);
     } catch (err: unknown) {
-      console.error('Failed to load agency certificates:', err);
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to load agency certificates') });
     }
   }, [agency?.id]);
 
@@ -178,7 +178,8 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
     try {
       await certificatesApi.updateExpiry('agency', agency.id, typeId, expiryDate || null);
     } catch (err: unknown) {
-      console.error('Failed to update expiry date:', err);
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Failed to update expiry date') });
+      await fetchCertificates();
     }
   };
 

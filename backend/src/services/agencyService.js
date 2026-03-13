@@ -101,11 +101,11 @@ async function registerAgency(data) {
     }
 
     // Create default reminder thresholds for property certificate types
-    for (const [i, ct] of defaultCertificateTypes.filter(c => c.type === 'property').entries()) {
+    for (const ct of defaultCertificateTypes.filter(c => c.type === 'property')) {
       await client.query(
         `INSERT INTO reminder_thresholds (agency_id, certificate_type, display_name, critical_days, medium_days, low_days, enabled, display_order)
          VALUES ($1, $2, $2, 3, 7, 30, true, $3)`,
-        [agency.id, ct.name, i + 1]
+        [agency.id, ct.name, ct.display_order]
       );
     }
 
