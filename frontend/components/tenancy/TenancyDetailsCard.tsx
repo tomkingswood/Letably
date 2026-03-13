@@ -9,6 +9,8 @@ interface TenancyDetailsCardProps {
 }
 
 export function TenancyDetailsCard({ tenancy, myMember, paymentOptionLabels }: TenancyDetailsCardProps) {
+  if (!tenancy) return null;
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center gap-3 mb-6">
@@ -43,11 +45,14 @@ export function TenancyDetailsCard({ tenancy, myMember, paymentOptionLabels }: T
         <div>
           <p className="text-sm text-gray-600 mb-1">End Date</p>
           <p className="font-medium text-gray-900">
-            {tenancy?.end_date && new Date(tenancy.end_date).toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric'
-            })}
+            {tenancy?.end_date
+              ? new Date(tenancy.end_date).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                })
+              : <span className="text-blue-600">No fixed end date</span>
+            }
           </p>
         </div>
 

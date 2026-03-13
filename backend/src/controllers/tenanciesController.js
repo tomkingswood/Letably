@@ -18,6 +18,7 @@ const {
 
 const { buildSigningNotificationEmail } = require('../utils/tenancyEmailBuilder');
 const { buildAgencyUrl } = require('../utils/urlBuilder');
+const { validateComplianceCertificates, validateTenancyComplianceCertificates } = require('../validators/complianceValidator');
 const { getAgencyBranding } = require('../services/brandingService');
 
 /**
@@ -61,8 +62,6 @@ exports.getAllTenancies = asyncHandler(async (req, res) => {
   if (type === 'room_only' || type === 'whole_house') {
     conditions.push(`t.tenancy_type = $${paramIndex++}`);
     params.push(type);
-  } else if (type === 'rolling_monthly') {
-    conditions.push(`t.is_rolling_monthly = true`);
   }
 
   // Property filter
@@ -253,7 +252,6 @@ exports.createTenancy = asyncHandler(async (req, res) => {
     start_date,
     end_date,
     status = 'pending',
-    is_rolling_monthly = false,
     auto_generate_payments = true,
     members // Array of { application_id, bedroom_id (optional), rent_pppw, deposit_amount }
   } = req.body;
@@ -261,16 +259,6 @@ exports.createTenancy = asyncHandler(async (req, res) => {
   // Validation - end_date is optional for rolling monthly tenancies
   if (!property_id || !tenancy_type || !start_date || !members || members.length === 0) {
     return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  // Rolling monthly tenancies must NOT have an end_date
-  if (is_rolling_monthly && end_date) {
-    return res.status(400).json({ error: 'Rolling monthly tenancies cannot have an end date' });
-  }
-
-  // Non-rolling tenancies MUST have an end_date
-  if (!is_rolling_monthly && !end_date) {
-    return res.status(400).json({ error: 'End date is required for fixed-term tenancies' });
   }
 
   if (!['room_only', 'whole_house'].includes(tenancy_type)) {
@@ -288,8 +276,7 @@ exports.createTenancy = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Invalid start date' });
   }
 
-  // Only validate end_date for non-rolling tenancies
-  if (!is_rolling_monthly) {
+  if (end_date) {
     const endDate = new Date(end_date);
 
     if (isNaN(endDate.getTime())) {
@@ -299,6 +286,14 @@ exports.createTenancy = asyncHandler(async (req, res) => {
     if (endDate <= startDate) {
       return res.status(400).json({ error: 'End date must be after start date' });
     }
+  }
+
+  // Check compliance - property and agency certificates must be valid
+  const complianceIssues = await validateComplianceCertificates(db, agencyId, property_id);
+  if (complianceIssues.length > 0) {
+    return res.status(400).json({
+      error: `Missing valid compliance certificates: ${complianceIssues.join(', ')}. Please upload valid certificates before creating a tenancy.`
+    });
   }
 
   // Validate all applications exist and are approved
@@ -364,8 +359,8 @@ exports.createTenancy = asyncHandler(async (req, res) => {
 
     // Insert tenancy
     const tenancyResult = await client.query(`
-      INSERT INTO tenancies (agency_id, property_id, tenancy_type, start_date, end_date, rent_amount, status, is_rolling_monthly, auto_generate_payments)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO tenancies (agency_id, property_id, tenancy_type, start_date, end_date, rent_amount, status, auto_generate_payments)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [
       agencyId,
@@ -375,33 +370,16 @@ exports.createTenancy = asyncHandler(async (req, res) => {
       end_date || null,
       totalRent,
       status,
-      is_rolling_monthly,
       auto_generate_payments
     ]);
 
     const tenancyId = tenancyResult.rows[0].id;
-
-    // Helper function to map application payment_plan to tenancy payment_option
-    const mapPaymentPlanToOption = (paymentPlan) => {
-      // Rolling monthly tenancies are forced to use monthly payment option
-      if (is_rolling_monthly) {
-        return 'monthly';
-      }
-
-      if (!paymentPlan) return null;
-      const plan = paymentPlan.toLowerCase().trim();
-      if (plan.includes('quarterly')) return 'quarterly';
-      if (plan.includes('upfront') || plan.includes('full')) return 'upfront';
-      // Default to monthly for any monthly plan or unrecognized plans
-      return 'monthly';
-    };
 
     // Insert tenancy members with all data copied from applications (snapshot for decoupling)
     for (const member of members) {
       // Fetch tenant info and guarantor data from application
       const appDataResult = await client.query(`
         SELECT first_name, surname, user_id, title, current_address, application_type,
-               COALESCE(form_data->>'payment_plan', payment_plan) as payment_plan,
                guarantor_required,
                COALESCE(form_data->>'guarantor_name', guarantor_name) as guarantor_name,
                COALESCE(form_data->>'guarantor_dob', guarantor_dob::text) as guarantor_dob,
@@ -417,7 +395,7 @@ exports.createTenancy = asyncHandler(async (req, res) => {
 
       // Map application payment_plan to payment_option and pre-populate as default
       // Tenant can still change this when signing their agreement
-      const defaultPaymentOption = mapPaymentPlanToOption(appData.payment_plan);
+      const defaultPaymentOption = 'monthly';
 
       await client.query(`
         INSERT INTO tenancy_members (
@@ -537,13 +515,11 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
   }
 
   // Defense-in-depth: explicit agency_id filtering
-  const tenancyResult = await db.query('SELECT id, status, start_date, end_date, is_rolling_monthly, auto_generate_payments FROM tenancies WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);
+  const tenancyResult = await db.query('SELECT id, status, start_date, end_date, auto_generate_payments FROM tenancies WHERE id = $1 AND agency_id = $2', [id, agencyId], agencyId);
   const tenancy = tenancyResult.rows[0];
   if (!tenancy) {
     return res.status(404).json({ error: 'Tenancy not found' });
   }
-
-  const isRollingMonthly = tenancy.is_rolling_monthly === true;
 
   // Validate dates
   const startDate = new Date(start_date);
@@ -552,24 +528,9 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Invalid start date' });
   }
 
-  // For rolling tenancies, end_date can be null (ongoing) or set (terminating)
-  // For fixed tenancies, end_date is always required
-  let validatedEndDate = end_date;
+  let validatedEndDate = end_date || null;
 
-  if (isRollingMonthly) {
-    // Rolling tenancy: end_date can be null or a valid date (for termination)
-    if (end_date) {
-      const endDate = new Date(end_date);
-      if (isNaN(endDate.getTime())) {
-        return res.status(400).json({ error: 'Invalid end date' });
-      }
-      if (endDate <= startDate) {
-        return res.status(400).json({ error: 'End date must be after start date' });
-      }
-    }
-    validatedEndDate = end_date || null;
-  } else {
-    // Fixed tenancy: end_date is required
+  if (end_date) {
     const endDate = new Date(end_date);
     if (isNaN(endDate.getTime())) {
       return res.status(400).json({ error: 'Invalid end date' });
@@ -589,16 +550,7 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
       return res.status(400).json({ error: 'Cannot change start date after tenancy has been checked. Start date is locked once tenancy moves beyond pending status.' });
     }
 
-    // For non-rolling tenancies, lock end_date EXCEPT for active tenancies (to allow early termination)
-    if (!isRollingMonthly && tenancy.status !== 'active') {
-      const currentEndDate = tenancy.end_date ? new Date(tenancy.end_date).toISOString().split('T')[0] : null;
-      const newEndDate = validatedEndDate ? new Date(validatedEndDate).toISOString().split('T')[0] : null;
-
-      if (newEndDate !== currentEndDate) {
-        return res.status(400).json({ error: 'Cannot change end date after tenancy has been checked. Dates are locked until tenancy is active.' });
-      }
-    }
-    // For rolling tenancies and active tenancies, we allow setting end_date (for termination/early termination)
+    // For active tenancies, allow setting end_date (for termination)
   }
 
   // Enforce status workflow - status must always flow forwards
@@ -650,6 +602,16 @@ exports.updateTenancy = asyncHandler(async (req, res) => {
   const newAutoGeneratePayments = auto_generate_payments !== undefined
     ? auto_generate_payments
     : tenancy.auto_generate_payments;
+
+  // Check tenancy compliance certificates before activating
+  if (isActivating) {
+    const tenancyIssues = await validateTenancyComplianceCertificates(db, agencyId, id);
+    if (tenancyIssues.length > 0) {
+      return res.status(400).json({
+        error: `Cannot activate tenancy — missing valid compliance documents: ${tenancyIssues.join(', ')}. Please upload the required documents before activating.`
+      });
+    }
+  }
 
   // Defense-in-depth: explicit agency_id filtering
   await db.query(`

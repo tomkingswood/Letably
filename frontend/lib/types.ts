@@ -175,8 +175,6 @@ export interface Tenancy {
   start_date: string;
   end_date: string | null;
   status: 'pending' | 'awaiting_signatures' | 'approval' | 'active' | 'expired';
-  // Rolling monthly tenancy fields
-  is_rolling_monthly?: boolean;
   auto_generate_payments?: boolean;
   member_count?: number;
   members?: TenancyMember[];
@@ -345,7 +343,6 @@ export function isHttpError(error: unknown, status: number): boolean {
 }
 
 export interface Agreement {
-  is_rolling_monthly?: boolean;
   property_address?: string;
   primary_tenant_name?: string;
   // Guarantor signing fields

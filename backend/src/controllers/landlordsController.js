@@ -313,7 +313,6 @@ exports.generatePreviewAgreement = asyncHandler(async (req, res) => {
     propertyData,
     startDate: testData.startDate || '2025-09-01',
     endDate: testData.endDate || '2026-08-31',
-    isRollingMonthly: testData.isRollingMonthly || false,
   }, agencyId, agreementService.generateAgreement);
 
   res.json(agreement);

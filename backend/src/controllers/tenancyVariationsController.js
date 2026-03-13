@@ -15,6 +15,7 @@ const {
 } = require('../validators/tenancyValidator');
 const asyncHandler = require('../utils/asyncHandler');
 const { buildAgencyUrl } = require('../utils/urlBuilder');
+const { validateComplianceCertificates } = require('../validators/complianceValidator');
 
 /**
  * Create a rolling tenancy from an existing tenancy
@@ -85,6 +86,14 @@ exports.createRollingTenancyFromExisting = asyncHandler(async (req, res) => {
     return res.status(409).json(conflictError);
   }
 
+  // Check compliance - property and agency certificates must be valid
+  const complianceIssues = await validateComplianceCertificates(db, agencyId, sourceTenancy.property_id);
+  if (complianceIssues.length > 0) {
+    return res.status(400).json({
+      error: `Missing valid compliance certificates: ${complianceIssues.join(', ')}. Please upload valid certificates before creating a tenancy.`
+    });
+  }
+
   // Create the new rolling tenancy and members in a transaction
   const result = await db.transaction(async (client) => {
     // Calculate total rent from members (use override if provided, otherwise fetch from source)
@@ -108,9 +117,8 @@ exports.createRollingTenancyFromExisting = asyncHandler(async (req, res) => {
         end_date,
         rent_amount,
         status,
-        is_rolling_monthly,
         auto_generate_payments
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', true, true)
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', true)
       RETURNING *
     `, [
       agencyId,
@@ -218,7 +226,6 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
     tenancy_type,
     start_date,
     end_date,
-    is_rolling_monthly = false,
     auto_generate_payments = true,
     send_portal_email = false,
     members // Array of { user_id, first_name, surname, bedroom_id, rent_pppw, deposit_amount }
@@ -227,16 +234,6 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
   // Validation
   if (!property_id || !tenancy_type || !start_date || !members || members.length === 0) {
     return res.status(400).json({ error: 'Missing required fields: property_id, tenancy_type, start_date, and members are required' });
-  }
-
-  // Rolling monthly tenancies must NOT have an end_date
-  if (is_rolling_monthly && end_date) {
-    return res.status(400).json({ error: 'Rolling monthly tenancies cannot have an end date' });
-  }
-
-  // Non-rolling tenancies MUST have an end_date
-  if (!is_rolling_monthly && !end_date) {
-    return res.status(400).json({ error: 'End date is required for fixed-term tenancies' });
   }
 
   // Validate tenancy type using validator
@@ -256,9 +253,17 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
   }
 
   // Validate dates using validator
-  const dateValidation = validateDates(start_date, end_date, is_rolling_monthly);
+  const dateValidation = validateDates(start_date, end_date);
   if (!dateValidation.valid) {
     return res.status(400).json({ error: dateValidation.error });
+  }
+
+  // Check compliance - property and agency certificates must be valid
+  const complianceIssues = await validateComplianceCertificates(db, agencyId, property_id);
+  if (complianceIssues.length > 0) {
+    return res.status(400).json({
+      error: `Missing valid compliance certificates: ${complianceIssues.join(', ')}. Please upload valid certificates before creating a tenancy.`
+    });
   }
 
   // Validate all members have required fields using validator
@@ -300,8 +305,8 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
 
     // Insert tenancy with 'active' status
     const tenancyResult = await client.query(`
-      INSERT INTO tenancies (agency_id, property_id, tenancy_type, start_date, end_date, rent_amount, status, is_rolling_monthly, auto_generate_payments, is_migration)
-      VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, $8, true)
+      INSERT INTO tenancies (agency_id, property_id, tenancy_type, start_date, end_date, rent_amount, status, auto_generate_payments, is_migration)
+      VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, true)
       RETURNING *
     `, [
       agencyId,
@@ -310,7 +315,6 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
       start_date,
       end_date || null,
       totalRent,
-      is_rolling_monthly,
       auto_generate_payments
     ]);
 
@@ -319,7 +323,7 @@ exports.createMigrationTenancy = asyncHandler(async (req, res) => {
     // Insert tenancy members (no application_id, is_signed = true since paperwork was done manually)
     for (const member of members) {
       // Rolling monthly defaults to monthly payment option
-      const paymentOption = is_rolling_monthly ? 'monthly' : (member.payment_option || 'monthly');
+      const paymentOption = 'monthly';
 
       await client.query(`
         INSERT INTO tenancy_members (

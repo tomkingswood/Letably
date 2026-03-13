@@ -165,20 +165,6 @@ export const conditionalBlocks: ConditionalBlock[] = [
     endTag: '{{/if_whole_house}}',
   },
   {
-    name: 'if_rolling_monthly',
-    displayName: 'Rolling Monthly',
-    description: 'Content shown only for rolling monthly tenancies',
-    startTag: '{{#if_rolling_monthly}}',
-    endTag: '{{/if_rolling_monthly}}',
-  },
-  {
-    name: 'if_fixed_term',
-    displayName: 'Fixed Term',
-    description: 'Content shown only for fixed-term tenancies',
-    startTag: '{{#if_fixed_term}}',
-    endTag: '{{/if_fixed_term}}',
-  },
-  {
     name: 'if_individual_rents',
     displayName: 'Individual Rents',
     description: 'Content shown when tenants have different rent amounts',

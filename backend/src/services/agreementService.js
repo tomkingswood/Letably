@@ -40,11 +40,11 @@ function renderTemplate(template, data) {
   });
 
   rendered = rendered.replace(/{{#if_rolling_monthly}}([\s\S]*?){{\/if_rolling_monthly}}/g, (match, content) => {
-    return data.is_rolling_monthly ? content : '';
+    return content;
   });
 
   rendered = rendered.replace(/{{#if_fixed_term}}([\s\S]*?){{\/if_fixed_term}}/g, (match, content) => {
-    return !data.is_rolling_monthly ? content : '';
+    return '';
   });
 
   // Handle each loops BEFORE regular conditionals: {{#each array}}...{{/each}}
@@ -315,7 +315,7 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
     // Calculate totals
     const totalRentPppw = individualRents ? null : members[0].rent_pppw;
     // Always calculate total deposit as sum of all deposits
-    const totalDeposit = members.reduce((sum, m) => sum + m.deposit_amount, 0);
+    const totalDeposit = members.reduce((sum, m) => sum + Number(m.deposit_amount), 0);
 
     // Build tenant contact details (all tenants)
     const tenantContactDetails = members.map(m => {
@@ -379,7 +379,7 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
       start_date: formatDate(tenancy.start_date),
       end_date: formatDate(tenancy.end_date),
       status: tenancy.status,
-      is_rolling_monthly: !!tenancy.is_rolling_monthly,
+      is_rolling_monthly: true,
 
       // Primary tenant (the one signing this agreement)
       primary_tenant_name: primaryTenantName,
@@ -446,25 +446,12 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
       utilities_cap: tenancy.utilities_cap_amount ? true : false,
       utilities_cap_amount: (() => {
         if (!tenancy.utilities_cap_amount) return '';
-        const capAmount = Number(tenancy.utilities_cap_amount);
-        // For rolling monthly, use the annual amount
-        if (tenancy.is_rolling_monthly) return formatCurrency(capAmount);
-        // Calculate pro-rated amount based on tenancy length
-        if (tenancy.start_date && tenancy.end_date) {
-          const startDate = new Date(tenancy.start_date);
-          const endDate = new Date(tenancy.end_date);
-          const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-          const weeks = days / 7;
-          const proRatedAmount = (capAmount / 52) * weeks;
-          return formatCurrency(proRatedAmount);
-        }
-        return formatCurrency(capAmount);
+        return formatCurrency(Number(tenancy.utilities_cap_amount));
       })(),
       utilities_cap_annual_amount: tenancy.utilities_cap_amount ? formatCurrency(tenancy.utilities_cap_amount) : '',
       utilities_cap_period: (() => {
         if (!tenancy.utilities_cap_amount) return '';
-        if (tenancy.is_rolling_monthly) return 'per year (pro-rated for your actual tenancy period)';
-        return `for the period ${formatDate(tenancy.start_date)} to ${formatDate(tenancy.end_date)}`;
+        return 'per year (pro-rated for your actual tenancy period)';
       })(),
       council_tax_included: tenancy.council_tax_in_bills ? true : false
     };
@@ -483,7 +470,7 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
 
     return {
       company_name: agency.name || 'Letably',
-      is_rolling_monthly: !!tenancy.is_rolling_monthly,
+      is_rolling_monthly: true,
       tenancy: {
         id: tenancy.id,
         property_address: fullPropertyAddress,
@@ -584,7 +571,7 @@ exports.generateAgreementHTML = async (tenancyId, memberId, signatureData = null
   <!-- Agreement Header -->
   <div style="text-align: center; margin-bottom: 30px; padding-bottom: 30px; border-bottom: 2px solid #d1d5db;">
     <h1 style="font-size: 30px; font-weight: bold; color: #111827; margin: 0 0 8px 0;">ASSURED SHORTHOLD TENANCY AGREEMENT</h1>
-    <p style="font-size: 16px; color: #6b7280; margin: 0 0 8px 0;">${agreement.is_rolling_monthly ? 'Periodic (Rolling Monthly) Tenancy' : 'Fixed Term Tenancy'}</p>
+    <p style="font-size: 16px; color: #6b7280; margin: 0 0 8px 0;">Periodic (Rolling Monthly) Tenancy</p>
     <p style="font-size: 14px; color: #374151; margin: 0;">Provided under part 1 of the Housing Act 1988 and amended under part 3 of the Housing Act 1996</p>
   </div>
 

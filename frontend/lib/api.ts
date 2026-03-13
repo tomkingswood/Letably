@@ -521,9 +521,8 @@ export const tenancies = {
     property_id: number;
     tenancy_type: 'room_only' | 'whole_house';
     start_date: string;
-    end_date: string;
+    end_date?: string;
     status?: string;
-    is_rolling_monthly?: boolean;
     auto_generate_payments?: boolean;
     members: Array<{
       application_id: number;
@@ -592,7 +591,6 @@ export const tenancies = {
     tenancy_type: 'room_only' | 'whole_house';
     start_date: string;
     end_date?: string;
-    is_rolling_monthly?: boolean;
     auto_generate_payments?: boolean;
     send_portal_email?: boolean;
     members: Array<{
@@ -752,6 +750,7 @@ export const certificateTypes = {
     type?: string;
     has_expiry?: boolean;
     default_validity_months?: number;
+    is_compliance?: boolean;
   }) => api.post('/certificate-types', data),
   update: (id: string | number, data: {
     name?: string;
@@ -761,6 +760,7 @@ export const certificateTypes = {
     is_active?: boolean;
     has_expiry?: boolean;
     default_validity_months?: number;
+    is_compliance?: boolean;
   }) => api.put(`/certificate-types/${id}`, data),
   delete: (id: string | number) => api.delete(`/certificate-types/${id}`),
   reorder: (order: Array<{ id: number; display_order: number }>) =>
@@ -782,6 +782,8 @@ export const certificates = {
   download: (id: string | number) => api.get(`/certificates/${id}/download`, { responseType: 'blob' }),
   getDownloadUrl: (id: string | number) => `/api/certificates/${id}/download`,
   getWithTypes: (entityType: string) => api.get(`/certificates/with-types/${entityType}`),
+  checkPropertyCompliance: (propertyId: string | number) =>
+    api.get(`/certificates/compliance/property/${propertyId}`),
 };
 
 // Tenant Documents API

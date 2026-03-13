@@ -55,7 +55,6 @@ exports.getMyActiveTenancy = asyncHandler(async (req, res) => {
       t.status,
       t.start_date,
       t.end_date,
-      t.is_rolling_monthly,
       p.address_line1 as property_address,
       p.location,
       tm.id as member_id,
@@ -418,7 +417,6 @@ exports.getMyStatus = asyncHandler(async (req, res) => {
       t.status,
       t.start_date,
       t.end_date,
-      t.is_rolling_monthly,
       p.address_line1 as property_address,
       p.location,
       CASE t.status WHEN 'active' THEN 0 ELSE 1 END as status_order
@@ -476,7 +474,6 @@ exports.getMyStatus = asyncHandler(async (req, res) => {
       status: t.status,
       startDate: t.start_date,
       endDate: t.end_date,
-      isRollingMonthly: !!t.is_rolling_monthly,
       propertyAddress: t.property_address,
       location: t.location
     }))

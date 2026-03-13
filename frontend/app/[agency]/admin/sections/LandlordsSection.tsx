@@ -115,7 +115,6 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
     property_bathrooms: '2',
     start_date: '2025-09-01',
     end_date: '2026-08-31',
-    is_rolling_monthly: false,
     utilities_cap_enabled: true,
     utilities_cap_amount: '50',
     council_tax_included: true,
@@ -1200,25 +1199,11 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
                           type="date"
                           value={testData.end_date}
                           onChange={(e) => setTestData(prev => ({ ...prev, end_date: e.target.value }))}
-                          disabled={testData.is_rolling_monthly}
-                          className={`w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${testData.is_rolling_monthly ? 'bg-gray-100 text-gray-400' : ''}`}
+                          className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     </div>
                     <div className="space-y-2 pt-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={testData.is_rolling_monthly}
-                          onChange={(e) => setTestData(prev => ({
-                            ...prev,
-                            is_rolling_monthly: e.target.checked,
-                            end_date: e.target.checked ? '' : prev.end_date
-                          }))}
-                          className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-blue-900">Rolling monthly tenancy</span>
-                      </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"

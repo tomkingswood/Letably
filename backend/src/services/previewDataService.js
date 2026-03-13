@@ -55,7 +55,6 @@ const defaultPropertyData = {
  * @param {Object} options.propertyData - Custom property data (optional)
  * @param {string} options.startDate - Tenancy start date (default: '2025-09-01')
  * @param {string} options.endDate - Tenancy end date (default: '2026-08-31')
- * @param {boolean} options.isRollingMonthly - Whether this is a rolling monthly tenancy (default: false)
  * @param {number} agencyId - Agency ID for multi-tenancy
  * @returns {Object} Created IDs and cleanup function
  */
@@ -67,8 +66,7 @@ async function createPreviewData(options, agencyId) {
     secondTenant = defaultTenants.secondary,
     propertyData = defaultPropertyData,
     startDate = '2025-09-01',
-    endDate = '2026-08-31',
-    isRollingMonthly = false
+    endDate = '2026-08-31'
   } = options;
 
   const timestamp = Date.now();
@@ -219,8 +217,8 @@ async function createPreviewData(options, agencyId) {
     const tenancyResult = await client.query(`
       INSERT INTO tenancies (
         agency_id, property_id, tenancy_type, start_date, end_date, status,
-        is_rolling_monthly, rent_amount, deposit_amount
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        rent_amount, deposit_amount
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [
       agencyId,
@@ -229,7 +227,6 @@ async function createPreviewData(options, agencyId) {
       startDate,
       endDate,
       'pending',
-      isRollingMonthly,
       totalRent,
       totalDeposit
     ]);
@@ -247,7 +244,7 @@ async function createPreviewData(options, agencyId) {
       tenancyId,
       app1Id,
       user1Id,
-      tenancyType === 'room_only' ? room1Id : null,
+      room1Id,
       primaryTenant.rent,
       primaryTenant.deposit,
       primaryTenant.firstName,

@@ -27,44 +27,53 @@ function generateGuarantorAgreementContent(data) {
   const monthlyRent = tenant.rent_pppw ? ((tenant.rent_pppw * 52) / 12).toFixed(2) : '0.00';
 
   // Calculate term duration properly accounting for actual month lengths
-  const startDate = new Date(tenancy.start_date);
-  // Add 1 day to end date since tenancy end dates are inclusive (last day of tenancy)
-  const endDate = new Date(tenancy.end_date);
-  endDate.setDate(endDate.getDate() + 1);
+  const startDate = new Date(tenancy.start_date + 'T00:00:00Z');
+  let termDuration = 'Rolling Monthly (Periodic)';
 
-  // Calculate month difference
-  let years = endDate.getFullYear() - startDate.getFullYear();
-  let months = endDate.getMonth() - startDate.getMonth();
-  let days = endDate.getDate() - startDate.getDate();
+  if (tenancy.end_date) {
+    // Add 1 day to end date since tenancy end dates are inclusive (last day of tenancy)
+    const endDate = new Date(tenancy.end_date + 'T00:00:00Z');
+    endDate.setUTCDate(endDate.getUTCDate() + 1);
 
-  // Adjust if days are negative
-  if (days < 0) {
-    months--;
-    // Get days in previous month
-    const prevMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 0);
-    days += prevMonth.getDate();
-  }
+    // Calculate month difference
+    let years = endDate.getUTCFullYear() - startDate.getUTCFullYear();
+    let months = endDate.getUTCMonth() - startDate.getUTCMonth();
+    let days = endDate.getUTCDate() - startDate.getUTCDate();
 
-  // Adjust if months are negative
-  if (months < 0) {
-    years--;
-    months += 12;
-  }
+    // Adjust if days are negative
+    if (days < 0) {
+      months--;
+      // Get days in previous month
+      const prevMonth = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 0));
+      days += prevMonth.getUTCDate();
+    }
 
-  // Convert years to months
-  const totalMonths = years * 12 + months;
+    // Adjust if months are negative
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
 
-  // Format the duration string
-  let termDuration = '';
-  if (totalMonths > 0) {
-    termDuration += `${totalMonths} Month${totalMonths !== 1 ? 's' : ''}`;
-  }
-  if (days > 0) {
-    if (termDuration) termDuration += ' ';
-    termDuration += `${days} day${days !== 1 ? 's' : ''}`;
-  }
-  if (!termDuration) {
-    termDuration = '0 days';
+    // Convert years to months
+    const totalMonths = years * 12 + months;
+
+    // Guard against end_date < start_date
+    if (totalMonths < 0 || (totalMonths === 0 && days < 0)) {
+      termDuration = 'Invalid date range';
+    } else {
+      // Format the duration string
+      termDuration = '';
+      if (totalMonths > 0) {
+        termDuration += `${totalMonths} Month${totalMonths !== 1 ? 's' : ''}`;
+      }
+      if (days > 0) {
+        if (termDuration) termDuration += ' ';
+        termDuration += `${days} day${days !== 1 ? 's' : ''}`;
+      }
+      if (!termDuration) {
+        termDuration = '0 days';
+      }
+    }
   }
 
   // Format company address (from site settings)

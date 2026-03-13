@@ -8,7 +8,7 @@ interface GuarantorAgreementProps {
     tenant_name: string;
     property_full_address: string;
     tenancy_start_date: string;
-    tenancy_end_date: string;
+    tenancy_end_date: string | null;
     company_name: string;
     company_address?: string;
     monthly_rent?: string;
@@ -21,6 +21,10 @@ interface GuarantorAgreementProps {
 export default function GuarantorAgreementDocument({ agreement, onViewTenantAgreement }: GuarantorAgreementProps) {
   // Calculate term duration properly accounting for actual month lengths
   const calculateTermDuration = () => {
+    if (!agreement.tenancy_end_date) {
+      return 'Rolling (Periodic)';
+    }
+
     const startDate = new Date(agreement.tenancy_start_date);
     // Add 1 day to end date since tenancy end dates are inclusive (last day of tenancy)
     const endDate = new Date(agreement.tenancy_end_date);

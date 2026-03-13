@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import UserEmailLookup from '@/components/admin/UserEmailLookup';
-import { tenancies as tenanciesApi, properties as propertiesApi, bedrooms as bedroomsApi, auth } from '@/lib/api';
+import { tenancies as tenanciesApi, properties as propertiesApi, bedrooms as bedroomsApi, certificates as certificatesApi, auth } from '@/lib/api';
 import { getErrorMessage } from '@/lib/types';
 
 interface Property {
@@ -53,7 +53,6 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
   const [tenancyType, setTenancyType] = useState<'room_only' | 'whole_house'>('room_only');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [isRollingMonthly, setIsRollingMonthly] = useState(false);
   const [autoGeneratePayments, setAutoGeneratePayments] = useState(true);
   const [sendPortalAccessEmail, setSendPortalAccessEmail] = useState(false);
   const [memberForms, setMemberForms] = useState<MemberForm[]>([{
@@ -67,15 +66,20 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
   const [showUnderOccupancyWarning, setShowUnderOccupancyWarning] = useState(false);
   const [underOccupancyConfirmed, setUnderOccupancyConfirmed] = useState(false);
 
+  // Compliance state
+  const [complianceIssues, setComplianceIssues] = useState<{ type_name: string; reason: string; scope?: string }[]>([]);
+  const [checkingCompliance, setCheckingCompliance] = useState(false);
+
   useEffect(() => {
     fetchProperties();
   }, []);
 
   useEffect(() => {
     if (selectedProperty) {
-      fetchRooms(selectedProperty);
+      fetchPropertyData(selectedProperty);
     } else {
       setPropertyRooms([]);
+      setComplianceIssues([]);
     }
   }, [selectedProperty]);
 
@@ -90,13 +94,22 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
     }
   };
 
-  const fetchRooms = async (propertyId: number) => {
+  const fetchPropertyData = async (propertyId: number) => {
+    setCheckingCompliance(true);
+    setComplianceIssues([]);
     try {
-      const res = await bedroomsApi.getByProperty(propertyId);
-      setPropertyRooms(res.data.bedrooms || []);
+      const [bedroomsRes, complianceRes] = await Promise.all([
+        bedroomsApi.getByProperty(propertyId),
+        certificatesApi.checkPropertyCompliance(propertyId),
+      ]);
+      setPropertyRooms(bedroomsRes.data.bedrooms || []);
+      setComplianceIssues(complianceRes.data.issues || []);
     } catch (err: unknown) {
-      console.error('Failed to load bedrooms:', err);
+      console.error('Error during property selection:', err);
       setPropertyRooms([]);
+      setComplianceIssues([{ type_name: 'CHECK_FAILED', reason: 'Unable to verify compliance status. Please try again.', scope: 'property' }]);
+    } finally {
+      setCheckingCompliance(false);
     }
   };
 
@@ -159,13 +172,13 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
       return;
     }
 
-    if (!startDate) {
-      onError('Please enter a start date');
+    if (complianceIssues.length > 0) {
+      onError('Property has compliance issues. Please resolve them before creating a tenancy.');
       return;
     }
 
-    if (!isRollingMonthly && !endDate) {
-      onError('Please enter an end date for fixed-term tenancies');
+    if (!startDate) {
+      onError('Please enter a start date');
       return;
     }
 
@@ -259,8 +272,7 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
         property_id: selectedProperty,
         tenancy_type: tenancyType,
         start_date: startDate,
-        end_date: isRollingMonthly ? undefined : endDate,
-        is_rolling_monthly: isRollingMonthly,
+        end_date: endDate || undefined,
         auto_generate_payments: autoGeneratePayments,
         send_portal_email: sendPortalAccessEmail,
         members: membersPayload,
@@ -309,7 +321,7 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
             <h3 className="text-lg font-bold text-amber-800 mb-2">Migration Mode</h3>
             <p className="text-amber-700 mb-2">
               This creates a tenancy <strong>without</strong> requiring an application or digital signatures.
-              Use this only for migrating existing tenancies where paperwork was completed manually.
+              Use this only for migrating existing tenancies where paperwork was completed outside of Letably.
             </p>
             <ul className="text-sm text-amber-700 list-disc list-inside space-y-1">
               <li>Tenancy will start directly as <strong>Active</strong></li>
@@ -318,6 +330,13 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
               <li>Payment schedules will be generated immediately</li>
               <li>New user accounts will be created for tenants (if needed)</li>
             </ul>
+            <div className="mt-3 p-3 bg-amber-100 border border-amber-300 rounded-md">
+              <p className="text-sm font-semibold text-amber-900 mb-1">Compliance Notice</p>
+              <p className="text-sm text-amber-800">
+                Migration mode skips applications and digital signatures, but compliance certificates are still required.
+                The selected property must have all required certificates uploaded and valid before a migration tenancy can be created.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -339,6 +358,53 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
               </option>
             ))}
           </select>
+
+          {checkingCompliance && (
+            <p className="text-sm text-gray-500 mt-2">Checking compliance...</p>
+          )}
+
+          {complianceIssues.length > 0 && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="text-red-800 font-semibold mb-2">Compliance Issues</h4>
+              <p className="text-red-700 text-sm mb-2">
+                The following compliance certificates must be resolved before a tenancy can be created:
+              </p>
+              {complianceIssues.some(i => i.scope === 'property') && (
+                <div className="mb-2">
+                  <p className="text-sm font-medium text-red-800">Property Certificates</p>
+                  <ul className="list-disc list-inside text-sm text-red-700 space-y-1 ml-2">
+                    {complianceIssues.filter(i => i.scope === 'property').map((issue, idx) => (
+                      <li key={idx}>
+                        <strong>{issue.type_name}</strong> — {issue.reason === 'expired' ? 'certificate has expired' : 'not uploaded'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {complianceIssues.some(i => i.scope === 'agency') && (
+                <div className="mb-2">
+                  <p className="text-sm font-medium text-red-800">Agency Documents</p>
+                  <ul className="list-disc list-inside text-sm text-red-700 space-y-1 ml-2">
+                    {complianceIssues.filter(i => i.scope === 'agency').map((issue, idx) => (
+                      <li key={idx}>
+                        <strong>{issue.type_name}</strong> — {issue.reason === 'expired' ? 'certificate has expired' : 'not uploaded'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedProperty(null);
+                  setComplianceIssues([]);
+                }}
+                className="mt-3 text-sm text-red-700 underline hover:text-red-900"
+              >
+                Select a different property
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Tenancy Type */}
@@ -377,45 +443,20 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
             </label>
           </div>
 
-          {/* Rolling Monthly Toggle */}
+          {/* Auto-generate Payments Toggle */}
           <div className="mt-4 pt-4 border-t">
-            <div className="flex items-start">
+            <div className="flex items-center">
               <input
                 type="checkbox"
-                id="isRollingMonthly"
-                checked={isRollingMonthly}
-                onChange={(e) => {
-                  setIsRollingMonthly(e.target.checked);
-                  if (e.target.checked) setEndDate('');
-                }}
-                className="mt-1 h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
+                id="autoGeneratePayments"
+                checked={autoGeneratePayments}
+                onChange={(e) => setAutoGeneratePayments(e.target.checked)}
+                className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
               />
-              <div className="ml-3">
-                <label htmlFor="isRollingMonthly" className="font-medium text-gray-900 cursor-pointer">
-                  Rolling Monthly Tenancy
-                </label>
-                <p className="text-sm text-gray-600">
-                  No fixed end date - continues indefinitely until terminated.
-                </p>
-              </div>
+              <label htmlFor="autoGeneratePayments" className="ml-2 text-sm text-gray-700 cursor-pointer">
+                Auto-generate monthly payments
+              </label>
             </div>
-
-            {isRollingMonthly && (
-              <div className="mt-3 ml-7">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="autoGeneratePayments"
-                    checked={autoGeneratePayments}
-                    onChange={(e) => setAutoGeneratePayments(e.target.checked)}
-                    className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
-                  />
-                  <label htmlFor="autoGeneratePayments" className="ml-2 text-sm text-gray-700 cursor-pointer">
-                    Auto-generate monthly payments
-                  </label>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -430,22 +471,15 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
               onChange={(e) => setStartDate(e.target.value)}
               required
             />
-            {isRollingMonthly ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
-                  No fixed end date (Rolling)
-                </div>
-              </div>
-            ) : (
+            <div>
               <Input
-                label="End Date"
+                label="End Date (Optional)"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                required
               />
-            )}
+              <p className="text-xs text-gray-500 mt-1">Leave empty if no termination date has been set.</p>
+            </div>
           </div>
         </div>
 
@@ -555,7 +589,7 @@ export default function CreateMigrationTenancyView({ onBack, onSuccess, onError 
 
         {/* Actions */}
         <div className="flex gap-3">
-          <Button type="submit" disabled={submitting}>
+          <Button type="submit" disabled={submitting || checkingCompliance || complianceIssues.length > 0}>
             {submitting ? 'Creating...' : 'Create Migration Tenancy'}
           </Button>
           <Button type="button" variant="outline" onClick={onBack} disabled={submitting}>

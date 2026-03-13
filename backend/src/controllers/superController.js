@@ -122,7 +122,7 @@ const listAgencies = asyncHandler(async (req, res) => {
       (SELECT COUNT(*) FROM users u WHERE u.agency_id = a.id) as user_count,
       (SELECT COUNT(*) FROM users u WHERE u.agency_id = a.id AND u.role = 'admin') as admin_count,
       (SELECT COUNT(*) FROM properties p WHERE p.agency_id = a.id) as property_count,
-      (SELECT COUNT(*) FROM tenancies t WHERE t.agency_id = a.id AND t.status IN ('active', 'rolling_monthly')) as active_tenancy_count,
+      (SELECT COUNT(*) FROM tenancies t WHERE t.agency_id = a.id AND t.status = 'active') as active_tenancy_count,
       (
         SELECT COALESCE(SUM(file_size), 0) FROM images WHERE agency_id = a.id
       ) + (
@@ -183,7 +183,7 @@ const getAgency = asyncHandler(async (req, res) => {
       (SELECT COUNT(*) FROM users u WHERE u.agency_id = a.id AND u.role = 'tenant') as tenant_count,
       (SELECT COUNT(*) FROM users u WHERE u.agency_id = a.id AND u.role = 'landlord') as landlord_count,
       (SELECT COUNT(*) FROM properties p WHERE p.agency_id = a.id) as property_count,
-      (SELECT COUNT(*) FROM tenancies t WHERE t.agency_id = a.id AND t.status IN ('active', 'rolling_monthly')) as active_tenancy_count,
+      (SELECT COUNT(*) FROM tenancies t WHERE t.agency_id = a.id AND t.status = 'active') as active_tenancy_count,
       (SELECT COUNT(*) FROM tenancies t WHERE t.agency_id = a.id) as total_tenancy_count
      FROM agencies a
      WHERE a.id = $1`,
@@ -307,7 +307,7 @@ const getPlatformStats = asyncHandler(async (req, res) => {
       (SELECT COUNT(*) FROM users WHERE role = 'tenant') as total_tenants,
       (SELECT COUNT(*) FROM users WHERE role = 'landlord') as total_landlords,
       (SELECT COUNT(*) FROM properties) as total_properties,
-      (SELECT COUNT(*) FROM tenancies WHERE status IN ('active', 'rolling_monthly')) as active_tenancies,
+      (SELECT COUNT(*) FROM tenancies WHERE status = 'active') as active_tenancies,
       (SELECT COUNT(*) FROM agencies WHERE created_at > NOW() - INTERVAL '30 days') as new_agencies_30d
   `);
 

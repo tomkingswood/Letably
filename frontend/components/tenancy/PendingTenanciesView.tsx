@@ -23,7 +23,7 @@ interface PendingTenancy {
   property_address: string;
   location: string;
   start_date: string;
-  end_date: string;
+  end_date: string | null;
   created_at: string;
   members: PendingMember[];
   guarantorAgreements: GuarantorAgreement[];
@@ -76,7 +76,7 @@ export function PendingTenanciesView({ tenancies }: PendingTenanciesViewProps) {
                       <p className="text-gray-600 mt-1">{tenancy.location}</p>
                     )}
                     <p className="text-sm text-gray-500 mt-2">
-                      {formatDate(tenancy.start_date)} &mdash; {formatDate(tenancy.end_date)}
+                      {formatDate(tenancy.start_date)} &mdash; {tenancy.end_date ? formatDate(tenancy.end_date) : 'Rolling'}
                     </p>
                   </div>
                   <span

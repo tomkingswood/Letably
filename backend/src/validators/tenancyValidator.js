@@ -8,49 +8,28 @@ const db = require('../db');
 /**
  * Validate tenancy dates
  * @param {string} startDate - Start date (YYYY-MM-DD)
- * @param {string|null} endDate - End date (YYYY-MM-DD) or null for rolling
- * @param {boolean} isRollingMonthly - Whether this is a rolling monthly tenancy
+ * @param {string|null} endDate - End date (YYYY-MM-DD) or null
  * @returns {{ valid: boolean, error?: string, startDate?: Date, endDate?: Date|null }}
  */
-function validateDates(startDate, endDate, isRollingMonthly = false) {
+function validateDates(startDate, endDate) {
   const start = new Date(startDate);
 
   if (isNaN(start.getTime())) {
     return { valid: false, error: 'Invalid start date' };
   }
 
-  // Rolling monthly tenancies
-  if (isRollingMonthly) {
-    if (endDate) {
-      // Rolling tenancies CAN have an end date (for termination)
-      const end = new Date(endDate);
-      if (isNaN(end.getTime())) {
-        return { valid: false, error: 'Invalid end date' };
-      }
-      if (end <= start) {
-        return { valid: false, error: 'End date must be after start date' };
-      }
-      return { valid: true, startDate: start, endDate: end };
+  if (endDate) {
+    const end = new Date(endDate);
+    if (isNaN(end.getTime())) {
+      return { valid: false, error: 'Invalid end date' };
     }
-    return { valid: true, startDate: start, endDate: null };
+    if (end <= start) {
+      return { valid: false, error: 'End date must be after start date' };
+    }
+    return { valid: true, startDate: start, endDate: end };
   }
 
-  // Fixed-term tenancies MUST have an end_date
-  if (!endDate) {
-    return { valid: false, error: 'End date is required for fixed-term tenancies' };
-  }
-
-  const end = new Date(endDate);
-
-  if (isNaN(end.getTime())) {
-    return { valid: false, error: 'Invalid end date' };
-  }
-
-  if (end <= start) {
-    return { valid: false, error: 'End date must be after start date' };
-  }
-
-  return { valid: true, startDate: start, endDate: end };
+  return { valid: true, startDate: start, endDate: null };
 }
 
 /**

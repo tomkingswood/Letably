@@ -21,6 +21,9 @@ router.put('/entity/:entityType/:entityId/:typeId/expiry', certificatesControlle
 // Delete certificate
 router.delete('/entity/:entityType/:entityId/:typeId', certificatesController.deleteCertificate);
 
+// Check property compliance for tenancy creation
+router.get('/compliance/property/:propertyId', certificatesController.checkPropertyCompliance);
+
 // Download certificate file
 router.get('/:id/download', certificatesController.download);
 

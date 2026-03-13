@@ -28,7 +28,7 @@ export interface StatusHandlers {
 
 export interface LifecycleHandlers {
   onDelete: () => void;
-  onOpenCreateRollingModal: () => void;
+  onOpenCreateSuccessorModal: () => void;
 }
 
 interface TenancyOverviewProps {
@@ -64,7 +64,7 @@ export function TenancyOverview({
   },
   lifecycleHandlers: {
     onDelete,
-    onOpenCreateRollingModal,
+    onOpenCreateSuccessorModal,
   },
 }: TenancyOverviewProps) {
   return (
@@ -72,11 +72,6 @@ export function TenancyOverview({
       <div className="flex justify-between items-start mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Tenancy Information</h2>
         <div className="flex gap-2">
-          {!!tenancy.is_rolling_monthly && (
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge('tenancyType', 'rolling_monthly')}`}>
-              {getStatusLabel('tenancyType', 'rolling_monthly')}
-            </span>
-          )}
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge('tenancy', tenancy.status)}`}>
             {getStatusLabel('tenancy', tenancy.status)}
           </span>
@@ -104,10 +99,8 @@ export function TenancyOverview({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 End Date
-                {tenancy?.is_rolling_monthly ? (
-                  <span className="ml-2 text-xs text-blue-600">(Set to terminate rolling tenancy)</span>
-                ) : tenancy?.status === 'active' ? (
-                  <span className="ml-2 text-xs text-blue-600">(Adjust for early termination)</span>
+                {tenancy?.status === 'active' ? (
+                  <span className="ml-2 text-xs text-blue-600">(Set to terminate tenancy)</span>
                 ) : tenancy?.status !== 'pending' ? (
                   <span className="ml-2 text-xs text-orange-600">(Locked until active)</span>
                 ) : null}
@@ -116,31 +109,24 @@ export function TenancyOverview({
                 type="date"
                 value={tenancyFormData.end_date || ''}
                 onChange={(e) => onFormDataChange({...tenancyFormData, end_date: e.target.value || null})}
-                required={!tenancy?.is_rolling_monthly}
-                disabled={!tenancy?.is_rolling_monthly && tenancy?.status !== 'pending' && tenancy?.status !== 'active'}
+                disabled={tenancy?.status !== 'pending' && tenancy?.status !== 'active'}
               />
-              {!!tenancy?.is_rolling_monthly && !tenancyFormData.end_date && (
-                <p className="text-xs text-gray-500 mt-1">Leave empty for indefinite rolling tenancy</p>
-              )}
-              {tenancy?.status === 'active' && !tenancy?.is_rolling_monthly && (
-                <p className="text-xs text-gray-500 mt-1">Adjust to support early termination of this tenancy</p>
+              {!tenancyFormData.end_date && (
+                <p className="text-xs text-gray-500 mt-1">Leave empty if no termination date has been set</p>
               )}
             </div>
-            {/* Auto-generate payments toggle for rolling tenancies */}
-            {!!tenancy?.is_rolling_monthly && (
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="autoGeneratePayments"
-                  checked={tenancyFormData.auto_generate_payments ?? true}
-                  onChange={(e) => onFormDataChange({...tenancyFormData, auto_generate_payments: e.target.checked})}
-                  className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
-                />
-                <label htmlFor="autoGeneratePayments" className="ml-2 text-sm text-gray-700">
-                  Auto-generate monthly payments
-                </label>
-              </div>
-            )}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="autoGeneratePayments"
+                checked={tenancyFormData.auto_generate_payments ?? true}
+                onChange={(e) => onFormDataChange({...tenancyFormData, auto_generate_payments: e.target.checked})}
+                className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
+              />
+              <label htmlFor="autoGeneratePayments" className="ml-2 text-sm text-gray-700">
+                Auto-generate monthly payments
+              </label>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
@@ -216,18 +202,16 @@ export function TenancyOverview({
               <p className="text-sm text-gray-600">Tenancy Type</p>
               <p className="font-medium">{tenancy.tenancy_type === 'room_only' ? 'Room Only' : 'Whole House'}</p>
             </div>
-            {!!tenancy.is_rolling_monthly && (
-              <div>
-                <p className="text-sm text-gray-600">Auto-generate Payments</p>
-                <p className="font-medium">
-                  {!!tenancy.auto_generate_payments ? (
-                    <span className="text-green-600">Enabled</span>
-                  ) : (
-                    <span className="text-gray-500">Disabled</span>
-                  )}
-                </p>
-              </div>
-            )}
+            <div>
+              <p className="text-sm text-gray-600">Auto-generate Payments</p>
+              <p className="font-medium">
+                {!!tenancy.auto_generate_payments ? (
+                  <span className="text-green-600">Enabled</span>
+                ) : (
+                  <span className="text-gray-500">Disabled</span>
+                )}
+              </p>
+            </div>
             <div>
               <p className="text-sm text-gray-600">Total Tenants</p>
               <p className="font-medium">{tenancy.members?.length || 0}</p>
@@ -250,22 +234,13 @@ export function TenancyOverview({
                 </button>
               </>
             )}
-            {/* Allow editing rolling tenancies after pending to set termination date */}
-            {!!tenancy.is_rolling_monthly && tenancy.status !== 'pending' && tenancy.status !== 'expired' && (
+            {/* Allow editing tenancy settings after pending */}
+            {tenancy.status !== 'pending' && tenancy.status !== 'expired' && (
               <button
                 onClick={onEditTenancy}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                Edit Rolling Settings
-              </button>
-            )}
-            {/* Allow editing end date for active non-rolling tenancies (early termination) */}
-            {!tenancy.is_rolling_monthly && tenancy.status === 'active' && (
-              <button
-                onClick={onEditTenancy}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Edit End Date
+                Edit Tenancy
               </button>
             )}
             {tenancy.status === 'approval' && (
@@ -288,16 +263,16 @@ export function TenancyOverview({
                 Mark as Expired
               </button>
             )}
-            {/* Create Rolling Tenancy - only for non-rolling active tenancies */}
-            {!tenancy.is_rolling_monthly && tenancy.status === 'active' && (
+            {/* Create Successor Tenancy - for active tenancies */}
+            {tenancy.status === 'active' && (
               <button
-                onClick={onOpenCreateRollingModal}
+                onClick={onOpenCreateSuccessorModal}
                 className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Create Rolling Tenancy
+                Create Successor Tenancy
               </button>
             )}
             <button

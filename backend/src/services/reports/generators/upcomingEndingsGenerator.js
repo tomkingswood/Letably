@@ -61,7 +61,6 @@ async function getEndingsData(landlordId, propertyId, daysAhead, includeLandlord
     't.id as tenancy_id',
     't.end_date',
     't.status',
-    't.is_rolling_monthly',
     'p.address_line1 as property_address',
     'p.id as property_id',
     "STRING_AGG(tm.first_name || ' ' || tm.surname, ', ') as tenants",
@@ -84,7 +83,6 @@ async function getEndingsData(landlordId, propertyId, daysAhead, includeLandlord
     .groupBy('t.id')
     .groupBy('t.end_date')
     .groupBy('t.status')
-    .groupBy('t.is_rolling_monthly')
     .groupBy('p.address_line1')
     .groupBy('p.id');
 

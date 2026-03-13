@@ -12,6 +12,7 @@ interface CertificateType {
   name: string;
   display_name: string;
   has_expiry: boolean;
+  is_compliance: boolean;
   display_order: number;
   is_active: boolean;
 }
@@ -34,6 +35,7 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
   const [formData, setFormData] = useState({
     name: '',
     has_expiry: false,
+    is_compliance: false,
   });
   const [saving, setSaving] = useState(false);
   const [uploadingCertificates, setUploadingCertificates] = useState<Record<number, boolean>>({});
@@ -100,12 +102,17 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
     setFormData({
       name: type.name,
       has_expiry: type.has_expiry,
+      is_compliance: type.is_compliance,
     });
     setShowForm(true);
   };
 
   const handleDeleteType = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this type? Any uploaded certificate will also be removed.')) return;
+    const type = types.find(t => t.id === id);
+    const msg = type?.is_compliance
+      ? 'This is marked as a legal/compliance requirement. Any uploaded certificate will also be removed. Are you sure you want to delete it?'
+      : 'Are you sure you want to delete this type? Any uploaded certificate will also be removed.';
+    if (!confirm(msg)) return;
 
     try {
       await certificateTypesApi.delete(id);
@@ -187,7 +194,7 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
   const resetForm = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ name: '', has_expiry: false });
+    setFormData({ name: '', has_expiry: false, is_compliance: false });
   };
 
   if (loading) {
@@ -286,17 +293,31 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
                 required
               />
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="agency_has_expiry"
-                checked={formData.has_expiry}
-                onChange={(e) => setFormData({ ...formData, has_expiry: e.target.checked })}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <label htmlFor="agency_has_expiry" className="text-sm text-gray-700">
-                This type has an expiry date
-              </label>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="agency_has_expiry"
+                  checked={formData.has_expiry}
+                  onChange={(e) => setFormData({ ...formData, has_expiry: e.target.checked })}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="agency_has_expiry" className="text-sm text-gray-700">
+                  Has expiry date
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="agency_is_compliance"
+                  checked={formData.is_compliance}
+                  onChange={(e) => setFormData({ ...formData, is_compliance: e.target.checked })}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="agency_is_compliance" className="text-sm text-gray-700">
+                  Legal/compliance requirement
+                </label>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -354,6 +375,11 @@ export default function AgencyCertificateTypesSection(_props: SectionProps) {
                       }`}>
                         {type.has_expiry ? 'Has Expiry' : 'No Expiry'}
                       </span>
+                      {type.is_compliance && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+                          Compliance
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">

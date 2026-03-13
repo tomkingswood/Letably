@@ -64,7 +64,6 @@ export interface UpcomingEnding {
   tenancy_id: number;
   end_date: string;
   status: string;
-  is_rolling_monthly: number;
   property_address: string;
   property_id: number;
   tenants: string;

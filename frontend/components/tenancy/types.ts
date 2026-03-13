@@ -27,7 +27,6 @@ export interface Tenancy {
   landlord_name: string;
   landlord_email: string;
   landlord_phone: string;
-  is_rolling_monthly?: number;
 }
 
 export interface TenancySummary {
@@ -35,7 +34,6 @@ export interface TenancySummary {
   status: string;
   start_date: string;
   end_date: string;
-  is_rolling_monthly: number;
   property_address: string;
   location: string;
   member_id: number;
