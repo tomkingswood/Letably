@@ -9,10 +9,12 @@ import Button from '@/components/ui/Button';
 import { getErrorMessage } from '@/lib/types';
 import type { AgreementSection, Agreement } from '@/lib/types';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import AgreementDocument from '@/components/AgreementDocument';
 import { AgreementEditor } from '@/components/agreement-editor';
-import { formatTenancyPeriod } from '@/lib/dateUtils';
 import { MessageAlert } from '@/components/ui/MessageAlert';
+import AgreementPreviewBanner from '@/components/admin/AgreementPreviewBanner';
+import AgreementPreviewModal from '@/components/admin/AgreementPreviewModal';
+import TestDataConfigPanel, { defaultTestDataExtended, buildTestDataPayload } from '@/components/admin/TestDataConfigPanel';
+import type { TestDataState } from '@/components/admin/TestDataConfigPanel';
 
 interface Landlord {
   id: number;
@@ -90,35 +92,7 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
   const [showTestDataConfig, setShowTestDataConfig] = useState(false);
 
   // Test data configuration for previews
-  const [testData, setTestData] = useState({
-    primary_tenant_first_name: 'John',
-    primary_tenant_last_name: 'Smith',
-    primary_tenant_email: 'john.smith@example.com',
-    primary_tenant_phone: '07700900123',
-    primary_tenant_address: '45 Test Lane, Manchester, M1 1AA',
-    primary_tenant_rent: '125',
-    primary_tenant_deposit: '500',
-    primary_tenant_room: 'Room 1 (Double)',
-    second_tenant_first_name: 'Jane',
-    second_tenant_last_name: 'Doe',
-    second_tenant_email: 'jane.doe@example.com',
-    second_tenant_phone: '07700900456',
-    second_tenant_address: '67 Sample Road, Leeds, LS1 1BB',
-    second_tenant_rent: '115',
-    second_tenant_deposit: '450',
-    second_tenant_room: 'Room 2 (Single)',
-    property_address_line1: '123 Example Street',
-    property_address_line2: '',
-    property_city: 'Sheffield',
-    property_postcode: 'S1 2AB',
-    property_bedrooms: '5',
-    property_bathrooms: '2',
-    start_date: '2025-09-01',
-    end_date: '2026-08-31',
-    utilities_cap_enabled: true,
-    utilities_cap_amount: '50',
-    council_tax_included: true,
-  });
+  const [testData, setTestData] = useState<TestDataState>(defaultTestDataExtended);
 
   // Unsaved changes tracking
   const initialFormData = useRef<string | null>(null);
@@ -389,7 +363,7 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
     setPreviewAgreement(null);
 
     try {
-      const response = await landlordsApi.previewAgreement(itemId!, tenancyType, testData);
+      const response = await landlordsApi.previewAgreement(itemId!, tenancyType, buildTestDataPayload(testData));
       setPreviewAgreement(response.data);
     } catch (err: unknown) {
       setPreviewError(getErrorMessage(err, 'Failed to generate preview'));
@@ -999,226 +973,16 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
           </div>
 
           {/* Preview Buttons */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h4 className="font-semibold text-blue-900 mb-1">Preview Agreement with Test Data</h4>
-                <p className="text-sm text-blue-700">Test how your agreement sections will look with customizable sample data</p>
-              </div>
-              <div className="flex gap-3 flex-wrap">
-                <button
-                  onClick={() => setShowTestDataConfig(!showTestDataConfig)}
-                  className={`px-4 py-2 rounded transition-colors flex items-center gap-2 ${
-                    showTestDataConfig
-                      ? 'bg-blue-700 text-white'
-                      : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-100'
-                  }`}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Configure Test Data
-                </button>
-                <button
-                  onClick={() => handlePreviewAgreement('room_only')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  Preview Room Only
-                </button>
-                <button
-                  onClick={() => handlePreviewAgreement('whole_house')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  Preview Whole House
-                </button>
-              </div>
-            </div>
-
-            {/* Test Data Configuration Panel */}
+          <AgreementPreviewBanner
+            showTestDataConfig={showTestDataConfig}
+            onToggleConfig={() => setShowTestDataConfig(!showTestDataConfig)}
+            onPreviewRoomOnly={() => handlePreviewAgreement('room_only')}
+            onPreviewWholeHouse={() => handlePreviewAgreement('whole_house')}
+          >
             {showTestDataConfig && (
-              <div className="mt-4 pt-4 border-t border-blue-200">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Primary Tenant */}
-                  <div className="space-y-3">
-                    <h5 className="font-semibold text-blue-900 text-sm uppercase tracking-wide">Primary Tenant</h5>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={testData.primary_tenant_first_name}
-                        onChange={(e) => setTestData(prev => ({ ...prev, primary_tenant_first_name: e.target.value }))}
-                        placeholder="First name"
-                        className="px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <input
-                        type="text"
-                        value={testData.primary_tenant_last_name}
-                        onChange={(e) => setTestData(prev => ({ ...prev, primary_tenant_last_name: e.target.value }))}
-                        placeholder="Last name"
-                        className="px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <input
-                      type="email"
-                      value={testData.primary_tenant_email}
-                      onChange={(e) => setTestData(prev => ({ ...prev, primary_tenant_email: e.target.value }))}
-                      placeholder="Email"
-                      className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <input
-                      type="text"
-                      value={testData.primary_tenant_room}
-                      onChange={(e) => setTestData(prev => ({ ...prev, primary_tenant_room: e.target.value }))}
-                      placeholder="Room name"
-                      className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-blue-700">Rent (£/week)</label>
-                        <input
-                          type="number"
-                          value={testData.primary_tenant_rent}
-                          onChange={(e) => setTestData(prev => ({ ...prev, primary_tenant_rent: e.target.value }))}
-                          className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-blue-700">Deposit (£)</label>
-                        <input
-                          type="number"
-                          value={testData.primary_tenant_deposit}
-                          onChange={(e) => setTestData(prev => ({ ...prev, primary_tenant_deposit: e.target.value }))}
-                          className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Second Tenant */}
-                  <div className="space-y-3">
-                    <h5 className="font-semibold text-blue-900 text-sm uppercase tracking-wide">Second Tenant (Whole House)</h5>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={testData.second_tenant_first_name}
-                        onChange={(e) => setTestData(prev => ({ ...prev, second_tenant_first_name: e.target.value }))}
-                        placeholder="First name"
-                        className="px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <input
-                        type="text"
-                        value={testData.second_tenant_last_name}
-                        onChange={(e) => setTestData(prev => ({ ...prev, second_tenant_last_name: e.target.value }))}
-                        placeholder="Last name"
-                        className="px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <input
-                      type="email"
-                      value={testData.second_tenant_email}
-                      onChange={(e) => setTestData(prev => ({ ...prev, second_tenant_email: e.target.value }))}
-                      placeholder="Email"
-                      className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <input
-                      type="text"
-                      value={testData.second_tenant_room}
-                      onChange={(e) => setTestData(prev => ({ ...prev, second_tenant_room: e.target.value }))}
-                      placeholder="Room name"
-                      className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-blue-700">Rent (£/week)</label>
-                        <input
-                          type="number"
-                          value={testData.second_tenant_rent}
-                          onChange={(e) => setTestData(prev => ({ ...prev, second_tenant_rent: e.target.value }))}
-                          className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-blue-700">Deposit (£)</label>
-                        <input
-                          type="number"
-                          value={testData.second_tenant_deposit}
-                          onChange={(e) => setTestData(prev => ({ ...prev, second_tenant_deposit: e.target.value }))}
-                          className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Property & Tenancy */}
-                  <div className="space-y-3">
-                    <h5 className="font-semibold text-blue-900 text-sm uppercase tracking-wide">Property & Tenancy</h5>
-                    <input
-                      type="text"
-                      value={testData.property_address_line1}
-                      onChange={(e) => setTestData(prev => ({ ...prev, property_address_line1: e.target.value }))}
-                      placeholder="Address line 1"
-                      className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={testData.property_city}
-                        onChange={(e) => setTestData(prev => ({ ...prev, property_city: e.target.value }))}
-                        placeholder="City"
-                        className="px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <input
-                        type="text"
-                        value={testData.property_postcode}
-                        onChange={(e) => setTestData(prev => ({ ...prev, property_postcode: e.target.value }))}
-                        placeholder="Postcode"
-                        className="px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-blue-700">Start date</label>
-                        <input
-                          type="date"
-                          value={testData.start_date}
-                          onChange={(e) => setTestData(prev => ({ ...prev, start_date: e.target.value }))}
-                          className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-blue-700">End date</label>
-                        <input
-                          type="date"
-                          value={testData.end_date}
-                          onChange={(e) => setTestData(prev => ({ ...prev, end_date: e.target.value }))}
-                          className="w-full px-2 py-1 text-sm border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2 pt-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={testData.council_tax_included}
-                          onChange={(e) => setTestData(prev => ({ ...prev, council_tax_included: e.target.checked }))}
-                          className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-blue-900">Council tax included in bills</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <TestDataConfigPanel testData={testData} setTestData={setTestData} showExtendedFields />
             )}
-          </div>
+          </AgreementPreviewBanner>
 
           {/* Create New Section Form */}
           {creatingNew && (
@@ -1501,105 +1265,12 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
 
         {/* Preview Modal */}
         {showPreviewModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-              <div className="bg-primary text-white px-6 py-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold">Agreement Preview</h3>
-                  <p className="text-sm text-white/90 mt-1">Preview with dummy data</p>
-                </div>
-                <button
-                  onClick={closePreviewModal}
-                  className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6">
-                {previewLoading && (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                      <p className="text-gray-600 mt-4">Generating preview...</p>
-                    </div>
-                  </div>
-                )}
-
-                <MessageAlert type="error" message={previewError} />
-
-                {previewAgreement && !previewLoading && (
-                  <>
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                      <div className="flex items-start gap-3">
-                        <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h4 className="font-semibold text-yellow-900 mb-1">Preview Mode - Dummy Data</h4>
-                          <p className="text-sm text-yellow-800">
-                            This is a preview using sample data. Actual agreements will use real tenant and property information.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                      <h4 className="font-bold text-blue-900 mb-2">Agreement Information</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <p className="text-blue-700 font-medium">Landlord</p>
-                          <p className="text-blue-900">{previewAgreement.landlord?.display_name}</p>
-                        </div>
-                        <div>
-                          <p className="text-blue-700 font-medium">Tenancy Period</p>
-                          <p className="text-blue-900">
-                            {formatTenancyPeriod(previewAgreement.tenancy?.start_date, previewAgreement.tenancy?.end_date)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-blue-700 font-medium">Tenancy Type</p>
-                          <p className="text-blue-900">
-                            {previewAgreement.tenancy?.tenancy_type === 'room_only' ? 'Room Only (1 tenant)' : 'Whole House (2 tenants)'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <AgreementDocument
-                      agreement={previewAgreement}
-                      showInfoBox={false}
-                      showSignatures={false}
-                    />
-                  </>
-                )}
-              </div>
-
-              <div className="border-t border-gray-200 px-6 py-4 flex justify-between items-center bg-gray-50">
-                <p className="text-sm text-gray-600">
-                  {previewAgreement && `${previewAgreement.sections?.length || 0} sections rendered`}
-                </p>
-                <div className="flex gap-3">
-                  {previewAgreement && (
-                    <button
-                      onClick={() => window.print()}
-                      className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                    >
-                      Print Preview
-                    </button>
-                  )}
-                  <button
-                    onClick={closePreviewModal}
-                    className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <AgreementPreviewModal
+            agreement={previewAgreement}
+            loading={previewLoading}
+            error={previewError}
+            onClose={closePreviewModal}
+          />
         )}
       {/* Unsaved Changes Warning Modal */}
       <Modal

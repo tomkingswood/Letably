@@ -54,7 +54,7 @@ const defaultPropertyData = {
  * @param {Object} options.secondTenant - Second tenant data for whole_house (optional)
  * @param {Object} options.propertyData - Custom property data (optional)
  * @param {string} options.startDate - Tenancy start date (default: '2025-09-01')
- * @param {string} options.endDate - Tenancy end date (default: '2026-08-31')
+ * @param {string|null} options.endDate - Tenancy end date (default: null, rolling monthly)
  * @param {number} agencyId - Agency ID for multi-tenancy
  * @returns {Object} Created IDs and cleanup function
  */
@@ -66,7 +66,7 @@ async function createPreviewData(options, agencyId) {
     secondTenant = defaultTenants.secondary,
     propertyData = defaultPropertyData,
     startDate = '2025-09-01',
-    endDate = '2026-08-31'
+    endDate = null
   } = options;
 
   const timestamp = Date.now();

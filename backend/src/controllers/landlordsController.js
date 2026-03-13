@@ -299,11 +299,12 @@ exports.generatePreviewAgreement = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const agencyId = req.agencyId;
   const { tenancyType = 'room_only', testData = {} } = req.body;
+  const safeTestData = testData && typeof testData === 'object' && !Array.isArray(testData) ? testData : {};
 
   // Merge custom test data with defaults
-  const primaryTenant = { ...defaultTenants.primary, ...testData.primaryTenant };
-  const secondTenant = { ...defaultTenants.secondary, ...testData.secondTenant };
-  const propertyData = { ...defaultPropertyData, ...testData.propertyData };
+  const primaryTenant = { ...defaultTenants.primary, ...(safeTestData.primaryTenant || {}) };
+  const secondTenant = { ...defaultTenants.secondary, ...(safeTestData.secondTenant || {}) };
+  const propertyData = { ...defaultPropertyData, ...(safeTestData.propertyData || {}) };
 
   const agreement = await generatePreviewAgreement({
     tenancyType,
@@ -311,8 +312,8 @@ exports.generatePreviewAgreement = asyncHandler(async (req, res) => {
     primaryTenant,
     secondTenant,
     propertyData,
-    startDate: testData.startDate || '2025-09-01',
-    endDate: testData.endDate || '2026-08-31',
+    startDate: safeTestData.startDate || '2025-09-01',
+    endDate: safeTestData.endDate || null,
   }, agencyId, agreementService.generateAgreement);
 
   res.json(agreement);

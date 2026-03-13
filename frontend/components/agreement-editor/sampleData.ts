@@ -121,7 +121,7 @@ export const sampleRoomOnlyData: SampleTemplateData = {
   tenancy_type: 'room_only',
   tenancy_type_description: 'Room Only',
   start_date: '01/07/2025',
-  end_date: '30/06/2026',
+  end_date: '',
   status: 'pending',
 
   // Primary tenant
@@ -175,7 +175,7 @@ export const sampleRoomOnlyData: SampleTemplateData = {
   utilities_cap: true,
   utilities_cap_amount: '450.00',
   utilities_cap_annual_amount: '450.00',
-  utilities_cap_period: 'for the period 01/07/2025 to 30/06/2026',
+  utilities_cap_period: 'for the period from the tenancy start date',
   council_tax_included: true,
 };
 
@@ -209,7 +209,7 @@ export const sampleWholeHouseData: SampleTemplateData = {
   tenancy_type: 'whole_house',
   tenancy_type_description: 'Whole House',
   start_date: '01/07/2025',
-  end_date: '30/06/2026',
+  end_date: '',
   status: 'pending',
 
   // Primary tenant
@@ -287,7 +287,7 @@ export const sampleWholeHouseData: SampleTemplateData = {
   utilities_cap: true,
   utilities_cap_amount: '900.00',
   utilities_cap_annual_amount: '900.00',
-  utilities_cap_period: 'for the period 01/07/2025 to 30/06/2026',
+  utilities_cap_period: 'for the period from the tenancy start date',
   council_tax_included: false,
 };
 
