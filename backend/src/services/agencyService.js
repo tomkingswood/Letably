@@ -131,11 +131,9 @@ async function registerAgency(data) {
 {{landlord_address}}</p>
 
 <p><strong>And you:</strong></p>
-<ol>
-{{#each tenants}}<li>{{name}}<br>
-<span style="font-size: 12px; color: #6b7280;">{{email}}</span></li>
+{{#each tenants}}<p>{{name}}<br>
+<span style="font-size: 12px; color: #6b7280;">{{email}}</span></p>
 {{/each}}
-</ol>
 
 {{#if_whole_house}}<p>The person named first in the list above is signing this agreement. All persons named above are jointly and severally liable for the obligations under this tenancy.</p>{{/if_whole_house}}`
       },

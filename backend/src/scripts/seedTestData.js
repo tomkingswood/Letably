@@ -393,9 +393,24 @@ async function seedTestData() {
           break;
         }
 
+        // RRA 2025: all tenancies are periodic (rolling monthly).
+        // Active tenancies mostly have no end date. ~20% have an end date
+        // representing an agreed termination (notice served).
+        // Expired tenancies keep their end date (they ended in the past).
+        let tenancyEndDate = endDate;
+        if (status === 'active') {
+          if (rand() > 0.2) {
+            // ~80% of active tenancies: no end date (rolling periodic)
+            tenancyEndDate = null;
+          } else {
+            // ~20%: notice served, termination date agreed in near future
+            tenancyEndDate = d(Y, M + randInt(1, 3), 1);
+          }
+        }
+
         const tenId = await insertTenancy({
           propertyId: prop.id, type: prop.type,
-          start: startDate, end: endDate,
+          start: startDate, end: tenancyEndDate,
           rent: monthlyRent, status, autoPayments
         });
 
@@ -423,21 +438,26 @@ async function seedTestData() {
           memberTenants.push({ ...tenant, memId, rentPPPW, deposit });
         }
 
-        const tenancyInfo = { id: tenId, status, start: startDate, end: endDate, memberIds, memberTenants, propertyIdx: pi, monthlyRent };
+        const tenancyInfo = { id: tenId, status, start: startDate, end: tenancyEndDate, memberIds, memberTenants, propertyIdx: pi, monthlyRent };
 
         // --- Payment schedules ---
+        // For expired tenancies, use endDate (always set in loop) to determine recency
         const monthsAgo = monthsBetween(endDate, todayStr);
 
         if (status === 'active') {
           // Active: deposit (paid) + full monthly rent history + 1 future month
           const monthsSinceStart = monthsBetween(startDate, todayStr);
+          // Cap rent periods at tenancyEndDate if notice has been served
+          const maxRentMonths = tenancyEndDate
+            ? Math.min(monthsSinceStart + 1, monthsBetween(startDate, tenancyEndDate))
+            : monthsSinceStart + 1;
           for (const mt of memberTenants) {
             const monthlyAmt = Math.round(mt.rentPPPW * 52 / 12);
             // Deposit
             const depSid = await insertSchedule({ tenancyId: tenId, memberId: mt.memId, type: 'deposit', desc: `Deposit - ${mt.firstName} ${mt.lastName}`, due: startDate, amount: mt.deposit, status: 'paid', schedType: 'manual' });
             await insertPayment(depSid, mt.deposit, startDate, `DEP-${mt.lastName.substring(0, 4).toUpperCase()}`);
             // Monthly rent
-            for (let mo = 0; mo <= monthsSinceStart + 1; mo++) {
+            for (let mo = 0; mo < maxRentMonths; mo++) {
               const dueDay = pick([1, 1, 1, 5, 10, 15, 20]);
               const dueDate = d(cursorYear, cursorMonth + mo, dueDay);
               const coversFrom = d(cursorYear, cursorMonth + mo, 1);
@@ -488,7 +508,7 @@ async function seedTestData() {
 
     const penTen = await insertTenancy({
       propertyId: pendingProp.id, type: pendingProp.type,
-      start: d(Y, M + 2, 1), end: d(Y + 1, M + 2, 1),
+      start: d(Y, M + 2, 1), end: null,
       rent: 500, status: 'pending'
     });
     const penTenant = nextTenant();
@@ -502,7 +522,7 @@ async function seedTestData() {
 
     const awTen = await insertTenancy({
       propertyId: awaitProp.id, type: awaitProp.type,
-      start: d(Y, M + 1, 1), end: d(Y + 1, M + 1, 1),
+      start: d(Y, M + 1, 1), end: null,
       rent: 450, status: 'awaiting_signatures'
     });
     for (let ai = 0; ai < Math.min(2, awaitProp.bedroomIds.length); ai++) {

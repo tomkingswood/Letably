@@ -55,7 +55,7 @@ The Service may include tools to assist with Right to Rent checks. However:
 
 The Service may provide template documents including:
 - Assured Shorthold Tenancy agreements
-- Section 21 and Section 8 notices
+- Section 8 notices
 - Inventory templates
 - Reference request forms
 - Other property management documents

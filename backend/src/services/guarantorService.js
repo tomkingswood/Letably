@@ -181,7 +181,7 @@ function generateGuarantorAgreementContent(data) {
       <div style="display: flex; align-items: flex-start; gap: 12px;">
         <div style="background-color: #CF722F; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; text-align: center; line-height: 28px; font-weight: bold;">5</div>
         <div style="color: #4b5563; font-size: 14px; flex: 1;">
-          <p style="margin: 0;">This guarantee shall continue beyond expiry of the agreement if the Tenant remains resident at the property, including where a statutory periodic tenancy arises under the Housing Act 1988 or there is a contractual continuation on the expiry of the fixed term granted by the Agreement. I agree that we will pay the rent and any other money payable and also pay any losses if any of the other terms of the tenancy are broken under this statutory periodic tenancy or contractual continuation.</p>
+          <p style="margin: 0;">This guarantee shall continue for the entire duration that the Tenant remains resident at the property under the tenancy granted by the Agreement, including any continuation or renewal of the tenancy. I agree that we will pay the rent and any other money payable and also pay any losses if any of the other terms of the tenancy are broken.</p>
         </div>
       </div>
     </div>
@@ -190,7 +190,7 @@ function generateGuarantorAgreementContent(data) {
       <div style="display: flex; align-items: flex-start; gap: 12px;">
         <div style="background-color: #CF722F; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; text-align: center; line-height: 28px; font-weight: bold;">6</div>
         <div style="color: #4b5563; font-size: 14px; flex: 1;">
-          <p style="margin: 0;">This guarantee cannot be revoked or cancelled for so long as the Tenant remains a tenant of the property under the fixed term tenancy granted by the Agreement, or if a statutory periodic tenancy or contractual continuation arises thereafter.</p>
+          <p style="margin: 0;">This guarantee cannot be revoked or cancelled for so long as the Tenant remains a tenant of the property under the tenancy granted by the Agreement, or any continuation or renewal thereof.</p>
         </div>
       </div>
     </div>

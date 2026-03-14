@@ -39,14 +39,6 @@ function renderTemplate(template, data) {
     return data.individual_deposits ? content : '';
   });
 
-  rendered = rendered.replace(/{{#if_rolling_monthly}}([\s\S]*?){{\/if_rolling_monthly}}/g, (match, content) => {
-    return content;
-  });
-
-  rendered = rendered.replace(/{{#if_fixed_term}}([\s\S]*?){{\/if_fixed_term}}/g, (match, content) => {
-    return '';
-  });
-
   // Handle each loops BEFORE regular conditionals: {{#each array}}...{{/each}}
   rendered = rendered.replace(/{{#each\s+(\w+)}}([\s\S]*?){{\/each}}/g, (match, arrayName, itemTemplate) => {
     const array = data[arrayName];
@@ -85,6 +77,11 @@ function renderTemplate(template, data) {
     const value = data[key] !== null && data[key] !== undefined ? data[key] : '';
     rendered = rendered.replace(new RegExp(`{{${key}}}`, 'g'), value);
   });
+
+  // Clean up empty <li> tags left behind when loop/conditional control tags
+  // (e.g. {{#each tenants}}, {{/each}}) were inside list items in the WYSIWYG editor.
+  // TipTap wraps content in <p> tags, so empty items may be <li><p></p></li>
+  rendered = rendered.replace(/<li[^>]*>(\s|<p[^>]*>\s*<\/p>|<br\s*\/?>)*<\/li>/g, '');
 
   return rendered;
 }
@@ -379,7 +376,6 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
       start_date: formatDate(tenancy.start_date),
       end_date: formatDate(tenancy.end_date),
       status: tenancy.status,
-      is_rolling_monthly: true,
 
       // Primary tenant (the one signing this agreement)
       primary_tenant_name: primaryTenantName,
@@ -470,7 +466,6 @@ exports.generateAgreement = async (tenancyId, memberId, agencyId) => {
 
     return {
       company_name: agency.name || 'Letably',
-      is_rolling_monthly: true,
       tenancy: {
         id: tenancy.id,
         property_address: fullPropertyAddress,

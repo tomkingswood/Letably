@@ -93,7 +93,8 @@ async function getArrearsData(landlordId, propertyId, includeLandlordInfo, today
       .select(['l.id as landlord_id', 'l.name as landlord_name']);
   }
 
-  qb.where("t.status = 'active'")
+  qb.whereAgency(agencyId, 't')
+    .where("t.status = 'active'")
     .where("ps.status IN ('overdue', 'partial')")
     .where('ps.due_date < ?', today)
     .whereLandlord(landlordId)

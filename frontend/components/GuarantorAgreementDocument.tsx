@@ -157,9 +157,9 @@ export default function GuarantorAgreementDocument({ agreement, onViewTenantAgre
 
           `If the tenant does not comply with any of the terms of the Agreement which are the Tenant's responsibility, I will on written demand pay to you all losses which you are entitled to as a result of the Tenant breaking the terms of the Agreement, subject to full written calculation and detailed explanation of the loss. I understand that losses can include any damages, expenses or costs (including legal costs) that result if any rent or other monies payable are not paid or if any term of the agreement is broken.`,
 
-          `This guarantee shall continue beyond expiry of the agreement if the Tenant remains resident at the property, including where a statutory periodic tenancy arises under the Housing Act 1988 or there is a contractual continuation on the expiry of the fixed term granted by the Agreement. I agree that we will pay the rent and any other money payable and also pay any losses if any of the other terms of the tenancy are broken under this statutory periodic tenancy or contractual continuation.`,
+          `This guarantee shall continue for the entire duration that the Tenant remains resident at the property under the tenancy granted by the Agreement, including any continuation or renewal of the tenancy. I agree that we will pay the rent and any other money payable and also pay any losses if any of the other terms of the tenancy are broken.`,
 
-          `This guarantee cannot be revoked or cancelled for so long as the Tenant remains a tenant of the property under the fixed term tenancy granted by the Agreement, or if a statutory periodic tenancy or contractual continuation arises thereafter.`
+          `This guarantee cannot be revoked or cancelled for so long as the Tenant remains a tenant of the property under the tenancy granted by the Agreement, or any continuation or renewal thereof.`
         ].map((text, index) => (
           <div key={index} className="flex items-start gap-3 mb-5">
             <div className="bg-primary text-white w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0 font-bold">

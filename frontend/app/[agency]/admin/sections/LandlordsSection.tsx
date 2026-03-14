@@ -72,7 +72,6 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
   // Agreement sections state (for edit view)
   const [defaultSections, setDefaultSections] = useState<AgreementSection[]>([]);
   const [landlordSections, setLandlordSections] = useState<AgreementSection[]>([]);
-  const [showDefaultSections, setShowDefaultSections] = useState(false);
   const [editingInlineId, setEditingInlineId] = useState<string | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const [originalDefaultContent, setOriginalDefaultContent] = useState<AgreementSection | null>(null);
@@ -1188,16 +1187,13 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
                                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <h6 className="text-sm font-semibold text-gray-700">Original Default Section (for reference)</h6>
+                                <h6 className="text-sm font-semibold text-gray-700">Original Default Section: {originalDefaultContent.section_title}</h6>
                               </div>
-                              <div className="bg-white border border-gray-200 rounded p-3 max-h-64 overflow-y-auto">
-                                <p className="text-xs font-semibold text-gray-500 mb-2">
-                                  {originalDefaultContent.section_title} (Key: {originalDefaultContent.section_key})
-                                </p>
-                                <pre className="whitespace-pre-wrap font-mono text-xs text-gray-700">
-                                  {originalDefaultContent.section_content}
-                                </pre>
-                              </div>
+                              <AgreementEditor
+                                value={originalDefaultContent.section_content}
+                                readOnly
+                                agreementType="tenancy_agreement"
+                              />
                             </div>
                           )}
 
@@ -1225,34 +1221,9 @@ export default function LandlordsSection({ onNavigate, action, itemId, onBack }:
                         </form>
                       ) : (
                         <>
-                          <p className="text-sm text-gray-600 mb-2">
+                          <p className="text-sm text-gray-600">
                             <strong>Key:</strong> {section.section_key}
                           </p>
-                          <div className="text-sm bg-white p-2 rounded max-h-32 overflow-y-auto">
-                            <pre className="whitespace-pre-wrap font-mono text-xs text-gray-700">
-                              {section.section_content.substring(0, 200)}
-                              {section.section_content.length > 200 && '...'}
-                            </pre>
-                          </div>
-                          {isOverride && section.defaultSection && (
-                            <div className="mt-2">
-                              <button
-                                onClick={() => setShowDefaultSections(!showDefaultSections)}
-                                className="text-xs text-gray-500 hover:text-gray-700 underline"
-                              >
-                                View original default content
-                              </button>
-                              {showDefaultSections && (
-                                <div className="mt-2 text-sm bg-gray-100 p-2 rounded max-h-32 overflow-y-auto">
-                                  <p className="text-xs font-semibold text-gray-600 mb-1">Original Default:</p>
-                                  <pre className="whitespace-pre-wrap font-mono text-xs text-gray-600">
-                                    {section.defaultSection.section_content.substring(0, 200)}
-                                    {section.defaultSection.section_content.length > 200 && '...'}
-                                  </pre>
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </>
                       )}
                     </div>
