@@ -61,17 +61,17 @@ export default function AgreementDocument({
         </div>
       )}
 
-      {/* Agreement Document */}
-      <div className={`bg-white rounded-lg shadow-md p-8 md:p-12 agreement-document ${className}`}>
+      {/* Agreement Document — uses inline styles so it prints correctly */}
+      <div className={`agreement-document ${className}`} style={{ background: '#fff', borderRadius: '0.5rem', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', padding: '2rem 3rem', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#333' }}>
         {/* Document Header */}
-        <div className="text-center mb-8 pb-8 border-b-2 border-gray-300">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div style={{ textAlign: 'center', marginBottom: '2rem', paddingBottom: '2rem', borderBottom: '2px solid #d1d5db' }}>
+          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>
             ASSURED SHORTHOLD TENANCY AGREEMENT
           </h1>
-          <p className="text-base text-gray-500 mb-2">
+          <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.5rem' }}>
             Periodic (Rolling Monthly) Tenancy
           </p>
-          <p className="text-sm text-gray-600">
+          <p style={{ fontSize: '0.875rem', color: '#4b5563' }}>
             Provided under part 1 of the Housing Act 1988 and amended under part 3 of the Housing
             Act 1996
           </p>
@@ -79,15 +79,15 @@ export default function AgreementDocument({
 
         {/* Agreement Sections */}
         {agreement.sections.map((section, index) => (
-          <div key={section.id} className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-              <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">
+          <div key={section.id} style={{ marginBottom: '2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ background: 'var(--agency-primary, #3B82F6)', color: '#fff', width: '2rem', height: '2rem', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', flexShrink: 0, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>
                 {index + 1}
               </span>
               {section.section_title}
             </h2>
             <div
-              className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+              style={{ maxWidth: 'none', color: '#374151', lineHeight: 1.7, fontSize: '0.875rem' }}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.section_content) }}
             />
           </div>
@@ -95,17 +95,17 @@ export default function AgreementDocument({
 
         {/* Other Tenants Listed (if any) */}
         {showSignatures && agreement.other_tenants && agreement.other_tenants.length > 0 && (
-          <div className="mt-12 pt-8 border-t-2 border-gray-300">
-            <h3 className="font-bold text-lg mb-3">Other Tenants in this Tenancy:</h3>
-            <p className="text-sm text-gray-600 mb-2">
+          <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '2px solid #d1d5db' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.75rem' }}>Other Tenants in this Tenancy:</h3>
+            <p style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '0.5rem' }}>
               The following tenants will each sign their own individual agreements:
             </p>
-            <ul className="list-disc list-inside text-gray-700">
+            <ul style={{ listStyleType: 'disc', listStylePosition: 'inside', color: '#374151' }}>
               {agreement.other_tenants.map((tenant, idx) => (
-                <li key={idx} className="py-1">
+                <li key={idx} style={{ padding: '0.25rem 0' }}>
                   {tenant.name}
                   {tenant.room && (
-                    <span className="text-sm text-gray-600"> (Room: {tenant.room})</span>
+                    <span style={{ fontSize: '0.875rem', color: '#4b5563' }}> (Room: {tenant.room})</span>
                   )}
                 </li>
               ))}

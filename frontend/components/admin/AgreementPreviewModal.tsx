@@ -29,6 +29,30 @@ export default function AgreementPreviewModal({
     if (e.key === 'Escape') onClose();
   }, [onClose]);
 
+  const handlePrint = useCallback(() => {
+    const contentEl = document.querySelector('.agreement-document');
+    if (!contentEl) return;
+    // Read the agency primary color so the print window matches exactly
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--agency-primary').trim() || '#3B82F6';
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Agreement Preview</title><style>
+      :root { --agency-primary: ${primaryColor}; }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 1rem; line-height: 1.5; color: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      p { margin: 0.5rem 0; }
+      ol, ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+      li { margin: 0.25rem 0; }
+      strong { font-weight: 700; }
+      blockquote { border-left: 3px solid #d1d5db; padding-left: 1rem; margin: 0.75rem 0; color: #4b5563; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: left; }
+    </style></head><body>${contentEl.innerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  }, []);
+
   useEffect(() => {
     document.addEventListener('keydown', handleEscape);
     document.body.style.overflow = 'hidden';
@@ -121,7 +145,7 @@ export default function AgreementPreviewModal({
           <div className="flex gap-3">
             {agreement && (
               <button
-                onClick={() => window.print()}
+                onClick={handlePrint}
                 className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
               >
                 Print Preview

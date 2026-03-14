@@ -285,7 +285,7 @@ export const sections: Record<string, {
     component: dynamic(() => import('./AgencyCertificateTypesSection'), { loading: SectionLoading }),
     meta: {
       title: 'Agency Certificate Types',
-      description: 'Manage certificate types for the agency (Client Money Protection, Memberships)',
+      description: 'Manage certificate types for the agency',
       group: 'documents',
       iconColor: 'text-blue-600',
       bgColor: 'bg-blue-100',

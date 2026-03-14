@@ -266,72 +266,44 @@ async function registerAgency(data) {
         section_key: 'tenant_obligations',
         section_title: 'Tenant Obligations',
         section_order: 8,
-        section_content: `<h3>You the Tenant must do the following:</h3>
-
-<ol style="list-style-type: none; padding-left: 0;">
-<li><strong>1</strong> Pay your rent on or before the dates agreed in the payment schedule, without deduction. All rental payments are made in advance of the period to which they relate.</li>
-
-<li><strong>2</strong> In cases of late payment of rent, you will have to pay interest on this amount where you are 14 days or more in arrears. The interest rate applicable is 3% above the Bank of England base rate, in accordance with the Tenant Fees Act 2019.</li>
-
-<li><strong>3</strong> Promptly notify the Landlord or Landlord's Agent of any defect or damage to the property.</li>
-
-<li><strong>4</strong> Do not remove any of the supplied fixtures and fittings from the property.</li>
-
-<li><strong>5</strong> Keep the property sufficiently well aired and warmed to avoid build-up of condensation and mildew growth and to protect it from frost.</li>
-
-<li><strong>6</strong> Keep the inside of the property in at least as good a condition as when the tenancy started (apart from fair wear and tear).</li>
-
-<li><strong>7</strong> Keep the external areas of the property presentable and ensure that no rubbish is allowed to accumulate. Present refuse bins for collection on the relevant days.</li>
-
-<li><strong>8</strong> You will be liable for charges for repairs to damage caused deliberately or through neglect or carelessness by you or anyone visiting you at the property.</li>
-
-<li><strong>9</strong> Whenever you leave the property unattended, you must lock all doors and windows. You must notify the Landlord if the property will be unoccupied for more than 28 consecutive days.</li>
-
-<li><strong>10</strong> The Tenant is not permitted to assign, sublet or share possession with any person not named in this agreement without the Landlord's prior written consent.</li>
-
-<li><strong>11</strong> Allow the Landlord access to the property at reasonable hours to inspect its condition, carry out repairs or show prospective tenants. A minimum of 24 hours' written notice will be given except in emergencies.</li>
-
-<li><strong>12</strong> You must allow immediate access in the event of an emergency.</li>
-
-<li><strong>13</strong> Check the inventory and report any errors to the Landlord's Agent within 7 days of receipt.</li>
-
-<li><strong>14</strong> Pay the reasonable costs for replacing keys and/or locks if you fail to return any key at the end of the tenancy.</li>
-
-<li><strong>15</strong> It is your responsibility to organise your own contents insurance for your belongings. We highly recommend this as your belongings are otherwise uninsured in case of fire or theft.</li>
-
-<li><strong>16</strong> Allow possible new tenants to view the property with a minimum of 24 hours' notice during the tenancy.</li>
+        section_content: `<p><strong>You the Tenant must do the following:</strong></p>
+<ol>
+<li>Pay your rent on or before the dates agreed in the payment schedule, without deduction. All rental payments are made in advance of the period to which they relate.</li>
+<li>In cases of late payment of rent, you will have to pay interest on this amount where you are 14 days or more in arrears. The interest rate applicable is 3% above the Bank of England base rate, in accordance with the Tenant Fees Act 2019.</li>
+<li>Promptly notify the Landlord or Landlord's Agent of any defect or damage to the property.</li>
+<li>Do not remove any of the supplied fixtures and fittings from the property.</li>
+<li>Keep the property sufficiently well aired and warmed to avoid build-up of condensation and mildew growth and to protect it from frost.</li>
+<li>Keep the inside of the property in at least as good a condition as when the tenancy started (apart from fair wear and tear).</li>
+<li>Keep the external areas of the property presentable and ensure that no rubbish is allowed to accumulate. Present refuse bins for collection on the relevant days.</li>
+<li>You will be liable for charges for repairs to damage caused deliberately or through neglect or carelessness by you or anyone visiting you at the property.</li>
+<li>Whenever you leave the property unattended, you must lock all doors and windows. You must notify the Landlord if the property will be unoccupied for more than 28 consecutive days.</li>
+<li>The Tenant is not permitted to assign, sublet or share possession with any person not named in this agreement without the Landlord's prior written consent.</li>
+<li>Allow the Landlord access to the property at reasonable hours to inspect its condition, carry out repairs or show prospective tenants. A minimum of 24 hours' written notice will be given except in emergencies.</li>
+<li>You must allow immediate access in the event of an emergency.</li>
+<li>Check the inventory and report any errors to the Landlord's Agent within 7 days of receipt.</li>
+<li>Pay the reasonable costs for replacing keys and/or locks if you fail to return any key at the end of the tenancy.</li>
+<li>It is your responsibility to organise your own contents insurance for your belongings. We highly recommend this as your belongings are otherwise uninsured in case of fire or theft.</li>
+<li>Allow possible new tenants to view the property with a minimum of 24 hours' notice during the tenancy.</li>
 </ol>`
       },
       {
         section_key: 'landlord_obligations',
         section_title: 'Landlord Obligations',
         section_order: 9,
-        section_content: `<h3>We the Landlord agree to do the following:</h3>
-
-<ol style="list-style-type: none; padding-left: 0;">
-<li><strong>1</strong> Allow the Tenant quiet enjoyment of the property during the tenancy without any unlawful interruption from the Landlord or any person on behalf of the Landlord.</li>
-
-<li><strong>2</strong> Keep the property insured against fire and other comprehensive risks. This does not include insurance for the Tenant's own belongings.</li>
-
-<li><strong>3</strong> Be responsible for servicing and maintaining any gas heating system and ensuring all gas appliances are checked each year by a Gas Safe registered engineer, in line with the Gas Safety (Installation and Use) Regulations 1998.</li>
-
-<li><strong>4</strong> Be responsible for ensuring any furniture provided complies with the Furniture and Furnishings (Fire) (Safety) Regulations.</li>
-
-<li><strong>5</strong> Keep the structure and exterior of the property in good repair, in accordance with Section 11 of the Landlord and Tenant Act 1985.</li>
-
-<li><strong>6</strong> Keep installations for the supply of water, gas, electricity, sanitation, space heating and water heating in good repair and proper working order.</li>
-
-<li><strong>7</strong> Carry out necessary repairs in a reasonable timeframe once notified in writing by the Tenant.</li>
-
-<li><strong>8</strong> Give the Tenant a minimum of 24 hours' written notice before accessing the property, except in an emergency.</li>
-
-<li><strong>9</strong> Ensure the property meets the Homes (Fitness for Human Habitation) Act 2018 requirements.</li>
-
-<li><strong>10</strong> Ensure smoke alarms are installed on every storey and carbon monoxide detectors in rooms with solid fuel burning appliances, and check they are in working order at the start of the tenancy.</li>
-
-<li><strong>11</strong> Refund any rent paid which relates to a period after the tenancy ends.</li>
-
-<li><strong>12</strong> Provide the Tenant with a copy of the Government's "How to Rent" guide, a valid Gas Safety Certificate, Energy Performance Certificate, and Electrical Installation Condition Report before the tenancy begins.</li>
+        section_content: `<p><strong>We the Landlord agree to do the following:</strong></p>
+<ol>
+<li>Allow the Tenant quiet enjoyment of the property during the tenancy without any unlawful interruption from the Landlord or any person on behalf of the Landlord.</li>
+<li>Keep the property insured against fire and other comprehensive risks. This does not include insurance for the Tenant's own belongings.</li>
+<li>Be responsible for servicing and maintaining any gas heating system and ensuring all gas appliances are checked each year by a Gas Safe registered engineer, in line with the Gas Safety (Installation and Use) Regulations 1998.</li>
+<li>Be responsible for ensuring any furniture provided complies with the Furniture and Furnishings (Fire) (Safety) Regulations.</li>
+<li>Keep the structure and exterior of the property in good repair, in accordance with Section 11 of the Landlord and Tenant Act 1985.</li>
+<li>Keep installations for the supply of water, gas, electricity, sanitation, space heating and water heating in good repair and proper working order.</li>
+<li>Carry out necessary repairs in a reasonable timeframe once notified in writing by the Tenant.</li>
+<li>Give the Tenant a minimum of 24 hours' written notice before accessing the property, except in an emergency.</li>
+<li>Ensure the property meets the Homes (Fitness for Human Habitation) Act 2018 requirements.</li>
+<li>Ensure smoke alarms are installed on every storey and carbon monoxide detectors in rooms with solid fuel burning appliances, and check they are in working order at the start of the tenancy.</li>
+<li>Refund any rent paid which relates to a period after the tenancy ends.</li>
+<li>Provide the Tenant with a copy of the Government's "How to Rent" guide, a valid Gas Safety Certificate, Energy Performance Certificate, and Electrical Installation Condition Report before the tenancy begins.</li>
 </ol>`
       },
       {
@@ -426,18 +398,18 @@ async function registerAgency(data) {
         section_key: 'prohibitions',
         section_title: 'Prohibitions and Restrictions',
         section_order: 14,
-        section_content: `<h3>You must not do the following:</h3>
-<ol style="list-style-type: none; padding-left: 0;">
-<li><strong>1</strong> Make any alterations or additions to the structure, fixtures or furnishings of the property without prior written consent.</li>
-<li><strong>2</strong> Do anything that may be a nuisance or annoyance to neighbours.</li>
-<li><strong>3</strong> Keep any pets at the property without the Landlord's prior written consent. Under the Renters' Rights Act 2025, the Tenant has the right to request permission to keep a pet and the Landlord must not unreasonably refuse. The Landlord may require the Tenant to obtain appropriate pet insurance as a condition of consent.</li>
-<li><strong>4</strong> Tamper with fire safety equipment (smoke alarms, heat detectors, fire blankets or extinguishers).</li>
-<li><strong>5</strong> Sublet the property or any part of it without prior written consent.</li>
-<li><strong>6</strong> Carry on any profession, trade or business at the property.</li>
-<li><strong>7</strong> Use the property for anything other than as a private residential dwelling.</li>
-<li><strong>8</strong> Use any paraffin or portable gas heaters.</li>
-<li><strong>9</strong> Smoke within the property.</li>
-<li><strong>10</strong> Use the property for any illegal or immoral purpose.</li>
+        section_content: `<p><strong>You must not do the following:</strong></p>
+<ol>
+<li>Make any alterations or additions to the structure, fixtures or furnishings of the property without prior written consent.</li>
+<li>Do anything that may be a nuisance or annoyance to neighbours.</li>
+<li>Keep any pets at the property without the Landlord's prior written consent. Under the Renters' Rights Act 2025, the Tenant has the right to request permission to keep a pet and the Landlord must not unreasonably refuse. The Landlord may require the Tenant to obtain appropriate pet insurance as a condition of consent.</li>
+<li>Tamper with fire safety equipment (smoke alarms, heat detectors, fire blankets or extinguishers).</li>
+<li>Sublet the property or any part of it without prior written consent.</li>
+<li>Carry on any profession, trade or business at the property.</li>
+<li>Use the property for anything other than as a private residential dwelling.</li>
+<li>Use any paraffin or portable gas heaters.</li>
+<li>Smoke within the property.</li>
+<li>Use the property for any illegal or immoral purpose.</li>
 </ol>`
       },
       {
