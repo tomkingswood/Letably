@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSuperAuth } from '@/lib/super-auth-context';
-import { superAgencies, Agency, AgencyUser, StorageUsage } from '@/lib/super-api';
+import { superAgencies, Agency, AgencyUser, StorageUsage, AgencyAnalytics } from '@/lib/super-api';
 import { getErrorMessage } from '@/lib/types';
 
 export default function SuperAdminAgencyDetailPage() {
@@ -17,6 +17,7 @@ export default function SuperAdminAgencyDetailPage() {
   const [agency, setAgency] = useState<Agency | null>(null);
   const [admins, setAdmins] = useState<AgencyUser[]>([]);
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
+  const [analytics, setAnalytics] = useState<AgencyAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -40,13 +41,15 @@ export default function SuperAdminAgencyDetailPage() {
 
       setLoading(true);
       try {
-        const [agencyResponse, storageResponse] = await Promise.all([
+        const [agencyResponse, storageResponse, analyticsResponse] = await Promise.all([
           superAgencies.get(agencyId),
-          superAgencies.getStorageUsage(agencyId)
+          superAgencies.getStorageUsage(agencyId),
+          superAgencies.getAnalytics(agencyId)
         ]);
         setAgency(agencyResponse.data.agency);
         setAdmins(agencyResponse.data.admins);
         setStorageUsage(storageResponse.data.storage);
+        setAnalytics(analyticsResponse.data);
       } catch (error) {
         console.error('Failed to fetch agency:', error);
         setMessage({ type: 'error', text: 'Failed to load agency' });
@@ -349,6 +352,148 @@ export default function SuperAdminAgencyDetailPage() {
                 </p>
               </div>
             </div>
+
+            {/* Usage Analytics */}
+            {analytics && (
+              <>
+                {/* Activity Overview */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Activity (Last 30 Days)</h3>
+                    {analytics.activity.last_activity ? (
+                      <span className="text-sm text-gray-400">
+                        Last active: {new Date(analytics.activity.last_activity).toLocaleDateString()} ({(() => {
+                          const days = Math.floor((Date.now() - new Date(analytics.activity.last_activity!).getTime()) / 86400000);
+                          return days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days}d ago`;
+                        })()})
+                      </span>
+                    ) : (
+                      <span className="text-sm text-red-400">Never logged in</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs mb-1">Logins (7d)</p>
+                      <p className="text-xl font-bold text-white">{analytics.activity.logins_7d}</p>
+                    </div>
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs mb-1">Logins (30d)</p>
+                      <p className="text-xl font-bold text-white">{analytics.activity.logins_30d}</p>
+                    </div>
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs mb-1">Tenancies Created</p>
+                      <p className="text-xl font-bold text-white">{analytics.activity.tenancies_created_30d}</p>
+                    </div>
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs mb-1">Applications</p>
+                      <p className="text-xl font-bold text-white">{analytics.activity.applications_30d}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs mb-1">Agreements Signed</p>
+                      <p className="text-xl font-bold text-white">{analytics.activity.agreements_signed_30d}</p>
+                    </div>
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs mb-1">Maintenance Requests</p>
+                      <p className="text-xl font-bold text-white">{analytics.activity.maintenance_requests_30d}</p>
+                    </div>
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs mb-1">Payments Recorded</p>
+                      <p className="text-xl font-bold text-white">{analytics.activity.payments_recorded_30d}</p>
+                    </div>
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <p className="text-gray-400 text-xs mb-1">Emails Sent</p>
+                      <p className="text-xl font-bold text-white">{analytics.activity.emails_sent_30d}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feature Adoption + Growth side by side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                  {/* Feature Adoption */}
+                  <div className="bg-gray-800 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Feature Adoption</h3>
+                    <div className="space-y-2">
+                      {[
+                        { key: 'has_tenancies', label: 'Tenancies' },
+                        { key: 'has_applications', label: 'Applications' },
+                        { key: 'has_agreements', label: 'Agreements' },
+                        { key: 'has_payments', label: 'Payments' },
+                        { key: 'has_maintenance', label: 'Maintenance' },
+                        { key: 'has_certificates', label: 'Certificates' },
+                        { key: 'has_emails', label: 'Emails' },
+                        { key: 'has_holding_deposits', label: 'Holding Deposits' },
+                        { key: 'has_custom_domain', label: 'Custom Domain' },
+                      ].map(({ key, label }) => {
+                        const adopted = analytics.feature_adoption[key as keyof typeof analytics.feature_adoption];
+                        return (
+                          <div key={key} className="flex items-center justify-between py-1.5 px-3 rounded bg-gray-700/30">
+                            <span className="text-sm text-gray-300">{label}</span>
+                            {adopted ? (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-600/20 text-green-400">Active</span>
+                            ) : (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-600/30 text-gray-500">Unused</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-700">
+                      <p className="text-sm text-gray-400">
+                        {Object.values(analytics.feature_adoption).filter(Boolean).length} / {Object.keys(analytics.feature_adoption).length} features adopted
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Growth Trend */}
+                  <div className="bg-gray-800 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Growth (Last 6 Months)</h3>
+                    <div className="space-y-3">
+                      {analytics.growth.map((row) => {
+                        const monthLabel = new Date(row.month + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+                        return (
+                          <div key={row.month} className="flex items-center gap-3">
+                            <span className="text-xs text-gray-400 w-20 shrink-0">{monthLabel}</span>
+                            <div className="flex-1 flex items-center gap-2">
+                              <div className="flex-1 bg-gray-700/50 rounded-full h-4 overflow-hidden flex">
+                                {Number(row.properties) > 0 && (
+                                  <div
+                                    className="bg-blue-500 h-full rounded-l-full"
+                                    style={{ width: `${Math.min(Number(row.properties) * 10, 50)}%` }}
+                                    title={`${row.properties} properties`}
+                                  />
+                                )}
+                                {Number(row.tenancies) > 0 && (
+                                  <div
+                                    className="bg-purple-500 h-full"
+                                    style={{ width: `${Math.min(Number(row.tenancies) * 10, 50)}%` }}
+                                    title={`${row.tenancies} tenancies`}
+                                  />
+                                )}
+                              </div>
+                              <span className="text-xs text-gray-400 w-16 text-right shrink-0">
+                                {row.properties}P / {row.tenancies}T
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-700 flex gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded bg-blue-500"></div>
+                        <span className="text-xs text-gray-400">Properties</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded bg-purple-500"></div>
+                        <span className="text-xs text-gray-400">Tenancies</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Storage Usage */}
             {storageUsage && (

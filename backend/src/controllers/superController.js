@@ -877,6 +877,109 @@ const bulkDeleteEmails = asyncHandler(async (req, res) => {
 }, 'bulk delete emails');
 
 /**
+ * Get usage analytics for an agency
+ *
+ * GET /api/super/agencies/:id/analytics
+ */
+const getAgencyAnalytics = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  // Verify agency exists
+  const agencyCheck = await db.systemQuery(
+    'SELECT id FROM agencies WHERE id = $1',
+    [id]
+  );
+  if (agencyCheck.rows.length === 0) {
+    return res.status(404).json({ error: 'Agency not found' });
+  }
+
+  // Activity counts — single query with FILTER for efficiency
+  const activityResult = await db.systemQuery(`
+    SELECT
+      -- Login activity
+      (SELECT MAX(last_login_at) FROM users WHERE agency_id = $1) as last_activity,
+      (SELECT COUNT(*) FROM users WHERE agency_id = $1 AND last_login_at > NOW() - INTERVAL '7 days') as logins_7d,
+      (SELECT COUNT(*) FROM users WHERE agency_id = $1 AND last_login_at > NOW() - INTERVAL '30 days') as logins_30d,
+
+      -- Tenancies created
+      (SELECT COUNT(*) FROM tenancies WHERE agency_id = $1 AND created_at > NOW() - INTERVAL '30 days') as tenancies_created_30d,
+
+      -- Agreements signed
+      (SELECT COUNT(*) FROM signed_documents WHERE agency_id = $1 AND signed_at > NOW() - INTERVAL '30 days') as agreements_signed_30d,
+
+      -- Applications
+      (SELECT COUNT(*) FROM applications WHERE agency_id = $1 AND created_at > NOW() - INTERVAL '30 days') as applications_30d,
+
+      -- Maintenance requests
+      (SELECT COUNT(*) FROM maintenance_requests WHERE agency_id = $1 AND created_at > NOW() - INTERVAL '30 days') as maintenance_requests_30d,
+
+      -- Payments recorded
+      (SELECT COUNT(*) FROM payments WHERE agency_id = $1 AND created_at > NOW() - INTERVAL '30 days') as payments_recorded_30d,
+
+      -- Emails sent
+      (SELECT COUNT(*) FROM email_queue WHERE agency_id = $1 AND status = 'sent' AND created_at > NOW() - INTERVAL '30 days') as emails_sent_30d
+  `, [id]);
+
+  const activity = activityResult.rows[0];
+
+  // Feature adoption — check which features have been used at all
+  const adoptionResult = await db.systemQuery(`
+    SELECT
+      (SELECT COUNT(*) > 0 FROM tenancies WHERE agency_id = $1) as has_tenancies,
+      (SELECT COUNT(*) > 0 FROM applications WHERE agency_id = $1) as has_applications,
+      (SELECT COUNT(*) > 0 FROM signed_documents WHERE agency_id = $1) as has_agreements,
+      (SELECT COUNT(*) > 0 FROM payments WHERE agency_id = $1) as has_payments,
+      (SELECT COUNT(*) > 0 FROM maintenance_requests WHERE agency_id = $1) as has_maintenance,
+      (SELECT COUNT(*) > 0 FROM certificates WHERE agency_id = $1) as has_certificates,
+      (SELECT custom_portal_domain IS NOT NULL FROM agencies WHERE id = $1) as has_custom_domain,
+      (SELECT COUNT(*) > 0 FROM email_queue WHERE agency_id = $1) as has_emails,
+      (SELECT COUNT(*) > 0 FROM holding_deposits WHERE agency_id = $1) as has_holding_deposits
+  `, [id]);
+
+  const adoption = adoptionResult.rows[0];
+
+  // Growth trend — monthly counts for last 6 months
+  const growthResult = await db.systemQuery(`
+    SELECT
+      to_char(m.month, 'YYYY-MM') as month,
+      COALESCE(p.count, 0) as properties,
+      COALESCE(t.count, 0) as tenancies
+    FROM generate_series(
+      date_trunc('month', NOW() - INTERVAL '5 months'),
+      date_trunc('month', NOW()),
+      '1 month'
+    ) AS m(month)
+    LEFT JOIN (
+      SELECT date_trunc('month', created_at) as month, COUNT(*) as count
+      FROM properties WHERE agency_id = $1
+      GROUP BY 1
+    ) p ON p.month = m.month
+    LEFT JOIN (
+      SELECT date_trunc('month', created_at) as month, COUNT(*) as count
+      FROM tenancies WHERE agency_id = $1
+      GROUP BY 1
+    ) t ON t.month = m.month
+    ORDER BY m.month
+  `, [id]);
+
+  res.json({
+    activity: {
+      last_activity: activity.last_activity,
+      logins_7d: parseInt(activity.logins_7d),
+      logins_30d: parseInt(activity.logins_30d),
+      tenancies_created_30d: parseInt(activity.tenancies_created_30d),
+      agreements_signed_30d: parseInt(activity.agreements_signed_30d),
+      applications_30d: parseInt(activity.applications_30d),
+      maintenance_requests_30d: parseInt(activity.maintenance_requests_30d),
+      payments_recorded_30d: parseInt(activity.payments_recorded_30d),
+      emails_sent_30d: parseInt(activity.emails_sent_30d),
+    },
+    feature_adoption: adoption,
+    growth: growthResult.rows,
+  });
+}, 'get agency analytics');
+
+/**
  * Get storage usage for an agency
  *
  * GET /api/super/agencies/:id/storage
@@ -1212,6 +1315,7 @@ module.exports = {
   getAuditLog,
   createSuperUser,
   listSuperUsers,
+  getAgencyAnalytics,
   getAgencyStorageUsage,
   togglePropertyImages,
   updateCustomDomain,

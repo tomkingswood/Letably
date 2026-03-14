@@ -39,6 +39,7 @@ router.patch('/agencies/:id/status', authenticateSuperUser, superController.togg
 router.patch('/agencies/:id/subscription', authenticateSuperUser, superController.updateAgencySubscription);
 router.patch('/agencies/:id/property-images', authenticateSuperUser, superController.togglePropertyImages);
 router.patch('/agencies/:id/custom-domain', authenticateSuperUser, superController.updateCustomDomain);
+router.get('/agencies/:id/analytics', authenticateSuperUser, superController.getAgencyAnalytics);
 router.get('/agencies/:id/storage', authenticateSuperUser, superController.getAgencyStorageUsage);
 router.get('/agencies/:id/users', authenticateSuperUser, superController.getAgencyUsers);
 router.post('/agencies/:id/impersonate/:userId', authenticateSuperUser, superController.impersonateUser);

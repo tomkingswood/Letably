@@ -141,6 +141,36 @@ export interface SuperUser {
   created_at: string;
 }
 
+export interface AgencyAnalytics {
+  activity: {
+    last_activity: string | null;
+    logins_7d: number;
+    logins_30d: number;
+    tenancies_created_30d: number;
+    agreements_signed_30d: number;
+    applications_30d: number;
+    maintenance_requests_30d: number;
+    payments_recorded_30d: number;
+    emails_sent_30d: number;
+  };
+  feature_adoption: {
+    has_tenancies: boolean;
+    has_applications: boolean;
+    has_agreements: boolean;
+    has_payments: boolean;
+    has_maintenance: boolean;
+    has_certificates: boolean;
+    has_custom_domain: boolean;
+    has_emails: boolean;
+    has_holding_deposits: boolean;
+  };
+  growth: Array<{
+    month: string;
+    properties: number;
+    tenancies: number;
+  }>;
+}
+
 export const superAgencies = {
   list: (params?: { search?: string; status?: string; subscription_tier?: string }) =>
     superApi.get<{ agencies: Agency[] }>('/super/agencies', { params }),
@@ -164,6 +194,9 @@ export const superAgencies = {
 
   togglePropertyImages: (id: number | string, property_images_enabled: boolean) =>
     superApi.patch<{ agency: Agency }>(`/super/agencies/${id}/property-images`, { property_images_enabled }),
+
+  getAnalytics: (id: number | string) =>
+    superApi.get<AgencyAnalytics>(`/super/agencies/${id}/analytics`),
 
   getStorageUsage: (id: number | string) =>
     superApi.get<{ agency_id: number; storage: StorageUsage }>(`/super/agencies/${id}/storage`),
