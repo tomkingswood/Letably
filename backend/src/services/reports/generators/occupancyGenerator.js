@@ -175,8 +175,8 @@ async function getRoomOccupancy(propertyId, today, includeNextTenant, agencyId) 
       ROW_NUMBER() OVER (PARTITION BY tm.bedroom_id ORDER BY t.start_date DESC) as rn
     FROM tenancy_members tm
     INNER JOIN tenancies t ON tm.tenancy_id = t.id
-    WHERE t.status = 'active' AND t.start_date <= ?
-  `, [today]);
+    WHERE t.agency_id = ? AND t.status = 'active' AND t.start_date <= ?
+  `, [agencyId, today]);
 
   if (includeNextTenant) {
     // CTE for next tenant (earliest future tenant per bedroom)
@@ -194,8 +194,8 @@ async function getRoomOccupancy(propertyId, today, includeNextTenant, agencyId) 
         ROW_NUMBER() OVER (PARTITION BY tm.bedroom_id ORDER BY t.start_date ASC) as rn
       FROM tenancy_members tm
       INNER JOIN tenancies t ON tm.tenancy_id = t.id
-      WHERE t.status IN ('active', 'awaiting_signatures', 'pending') AND t.start_date > ?
-    `, [today]);
+      WHERE t.agency_id = ? AND t.status IN ('active', 'awaiting_signatures', 'pending') AND t.start_date > ?
+    `, [agencyId, today]);
   }
 
   qb.select([

@@ -104,8 +104,8 @@ async function getTenancyStats(landlordId, agencyId) {
     .from('tenancies', 't')
     .join('properties', 'p', 't.property_id = p.id', 'INNER')
     .leftJoin('tenancy_members', 'tm', 't.id = tm.tenancy_id')
-    .where("t.status = 'active'")
-    .whereAgency(agencyId, 't');
+    .whereAgency(agencyId, 't')
+    .where("t.status = 'active'");
 
   if (landlordId) {
     qb.where('p.landlord_id = ?', landlordId);
@@ -134,8 +134,8 @@ async function getRoomOccupancy(landlordId, includeLandlordInfo, today, agencyId
     FROM tenancies t
     INNER JOIN tenancy_members tm ON tm.tenancy_id = t.id
     INNER JOIN users u ON tm.user_id = u.id
-    WHERE t.status = 'active' AND t.start_date <= ? AND t.bedroom_id IS NOT NULL
-  `, [today]);
+    WHERE t.agency_id = ? AND t.status = 'active' AND t.start_date <= ? AND t.bedroom_id IS NOT NULL
+  `, [agencyId, today]);
 
   qb.select([
     'b.id',

@@ -457,7 +457,7 @@ async function seedTestData() {
             const depSid = await insertSchedule({ tenancyId: tenId, memberId: mt.memId, type: 'deposit', desc: `Deposit - ${mt.firstName} ${mt.lastName}`, due: startDate, amount: mt.deposit, status: 'paid', schedType: 'manual' });
             await insertPayment(depSid, mt.deposit, startDate, `DEP-${mt.lastName.substring(0, 4).toUpperCase()}`);
             // Monthly rent
-            for (let mo = 0; mo <= maxRentMonths; mo++) {
+            for (let mo = 0; mo < maxRentMonths; mo++) {
               const dueDay = pick([1, 1, 1, 5, 10, 15, 20]);
               const dueDate = d(cursorYear, cursorMonth + mo, dueDay);
               const coversFrom = d(cursorYear, cursorMonth + mo, 1);
