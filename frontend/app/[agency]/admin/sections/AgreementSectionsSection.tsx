@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { agreementSections } from '@/lib/api';
 import { getErrorMessage } from '@/lib/types';
 import type { Agreement } from '@/lib/types';
@@ -32,6 +32,7 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Preview state
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -96,6 +97,7 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
     setEditingId(section.id);
     setFormData({ title: section.section_title || '', content: section.section_content || '' });
     setShowForm(true);
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
   const handleDelete = async (id: number) => {
@@ -184,7 +186,7 @@ export default function AgreementSectionsSection({ onNavigate, action, itemId, o
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div ref={formRef} className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">
             {editingId ? 'Edit Agreement Section' : 'Add New Agreement Section'}
           </h3>
